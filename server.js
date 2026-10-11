@@ -1,103 +1,221 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-app.use(express.static(path.join(__dirname, 'public')));
-app.use(express.static(__dirname));
+app.use(express.static('public'));
 
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
+// ゲームの状態管理
+let gameState = 'PLAYING'; // 'PLAYING' or 'MEETING'
+let players = {}; // 各プレイヤーの情報
+let bodies = [];  // 発生した死体のリスト [{ x, y, name, color }]
+let meetingTimer = null;
+let votes = {};   // 投票データ { socketId: targetSocketId or 'skip' }
 
-// Among Us風マップのサイズ
-const WORLD_WIDTH = 2400;
-const WORLD_HEIGHT = 1600;
+// 非常招集ボタンの位置（マップの中心付近）
+const emergencyButton = { x: 1000, y: 1000 };
 
-// 中央通路の完全に安全なスポーン地点（壁に絶対重ならない場所）
-const spawnPoints = [
-  { x: 1200, y: 800 },
-  { x: 1300, y: 800 },
-  { x: 1100, y: 800 }
-];
-
-const players = {};
-// 部屋の中や通路の開けた場所に配置したタスク
-const tasks = [
-  { id: 1, x: 300,  y: 300, completed: false }, // コックピット
-  { id: 2, x: 2100, y: 300, completed: false }, // 右エンジン
-  { id: 3, x: 300,  y: 1300, completed: false }, // 左エンジン
-  { id: 4, x: 2100, y: 1300, completed: false }, // 通信室
-  { id: 5, x: 1200, y: 800, completed: false }  // 中央ホール
+// マップの壁データ（簡易的な障害物）
+const walls = [
+    { x: 400, y: 200, width: 200, height: 50 },
+    { x: 800, y: 500, width: 100, height: 300 },
+    { x: 200, y: 800, width: 300, height: 100 }
 ];
 
 io.on('connection', (socket) => {
-  console.log(`プレイヤー接続: ${socket.id}`);
+    console.log(`プレイヤー接続: ${socket.id}`);
 
-  const sp = spawnPoints[Math.floor(Math.random() * spawnPoints.length)];
+    // 初期プレイヤーデータの作成
+    const colors = ['#e74c3c', '#3498db', '#2ecc71', '#f1c40f', '#9b59b6', '#e67e22'];
+    const randomColor = colors[Math.floor(Math.random() * colors.length)];
+    
+    players[socket.id] = {
+        id: socket.id,
+        x: 300 + Math.random() * 100,
+        y: 300 + Math.random() * 100,
+        role: Object.keys(players).length === 0 ? 'wolf' : 'crew', // 最初の人を人狼に（テスト用）
+        isDead: false,
+        color: randomColor,
+        name: 'Crew_' + socket.id.substr(0, 4),
+        tasksCompleted: 0
+    };
 
-  players[socket.id] = {
-    x: sp.x,
-    y: sp.y,
-    role: Object.keys(players).length === 1 ? 'wolf' : 'citizen',
-    isAlive: true,
-    color: ['#ff3333', '#3366ff', '#33cc33', '#ffcc00', '#cc33cc', '#ff9900'][Math.floor(Math.random() * 6)]
-  };
+    // クライアントへ初期情報送信
+    socket.emit('init', { id: socket.id, players, walls, emergencyButton });
 
-  io.emit('updatePlayers', players);
-  socket.emit('initTasks', tasks);
+    // プレイヤーの移動処理
+    socket.on('playerMove', (data) => {
+        if (gameState !== 'PLAYING') return;
+        const player = players[socket.id];
+        if (!player || player.isDead) return;
 
-  socket.on('playerMove', (data) => {
-    if (players[socket.id] && players[socket.id].isAlive) {
-      players[socket.id].x = Math.max(40, Math.min(WORLD_WIDTH - 40, data.x));
-      players[socket.id].y = Math.max(40, Math.min(WORLD_HEIGHT - 40, data.y));
-      socket.broadcast.emit('updatePlayers', players);
-    }
-  });
+        player.x = data.x;
+        player.y = data.y;
+    });
 
-  socket.on('action', () => {
-    const player = players[socket.id];
-    if (!player || !player.isAlive) return;
+    // 人狼によるキル処理
+    socket.on('killPlayer', (targetId) => {
+        if (gameState !== 'PLAYING') return;
+        const killer = players[socket.id];
+        const target = players[targetId];
 
-    if (player.role === 'wolf') {
-      for (const id in players) {
-        if (id !== socket.id && players[id].isAlive && players[id].role === 'citizen') {
-          const target = players[id];
-          const dist = Math.hypot(player.x - target.x, player.y - target.y);
-          if (dist < 60) {
-            target.isAlive = false;
-            io.emit('message', { text: '市民が襲撃されました！' });
-            break;
-          }
+        if (!killer || killer.role !== 'wolf' || killer.isDead) return;
+        if (!target || target.isDead) return;
+
+        // 距離チェック（近くにいるか）
+        const dist = Math.hypot(killer.x - target.x, killer.y - target.y);
+        if (dist < 80) {
+            target.isDead = true;
+            // 死体を生成
+            bodies.push({
+                x: target.x,
+                y: target.y,
+                name: target.name,
+                color: target.color
+            });
+            io.emit('updateGameState', { players, bodies });
+            checkWinCondition();
         }
-      }
-    } else {
-      tasks.forEach((task) => {
-        if (!task.completed) {
-          const dist = Math.hypot(player.x - task.x, player.y - task.y);
-          if (dist < 70) {
-            task.completed = true;
-            io.emit('updateTasks', tasks);
-            io.emit('message', { text: '飛行機のパーツが修理されました！' });
-          }
-        }
-      });
-    }
-    io.emit('updatePlayers', players);
-  });
+    });
 
-  socket.on('disconnect', () => {
-    console.log(`プレイヤー切断: ${socket.id}`);
-    delete players[socket.id];
-    io.emit('updatePlayers', players);
-  });
+    // 死体通報 (Rキー)
+    socket.on('reportBody', () => {
+        if (gameState !== 'PLAYING') return;
+        const player = players[socket.id];
+        if (!player || player.isDead) return;
+
+        // 死体の近くにいるかチェック (120px以内)または死体が存在すれば通報可能
+        const nearBody = bodies.find(body => Math.hypot(body.x - player.x, body.y - player.y) < 150);
+        if (nearBody || bodies.length > 0) {
+            startMeeting('body', player.name);
+        }
+    });
+
+    // 非常招集ボタンの使用
+    socket.on('emergencyMeeting', () => {
+        if (gameState !== 'PLAYING') return;
+        const player = players[socket.id];
+        if (!player || player.isDead) return;
+
+        const dist = Math.hypot(emergencyButton.x - player.x, emergencyButton.y - player.y);
+        if (dist < 80) {
+            startMeeting('emergency', player.name);
+        }
+    });
+
+    // チャットメッセージ
+    socket.on('chatMessage', (msg) => {
+        if (gameState !== 'MEETING') return;
+        const player = players[socket.id];
+        if (!player) return;
+
+        io.emit('chatMessage', {
+            name: player.name,
+            text: msg,
+            isDead: player.isDead
+        });
+    });
+
+    // 投票処理
+    socket.on('vote', (targetId) => {
+        if (gameState !== 'MEETING') return;
+        const player = players[socket.id];
+        if (!player || player.isDead) return;
+
+        votes[socket.id] = targetId;
+
+        // 全生存者が投票したかチェック
+        const activePlayers = Object.values(players).filter(p => !p.isDead);
+        if (Object.keys(votes).length >= activePlayers.length) {
+            clearTimeout(meetingTimer);
+            endMeeting();
+        }
+    });
+
+    // 切断時
+    socket.on('disconnect', () => {
+        console.log(`プレイヤー切断: ${socket.id}`);
+        delete players[socket.id];
+        delete votes[socket.id];
+        io.emit('updateGameState', { players, bodies });
+        checkWinCondition();
+    });
 });
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`サーバー起動中: http://localhost:${PORT}`);
+// 会議開始関数
+function startMeeting(reason, reporterName) {
+    gameState = 'MEETING';
+    votes = {};
+    io.emit('startMeeting', { reason, reporterName });
+
+    // 45秒後に自動終了
+    meetingTimer = setTimeout(() => {
+        endMeeting();
+    }, 45000);
+}
+
+// 会議終了・投票集計関数
+function endMeeting() {
+    if (gameState !== 'MEETING') return;
+
+    const tally = {};
+    Object.values(votes).forEach(targetId => {
+        if (targetId && targetId !== 'skip') {
+            tally[targetId] = (tally[targetId] || 0) + 1;
+        }
+    });
+
+    let exiledId = null;
+    let maxVotes = 0;
+    let isTie = false;
+
+    for (const [id, count] of Object.entries(tally)) {
+        if (count > maxVotes) {
+            maxVotes = count;
+            exiledId = id;
+            isTie = false;
+        } else if (count === maxVotes) {
+            isTie = true;
+        }
+    }
+
+    let exiledName = null;
+    if (exiledId && !isTie && players[exiledId]) {
+        players[exiledId].isDead = true;
+        exiledName = players[exiledId].name;
+    }
+
+    gameState = 'PLAYING';
+    votes = {};
+    bodies = []; // 会議が終わったら死体は消去
+
+    io.emit('endMeeting', { exiledName, players });
+    checkWinCondition();
+}
+
+// 勝敗判定
+function checkWinCondition() {
+    const activePlayers = Object.values(players).filter(p => !p.isDead);
+    const activeWolves = activePlayers.filter(p => p.role === 'wolf');
+    const activeCrew = activePlayers.filter(p => p.role === 'crew');
+
+    if (activeWolves.length === 0) {
+        io.emit('gameOver', { winner: 'crew', message: '市民の勝利！人狼をすべて排除しました。' });
+    } else if (activeWolves.length >= activeCrew.length) {
+        io.emit('gameOver', { winner: 'wolf', message: '人狼の勝利！市民が人狼の数と同数以下になりました。' });
+    }
+}
+
+// 定期的なゲーム状態ブロードキャスト (30fps相当)
+setInterval(() => {
+    if (gameState === 'PLAYING') {
+        io.emit('gameStateUpdate', { players, bodies });
+    }
+}, 33);
+
+server.listen(3000, () => {
+    console.log('サーバーが起動しました: http://localhost:3000');
 });
