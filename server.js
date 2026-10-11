@@ -14,28 +14,43 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// マップサイズを3倍（2400 x 1800）に変更
-const WORLD_WIDTH = 2400;
+const WORLD_WIDTH = 2600;
 const WORLD_HEIGHT = 1800;
 
+// 壁に重ならない安全なスポーン地点の候補
+const spawnPoints = [
+  { x: 150, y: 150 },
+  { x: 1300, y: 150 },
+  { x: 2400, y: 150 },
+  { x: 1300, y: 900 },
+  { x: 150, y: 1650 },
+  { x: 1300, y: 1650 },
+  { x: 2400, y: 1650 }
+];
+
 const players = {};
+// 壁に埋まらない、通路や部屋の開けた場所に配置したタスク
 const tasks = [
-  { id: 1, x: 400, y: 400, completed: false },
-  { id: 2, x: 1200, y: 500, completed: false },
-  { id: 3, x: 2000, y: 400, completed: false },
-  { id: 4, x: 600, y: 1400, completed: false },
-  { id: 5, x: 1800, y: 1400, completed: false }
+  { id: 1, x: 200, y: 500, completed: false },
+  { id: 2, x: 900, y: 150, completed: false },
+  { id: 3, x: 1800, y: 200, completed: false },
+  { id: 4, x: 1300, y: 900, completed: false },
+  { id: 5, x: 400, y: 1550, completed: false },
+  { id: 6, x: 2200, y: 1550, completed: false }
 ];
 
 io.on('connection', (socket) => {
   console.log(`プレイヤー接続: ${socket.id}`);
 
+  // 安全なスポーン地点からランダムに選択
+  const sp = spawnPoints[Math.floor(Math.random() * spawnPoints.length)];
+
   players[socket.id] = {
-    x: Math.random() * 1000 + 700,
-    y: Math.random() * 800 + 500,
+    x: sp.x,
+    y: sp.y,
     role: Object.keys(players).length === 1 ? 'wolf' : 'citizen',
     isAlive: true,
-    color: '#' + Math.floor(Math.random()*16777215).toString(16)
+    color: ['#e74c3c', '#3498db', '#2ecc71', '#f1c40f', '#9b59b6', '#e67e22'][Math.floor(Math.random() * 6)]
   };
 
   io.emit('updatePlayers', players);
@@ -43,9 +58,8 @@ io.on('connection', (socket) => {
 
   socket.on('playerMove', (data) => {
     if (players[socket.id] && players[socket.id].isAlive) {
-      players[socket.id].x = Math.max(20, Math.min(WORLD_WIDTH - 20, data.x));
-      players[socket.id].y = Math.max(20, Math.min(WORLD_HEIGHT - 20, data.y));
-      // 自分以外のプレイヤーに位置をブロードキャストするため、全体へ送信
+      players[socket.id].x = Math.max(30, Math.min(WORLD_WIDTH - 30, data.x));
+      players[socket.id].y = Math.max(30, Math.min(WORLD_HEIGHT - 30, data.y));
       socket.broadcast.emit('updatePlayers', players);
     }
   });
@@ -59,9 +73,9 @@ io.on('connection', (socket) => {
         if (id !== socket.id && players[id].isAlive && players[id].role === 'citizen') {
           const target = players[id];
           const dist = Math.hypot(player.x - target.x, player.y - target.y);
-          if (dist < 50) {
+          if (dist < 55) {
             target.isAlive = false;
-            io.emit('message', { text: '市民がキルされました！' });
+            io.emit('message', { text: '市民が襲撃されました！' });
             break;
           }
         }
