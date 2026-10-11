@@ -16,10 +16,55 @@
       justify-content: center;
       height: 100vh;
     }
+    #gameContainer {
+      position: relative;
+    }
     canvas {
       background: #1a1a1a;
       border: 2px solid #555;
       box-shadow: 0 0 20px rgba(0,0,0,0.8);
+      display: block;
+    }
+    /* タイトル画面のオーバーレイ */
+    #titleScreen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 900px;
+      height: 600px;
+      background: rgba(15, 15, 20, 0.95);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+    }
+    h1 {
+      font-size: 42px;
+      color: #00ffcc;
+      margin-bottom: 10px;
+      text-shadow: 0 0 10px rgba(0,255,204,0.5);
+    }
+    p {
+      color: #ccc;
+      margin-bottom: 30px;
+      font-size: 16px;
+    }
+    .btn {
+      background: #ff4444;
+      color: white;
+      border: none;
+      padding: 15px 40px;
+      font-size: 20px;
+      font-weight: bold;
+      border-radius: 8px;
+      cursor: pointer;
+      box-shadow: 0 4px 10px rgba(255,68,68,0.4);
+      transition: 0.2s;
+    }
+    .btn:hover {
+      background: #ff6666;
+      transform: scale(1.05);
     }
     #ui {
       margin-top: 10px;
@@ -30,10 +75,20 @@
 </head>
 <body>
 
-  <canvas id="gameCanvas" width="900" height="600"></canvas>
+  <div id="gameContainer">
+    <!-- タイトル画面 -->
+    <div id="titleScreen">
+      <h1>AIRPLANE WEREWOLF</h1>
+      <p>市民は飛行機を修理して脱出しろ！人狼は全員を襲撃せよ！</p>
+      <button class="btn" id="startButton">ゲームスタート</button>
+    </div>
+
+    <canvas id="gameCanvas" width="900" height="600"></canvas>
+  </div>
+
   <div id="ui">
-    操作: [W, A, S, D] 移動 | [K] アクション(修理/キル) | [Space] 全体マップ確認<br>
-    <span id="status" style="color: yellow;">接続中...</span>
+    操作: [W, A, S, D] 移動 | [K] アクション(修理/キル) | [Space] 全者マップ確認(移動不可)<br>
+    <span id="status" style="color: yellow;">タイトル画面</span>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
@@ -42,21 +97,49 @@
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     const statusDiv = document.getElementById('status');
+    const titleScreen = document.getElementById('titleScreen');
+    const startButton = document.getElementById('startButton');
 
-    // マップサイズ 3倍（2400 x 1800）
     const WORLD_WIDTH = 2400;
     const WORLD_HEIGHT = 1800;
 
+    let gameStarted = false;
     let players = {};
     let tasks = [];
     let myId = null;
     let showMap = false;
 
     const keys = {};
-    const speed = 5;
+    const speed = 4.5;
+    const playerRadius = 18; // 当たり判定・サイズ用
+
+    // 飛行機内の壁データ（x, y, w, h）- Among Us風の部屋や通路の区切り
+    const walls = [
+      // 外壁フレーム
+      { x: 0, y: 0, w: WORLD_WIDTH, h: 40 },
+      { x: 0, y: WORLD_HEIGHT - 40, w: WORLD_WIDTH, h: 40 },
+      { x: 0, y: 0, w: 40, h: WORLD_HEIGHT },
+      { x: WORLD_HEIGHT - 40, y: 0, w: 40, h: WORLD_HEIGHT }, // 修正: WORLD_WIDTH
+      { x: WORLD_WIDTH - 40, y: 0, w: 40, h: WORLD_HEIGHT },
+
+      // 内部の部屋・壁のレイアウト
+      { x: 400, y: 400, w: 500, h: 300 },  // 部屋1
+      { x: 1300, y: 400, w: 600, h: 300 }, // 部屋2（操縦室など）
+      { x: 400, y: 1100, w: 500, h: 300 }, // 部屋3
+      { x: 1300, y: 1100, w: 600, h: 300 },// 部屋4
+      { x: 1000, y: 750, w: 400, h: 300 }   // 中央エリアの障害物
+    ];
+
+    // スタートボタンクリック
+    startButton.addEventListener('click', () => {
+      titleScreen.style.display = 'none';
+      gameStarted = true;
+    });
 
     window.addEventListener('keydown', (e) => {
+      if (!gameStarted) return;
       keys[e.key.toLowerCase()] = true;
+
       if (e.key.toLowerCase() === 'k') {
         socket.emit('action');
       }
@@ -77,11 +160,9 @@
       myId = socket.id;
     });
 
-    // プレイヤー情報の同期（自分の位置は上書きせず、他人の位置だけを更新して巻き戻りを防ぐ）
     socket.on('updatePlayers', (serverPlayers) => {
       for (const id in serverPlayers) {
         if (id === myId) {
-          // 自分の役割や生存フラグだけ同期し、座標(x, y)はクライアント側の滑らかな動きを優先
           if (players[myId]) {
             players[myId].role = serverPlayers[myId].role;
             players[myId].isAlive = serverPlayers[myId].isAlive;
@@ -93,14 +174,13 @@
         }
       }
 
-      // 切断されたプレイヤーを削除
       for (const id in players) {
         if (!serverPlayers[id]) {
           delete players[id];
         }
       }
 
-      if (players[myId]) {
+      if (players[myId] && gameStarted) {
         const roleText = players[myId].role === 'wolf' ? '人狼 (インポスター)' : '市民 (クルー)';
         const aliveText = players[myId].isAlive ? '生存' : '死亡';
         statusDiv.innerHTML = `役割: <b>${roleText}</b> | 状態: <span style="color:${players[myId].isAlive ? '#0ff' : '#f55'}">${aliveText}</span>`;
@@ -111,22 +191,62 @@
     socket.on('updateTasks', (serverTasks) => { tasks = serverTasks; });
     socket.on('message', (msg) => { console.log(msg.text); });
 
+    // 矩形（壁）と円（プレイヤー）の衝突判定
+    function checkCollision(x, y, radius, rects) {
+      for (let r of rects) {
+        // 円の近くにある矩形のエッジを見つける
+        let closestX = Math.max(r.x, Math.min(x, r.x + r.w));
+        let closestY = Math.max(r.y, Math.min(y, r.y + r.h));
+
+        let distX = x - closestX;
+        let distY = y - closestY;
+        let distance = Math.hypot(distX, distY);
+
+        if (distance < radius) {
+          return true; // 衝突している
+        }
+      }
+      return false;
+    }
+
     function update() {
+      if (!gameStarted) return;
+      // マップを開いている時は移動できないようにする
+      if (showMap) return;
+
       if (players[myId] && players[myId].isAlive) {
         let me = players[myId];
-        let moved = false;
         let newX = me.x;
         let newY = me.y;
 
-        if (keys['w'] || keys['arrowup']) { newY -= speed; moved = true; }
-        if (keys['s'] || keys['arrowdown']) { newY += speed; moved = true; }
-        if (keys['a'] || keys['arrowleft']) { newX -= speed; moved = true; }
-        if (keys['d'] || keys['arrowright']) { newX += speed; moved = true; }
+        let vx = 0;
+        let vy = 0;
 
-        if (moved) {
-          newX = Math.max(20, Math.min(WORLD_WIDTH - 20, newX));
-          newY = Math.max(20, Math.min(WORLD_HEIGHT - 20, newY));
-          
+        if (keys['w'] || keys['arrowup']) vy -= speed;
+        if (keys['s'] || keys['arrowdown']) vy += speed;
+        if (keys['a'] || keys['arrowleft']) vx -= speed;
+        if (keys['d'] || keys['arrowright']) vx += speed;
+
+        // 斜め移動時の速度正規化
+        if (vx !== 0 && vy !== 0) {
+          vx *= 0.7071;
+          vy *= 0.7071;
+        }
+
+        // X軸の移動と壁判定
+        if (vx !== 0) {
+          if (!checkCollision(newX + vx, newY, playerRadius, walls)) {
+            newX += vx;
+          }
+        }
+        // Y軸の移動と壁判定
+        if (vy !== 0) {
+          if (!checkCollision(newX, newY + vy, playerRadius, walls)) {
+            newY += vy;
+          }
+        }
+
+        if (newX !== me.x || newY !== me.y) {
           me.x = newX;
           me.y = newY;
           socket.emit('playerMove', { x: newX, y: newY });
@@ -134,13 +254,63 @@
       }
     }
 
+    // Among Us風の人型キャラクターを描画する関数
+    function drawCrewmate(ctx, x, y, color, isAlive, isMe) {
+      ctx.save();
+      ctx.translate(x, y);
+
+      if (!isAlive) {
+        // 死亡時は少し回転して幽霊っぽく
+        ctx.rotate(Math.PI / 6);
+        ctx.globalAlpha = 0.5;
+      }
+
+      // 胴体・足
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.ellipse(0, 4, 14, 18, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#000';
+      ctx.stroke();
+
+      // バックパック
+      ctx.fillRect(-18, -4, 6, 14);
+      ctx.strokeRect(-18, -4, 6, 14);
+
+      // バイザー（目元）
+      ctx.fillStyle = '#88ccff';
+      ctx.beginPath();
+      ctx.ellipse(6, -4, 9, 6, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // バイザーのハイライト
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.ellipse(8, -6, 3, 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 自分の場合は足元にマーカー
+      if (isMe && isAlive) {
+        ctx.fillStyle = '#ffff00';
+        ctx.beginPath();
+        ctx.arc(0, 26, 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.restore();
+    }
+
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (!gameStarted) return;
+
       const me = players[myId];
 
       if (showMap) {
-        // 全体マップ描画
-        ctx.fillStyle = 'rgba(10, 10, 15, 0.95)';
+        // --- 全体マップ表示モード ---
+        ctx.fillStyle = 'rgba(15, 15, 20, 0.95)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = '#fff';
         ctx.font = '20px sans-serif';
@@ -149,12 +319,15 @@
         const scaleX = canvas.width / WORLD_WIDTH;
         const scaleY = canvas.height / WORLD_HEIGHT;
 
-        ctx.strokeStyle = '#555';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(50, 60, WORLD_WIDTH * scaleX * 0.8, WORLD_HEIGHT * scaleY * 0.8);
+        // 壁のミニマップ描画
+        ctx.fillStyle = '#444';
+        walls.forEach(w => {
+          ctx.fillRect(w.x * scaleX * 0.8 + 90, w.y * scaleY * 0.8 + 60, w.w * scaleX * 0.8, w.h * scaleY * 0.8);
+        });
 
+        // タスク
         tasks.forEach((task) => {
-          let tx = 50 + task.x * scaleX * 0.8;
+          let tx = 90 + task.x * scaleX * 0.8;
           let ty = 60 + task.y * scaleY * 0.8;
           ctx.fillStyle = task.completed ? '#0f0' : '#f00';
           ctx.beginPath();
@@ -162,20 +335,25 @@
           ctx.fill();
         });
 
+        // プレイヤー
         for (const id in players) {
           let p = players[id];
           if (!p.isAlive) continue;
-          let px = 50 + p.x * scaleX * 0.8;
+          let px = 90 + p.x * scaleX * 0.8;
           let py = 60 + p.y * scaleY * 0.8;
           ctx.fillStyle = (id === myId) ? '#ff0' : p.color;
           ctx.beginPath();
           ctx.arc(px, py, 5, 0, Math.PI * 2);
           ctx.fill();
         }
+
+        ctx.fillStyle = '#aaa';
+        ctx.font = '14px sans-serif';
+        ctx.fillText('※ スペースキーを離すとゲームに戻ります（マップ中は移動不可）', canvas.width / 2 - 210, canvas.height - 25);
         return;
       }
 
-      // カメラ追従
+      // --- 通常ゲームプレイモード (カメラ追従) ---
       let cameraX = 0;
       let cameraY = 0;
       if (me) {
@@ -199,32 +377,42 @@
         ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(WORLD_WIDTH, y); ctx.stroke();
       }
 
-      // タスク
-      tasks.forEach((task) => {
-        ctx.fillStyle = task.completed ? '#00ffcc' : '#ff4444';
-        ctx.fillRect(task.x - 25, task.y - 25, 50, 50);
-        ctx.fillStyle = '#fff';
-        ctx.font = '14px sans-serif';
-        ctx.fillText(`パーツ #${task.id} (${task.completed ? '完了' : '未修理'})`, task.x - 50, task.y - 35);
+      // 壁（飛行機内の部屋・通路）の描画
+      ctx.fillStyle = '#3a3f4b';
+      ctx.strokeStyle = '#5a6275';
+      ctx.lineWidth = 4;
+      walls.forEach(w => {
+        ctx.fillRect(w.x, w.y, w.w, w.h);
+        ctx.strokeRect(w.x, w.y, w.w, w.h);
       });
 
-      // プレイヤー
-      for (const id in players) {
-        const p = players[id];
-        ctx.fillStyle = p.isAlive ? p.color : '#555';
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, 20, 0, Math.PI * 2);
-        ctx.fill();
-
-        if (id === myId) {
-          ctx.strokeStyle = '#fff';
-          ctx.lineWidth = 3;
-          ctx.stroke();
-        }
+      // タスク（修理パーツ）の描画
+      tasks.forEach((task) => {
+        ctx.fillStyle = task.completed ? '#00ffcc' : '#ff4444';
+        ctx.fillRect(task.x - 20, task.y - 20, 40, 40);
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(task.x - 20, task.y - 20, 40, 40);
 
         ctx.fillStyle = '#fff';
         ctx.font = '12px sans-serif';
-        ctx.fillText(id === myId ? 'あなた' : 'プレイヤー', p.x - 22, p.y - 28);
+        ctx.fillText(`パーツ #${task.id} (${task.completed ? '完了' : '未修理'})`, task.x - 45, task.y - 28);
+      });
+
+      // 人型プレイヤーの描画
+      for (const id in players) {
+        const p = players[id];
+        const isMe = (id === myId);
+        const drawColor = p.isAlive ? p.color : '#555';
+        
+        drawCrewmate(ctx, p.x, p.y, drawColor, p.isAlive, isMe);
+
+        // ネームタグ
+        ctx.fillStyle = '#fff';
+        ctx.font = '12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(isMe ? 'あなた' : 'クルー', p.x, p.y - 32);
+        ctx.textAlign = 'left'; // リセット
       }
 
       ctx.restore();
