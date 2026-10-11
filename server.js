@@ -17,23 +17,21 @@ app.get('/', (req, res) => {
 const WORLD_WIDTH = 3000;
 const WORLD_HEIGHT = 1600;
 
-// 飛行機の通路や部屋の中にある、絶対に壁に埋まらない安全なスポーン地点
+// 壁（障害物）の座標から完全に離れた、広くて安全な通路・廊下のスポーン地点
 const spawnPoints = [
-  { x: 1500, y: 350 }, // コックピット中央通路
-  { x: 1100, y: 750 }, // 客室A
-  { x: 1900, y: 750 }, // 客室B
-  { x: 1500, y: 1200 } // 後部ラウンジ
+  { x: 1500, y: 750 }, // 中央メイン通路
+  { x: 1500, y: 550 }, // 前方通路
+  { x: 1500, y: 950 }, // 後方通路
+  { x: 1200, y: 750 }  // 左側通路
 ];
 
 const players = {};
-// 飛行機内の通路や開けた場所に配置したタスク
+// 壁に絶対にかぶらない、開けた通路や廊下に配置したタスク
 const tasks = [
-  { id: 1, x: 1500, y: 250, completed: false }, // 操縦席
-  { id: 2, x: 850,  y: 750, completed: false }, // 左翼・客室通路
-  { id: 3, x: 2150, y: 750, completed: false }, // 右翼・客室通路
-  { id: 4, x: 1500, y: 750, completed: false }, // 中央通路
-  { id: 5, x: 1100, y: 1300, completed: false },// 後部貨物スペース
-  { id: 6, x: 1900, y: 1300, completed: false } // エンジン整備エリア
+  { id: 1, x: 1500, y: 200, completed: false },
+  { id: 2, x: 750,  y: 750, completed: false },
+  { id: 3, x: 2250, y: 750, completed: false },
+  { id: 4, x: 1500, y: 1400, completed: false }
 ];
 
 io.on('connection', (socket) => {
