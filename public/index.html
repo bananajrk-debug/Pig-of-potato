@@ -43,22 +43,20 @@
     const ctx = canvas.getContext('2d');
     const statusDiv = document.getElementById('status');
 
-    const WORLD_WIDTH = 4000;
-    const WORLD_HEIGHT = 3000;
+    // マップサイズ 3倍（2400 x 1800）
+    const WORLD_WIDTH = 2400;
+    const WORLD_HEIGHT = 1800;
 
     let players = {};
     let tasks = [];
     let myId = null;
     let showMap = false;
 
-    // キーボードの状態を保持するオブジェクト
     const keys = {};
     const speed = 5;
 
-    // キー入力をグローバル（window）で確実に拾うように変更
     window.addEventListener('keydown', (e) => {
       keys[e.key.toLowerCase()] = true;
-      
       if (e.key.toLowerCase() === 'k') {
         socket.emit('action');
       }
@@ -79,8 +77,29 @@
       myId = socket.id;
     });
 
+    // プレイヤー情報の同期（自分の位置は上書きせず、他人の位置だけを更新して巻き戻りを防ぐ）
     socket.on('updatePlayers', (serverPlayers) => {
-      players = serverPlayers;
+      for (const id in serverPlayers) {
+        if (id === myId) {
+          // 自分の役割や生存フラグだけ同期し、座標(x, y)はクライアント側の滑らかな動きを優先
+          if (players[myId]) {
+            players[myId].role = serverPlayers[myId].role;
+            players[myId].isAlive = serverPlayers[myId].isAlive;
+          } else {
+            players[myId] = serverPlayers[myId];
+          }
+        } else {
+          players[id] = serverPlayers[id];
+        }
+      }
+
+      // 切断されたプレイヤーを削除
+      for (const id in players) {
+        if (!serverPlayers[id]) {
+          delete players[id];
+        }
+      }
+
       if (players[myId]) {
         const roleText = players[myId].role === 'wolf' ? '人狼 (インポスター)' : '市民 (クルー)';
         const aliveText = players[myId].isAlive ? '生存' : '死亡';
@@ -108,7 +127,6 @@
           newX = Math.max(20, Math.min(WORLD_WIDTH - 20, newX));
           newY = Math.max(20, Math.min(WORLD_HEIGHT - 20, newY));
           
-          // クライアント側で即座に位置を更新してサーバーへ送信
           me.x = newX;
           me.y = newY;
           socket.emit('playerMove', { x: newX, y: newY });
