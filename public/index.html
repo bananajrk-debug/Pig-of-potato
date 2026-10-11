@@ -1,1 +1,176 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>Airplane Werewolf 2D</title>
+  <style>
+    body {
+      margin: 0;
+      background: #111;
+      color: #fff;
+      font-family: sans-serif;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+    canvas {
+      background: #222;
+      border: 2px solid #555;
+    }
+    #ui {
+      margin-top: 10px;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
 
+  <canvas id="gameCanvas" width="800" height="600"></canvas>
+  <div id="ui">操作: [W, A, S, D] 移動 | [K] アクション(修理/キル) | [Space] マップ確認</div>
+  <div id="status" style="margin-top: 5px; color: yellow;"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const statusDiv = document.getElementById('status');
+
+    let players = {};
+    let tasks = [];
+    let myId = null;
+    let showMap = false;
+
+    const keys = { w: false, a: false, s: false, d: false };
+    const speed = 3;
+
+    // キー入力監視
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'w' || e.key === 'W') keys.w = true;
+      if (e.key === 'a' || e.key === 'A') keys.a = true;
+      if (e.key === 's' || e.key === 'S') keys.s = true;
+      if (e.key === 'd' || e.key === 'D') keys.d = true;
+      
+      if (e.key === 'k' || e.key === 'K') {
+        socket.emit('action');
+      }
+      if (e.key === ' ') {
+        showMap = true;
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {
+      if (e.key === 'w' || e.key === 'W') keys.w = false;
+      if (e.key === 'a' || e.key === 'A') keys.a = false;
+      if (e.key === 's' || e.key === 'S') keys.s = false;
+      if (e.key === 'd' || e.key === 'D') keys.d = false;
+      if (e.key === ' ') {
+        showMap = false;
+      }
+    });
+
+    socket.on('connect', () => {
+      myId = socket.id;
+    });
+
+    socket.on('updatePlayers', (serverPlayers) => {
+      players = serverPlayers;
+      if (players[myId]) {
+        statusDiv.innerText = `役割: ${players[myId].role === 'wolf' ? '人狼 (インポスター)' : '市民 (クルー)'} | 生存: ${players[myId].isAlive ? '生存' : '死亡'}`;
+      }
+    });
+
+    socket.on('initTasks', (serverTasks) => {
+      tasks = serverTasks;
+    });
+
+    socket.on('updateTasks', (serverTasks) => {
+      tasks = serverTasks;
+    });
+
+    socket.on('message', (msg) => {
+      console.log(msg.text);
+    });
+
+    // メインループ
+    function update() {
+      if (players[myId] && players[myId].isAlive) {
+        let x = players[myId].x;
+        let y = players[myId].y;
+
+        if (keys.w) y -= speed;
+        if (keys.s) y += speed;
+        if (keys.a) x -= speed;
+        if (keys.d) x += speed;
+
+        // マップ端の制限
+        x = Math.max(20, Math.min(canvas.width - 20, x));
+        y = Math.max(20, Math.min(canvas.height - 20, y));
+
+        socket.emit('playerMove', { x, y });
+      }
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (showMap) {
+        // スペースキー押下時：全体マップ＆タスク状況表示
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#fff';
+        ctx.font = '24px sans-serif';
+        ctx.fillText('【 全体マップ ＆ 修理状況 】', 250, 80);
+
+        tasks.forEach((task, index) => {
+          ctx.fillStyle = task.completed ? '#0f0' : '#f00';
+          ctx.beginPath();
+          ctx.arc(task.x, task.y + 50, 15, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#fff';
+          ctx.font = '14px sans-serif';
+          ctx.fillText(`パーツ #${task.id} (${task.completed ? '完了' : '未修理'})`, task.x - 40, task.y + 85);
+        });
+        return;
+      }
+
+      // 通常時の描画：タスク（修理ポイント）
+      tasks.forEach((task) => {
+        ctx.fillStyle = task.completed ? '#00ffcc' : '#ff5555';
+        ctx.fillRect(task.x - 15, task.y - 15, 30, 30);
+        ctx.fillStyle = '#fff';
+        ctx.font = '10px sans-serif';
+        ctx.fillText(`パーツ${task.id}`, task.x - 20, task.y - 20);
+      });
+
+      // プレイヤーの描画
+      for (const id in players) {
+        const p = players[id];
+        ctx.fillStyle = p.isAlive ? p.color : '#555';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 15, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 自分のプレイヤーに枠線をつける
+        if (id === myId) {
+          ctx.strokeStyle = '#fff';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+      }
+    }
+
+    function loop() {
+      update();
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    loop();
+  </script>
+
+</body>
+</html>
