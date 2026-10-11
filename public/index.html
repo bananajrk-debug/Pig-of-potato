@@ -114,38 +114,21 @@
     const speed = 4.2;
     const playerRadius = 15;
 
-    // --- 飛行機の形（機首・コックピット・客室・左右の翼・尾翼）を模した自由な形の壁データ ---
+    // プレイヤーが挟まらないよう、間に十分な通路幅（廊下）を確保した壁データ
     const walls = [
-      // コックピット周辺（先端が細くなっている形）
-      { x: 1300, y: 100, w: 400, h: 200 },
-      // メイン中央通路の左側にある個室・壁
-      { x: 950,  y: 400, w: 300, h: 400 },
-      // メイン中央通路の右側にある個室・壁
-      { x: 1750, y: 400, w: 300, h: 400 },
-      // 左側の翼通路ルーム
-      { x: 500,  y: 650, w: 350, h: 300 },
-      // 右側の翼通路ルーム
-      { x: 2150, y: 650, w: 350, h: 300 },
-      // 後部ラウンジ・エンジンルームの仕切り壁
-      { x: 1100, y: 1050, w: 300, h: 300 },
-      { x: 1600, y: 1050, w: 300, h: 300 }
+      // 上部ルーム
+      { x: 800, y: 300, w: 400, h: 250 },
+      { x: 1800, y: 300, w: 400, h: 250 },
+      // 下部ルーム
+      { x: 800, y: 950, w: 400, h: 250 },
+      { x: 1800, y: 950, w: 400, h: 250 }
     ];
 
-    // --- 機内を彩る小道具（座席、テーブル、コックピットの計器など） ---
     const props = [
-      // コックピットの操縦パネル
-      { x: 1420, y: 140, w: 160, h: 40, type: 'console' },
-      // ファーストクラスの座席群
-      { x: 1050, y: 480, w: 100, h: 60, type: 'seat' },
-      { x: 1050, y: 600, w: 100, h: 60, type: 'seat' },
-      { x: 1850, y: 480, w: 100, h: 60, type: 'seat' },
-      { x: 1850, y: 600, w: 100, h: 60, type: 'seat' },
-      // 左翼客室のテーブルと椅子
-      { x: 600,  y: 750, w: 120, h: 80, type: 'table' },
-      // 右翼客室のテーブルと椅子
-      { x: 2280, y: 750, w: 120, h: 80, type: 'table' },
-      // 後部ラウンジのソファ
-      { x: 1450, y: 1150, w: 100, h: 50, type: 'seat' }
+      { x: 950, y: 380, w: 100, h: 60, type: 'seat' },
+      { x: 1950, y: 380, w: 100, h: 60, type: 'seat' },
+      { x: 950, y: 1030, w: 100, h: 60, type: 'seat' },
+      { x: 1950, y: 1030, w: 100, h: 60, type: 'seat' }
     ];
 
     startButton.addEventListener('click', () => {
@@ -254,7 +237,6 @@
       ctx.shadowColor = 'rgba(0,0,0,0.4)';
       ctx.shadowBlur = 6;
 
-      // 服を着た人間風
       ctx.fillStyle = color;
       ctx.beginPath();
       ctx.arc(0, 4, 13, 0, Math.PI * 2);
@@ -263,7 +245,6 @@
       ctx.strokeStyle = '#1a252f';
       ctx.stroke();
 
-      // 頭
       ctx.fillStyle = '#f5cd79';
       ctx.beginPath();
       ctx.arc(0, -10, 8, 0, Math.PI * 2);
@@ -289,7 +270,7 @@
       const me = players[myId];
 
       if (showMap) {
-        // --- 全体マップモード（飛行機の形を描画） ---
+        // --- 全体マップモード ---
         ctx.fillStyle = 'rgba(17, 19, 24, 0.96)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -301,23 +282,22 @@
         const scaleX = canvas.width / WORLD_WIDTH;
         const scaleY = canvas.height / WORLD_HEIGHT;
 
-        // 飛行機の外枠のシルエット（自由な形）を描く
+        // 機体外枠
         ctx.fillStyle = '#2c3e50';
         ctx.strokeStyle = '#1abc9c';
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.moveTo(1500 * scaleX * 0.85 + 75, 100 * scaleY * 0.85 + 70);
-        ctx.lineTo(2300 * scaleX * 0.85 + 75, 600 * scaleY * 0.85 + 70);
-        ctx.lineTo(2500 * scaleX * 0.85 + 75, 1000 * scaleY * 0.85 + 70);
-        ctx.lineTo(1900 * scaleX * 0.85 + 75, 1400 * scaleY * 0.85 + 70);
-        ctx.lineTo(1100 * scaleX * 0.85 + 75, 1400 * scaleY * 0.85 + 70);
-        ctx.lineTo(500 * scaleX * 0.85 + 75, 1000 * scaleY * 0.85 + 70);
-        ctx.lineTo(700 * scaleX * 0.85 + 75, 600 * scaleY * 0.85 + 70);
+        ctx.lineTo(2600 * scaleX * 0.85 + 75, 500 * scaleY * 0.85 + 70);
+        ctx.lineTo(2600 * scaleX * 0.85 + 75, 1100 * scaleY * 0.85 + 70);
+        ctx.lineTo(1500 * scaleX * 0.85 + 75, 1500 * scaleY * 0.85 + 70);
+        ctx.lineTo(400 * scaleX * 0.85 + 75, 1100 * scaleY * 0.85 + 70);
+        ctx.lineTo(400 * scaleX * 0.85 + 75, 500 * scaleY * 0.85 + 70);
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
 
-        // 内部の壁
+        // 壁
         ctx.fillStyle = '#1a252f';
         walls.forEach(w => {
           let wx = 75 + w.x * scaleX * 0.85;
@@ -366,45 +346,40 @@
       ctx.save();
       ctx.translate(-cameraX, -cameraY);
 
-      // 外の世界の背景
       ctx.fillStyle = '#0f141c';
       ctx.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
 
-      // ★ 飛行機のボディ全体の形を描画（自由な曲線・多角形の機内フロア）
+      // 機体ボディ
       ctx.fillStyle = '#22303c';
       ctx.strokeStyle = '#34495e';
       ctx.lineWidth = 6;
       ctx.beginPath();
-      ctx.moveTo(1500, 100);   // 機首（先端）
-      ctx.lineTo(2300, 600);   // 右翼側への膨らみ
-      ctx.lineTo(2500, 1000);  // 右後方
-      ctx.lineTo(1900, 1400);  // 尾翼右
-      ctx.lineTo(1100, 1400);  // 尾翼左
-      ctx.lineTo(500, 1000);   // 左後方
-      ctx.lineTo(700, 600);    // 左翼側への膨らみ
+      ctx.moveTo(1500, 100);
+      ctx.lineTo(2600, 500);
+      ctx.lineTo(2600, 1100);
+      ctx.lineTo(1500, 1500);
+      ctx.lineTo(400, 1100);
+      ctx.lineTo(400, 500);
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
 
-      // 機内床面の質感グリッド
       ctx.strokeStyle = '#1b2631';
       ctx.lineWidth = 1;
-      for (let x = 500; x < 2500; x += 120) {
-        ctx.beginPath(); ctx.moveTo(x, 100); ctx.lineTo(x, 1400); ctx.stroke();
+      for (let x = 400; x < 2600; x += 120) {
+        ctx.beginPath(); ctx.moveTo(x, 100); ctx.lineTo(x, 1500); ctx.stroke();
       }
 
-      // 小道具（シート、テーブル、コンソール）の描画
       props.forEach(prop => {
-        ctx.fillStyle = prop.type === 'console' ? '#34495e' : '#2c3e50';
+        ctx.fillStyle = '#2c3e50';
         ctx.fillRect(prop.x, prop.y, prop.w, prop.h);
-        ctx.strokeStyle = prop.type === 'console' ? '#1abc9c' : '#7f8c8d';
+        ctx.strokeStyle = '#7f8c8d';
         ctx.lineWidth = 2;
         ctx.strokeRect(prop.x, prop.y, prop.w, prop.h);
       });
 
-      // 内部の壁（部屋の仕切り）
       walls.forEach(w => {
-        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
         ctx.fillRect(w.x + 6, w.y + 6, w.w, w.h);
 
         ctx.fillStyle = '#2c3e50';
@@ -415,7 +390,6 @@
         ctx.strokeRect(w.x, w.y, w.w, w.h);
       });
 
-      // タスク（修理パーツ）の描画
       tasks.forEach((task) => {
         ctx.fillStyle = task.completed ? '#1e272e' : '#4a151b';
         ctx.fillRect(task.x - 22, task.y - 22, 44, 44);
@@ -431,7 +405,6 @@
         ctx.textAlign = 'left';
       });
 
-      // プレイヤーの描画
       for (const id in players) {
         const p = players[id];
         const isMe = (id === myId);
