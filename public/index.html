@@ -20,7 +20,6 @@
       background: #1a1a1a;
       border: 2px solid #555;
       box-shadow: 0 0 20px rgba(0,0,0,0.8);
-      outline: none;
     }
     #ui {
       margin-top: 10px;
@@ -31,7 +30,7 @@
 </head>
 <body>
 
-  <canvas id="gameCanvas" width="900" height="600" tabindex="1"></canvas>
+  <canvas id="gameCanvas" width="900" height="600"></canvas>
   <div id="ui">
     操作: [W, A, S, D] 移動 | [K] アクション(修理/キル) | [Space] 全体マップ確認<br>
     <span id="status" style="color: yellow;">接続中...</span>
@@ -44,7 +43,6 @@
     const ctx = canvas.getContext('2d');
     const statusDiv = document.getElementById('status');
 
-    // ワールドサイズ（5倍以上に拡張: 4000 x 3000）
     const WORLD_WIDTH = 4000;
     const WORLD_HEIGHT = 3000;
 
@@ -53,39 +51,25 @@
     let myId = null;
     let showMap = false;
 
-    const keys = { w: false, a: false, s: false, d: false };
-    const speed = 4; // 移動スピード
+    // キーボードの状態を保持するオブジェクト
+    const keys = {};
+    const speed = 5;
 
-    // 画面読み込み時にCanvasにフォーカスを当てる
-    window.onload = () => {
-      canvas.focus();
-    };
-    canvas.addEventListener('click', () => {
-      canvas.focus();
-    });
-
-    // キー入力監視
+    // キー入力をグローバル（window）で確実に拾うように変更
     window.addEventListener('keydown', (e) => {
-      if (e.repeat) return; // 押しっぱなしによる誤作動防止
-      if (['w', 'W', 'ArrowUp'].includes(e.key)) keys.w = true;
-      if (['a', 'A', 'ArrowLeft'].includes(e.key)) keys.a = true;
-      if (['s', 'S', 'ArrowDown'].includes(e.key)) keys.s = true;
-      if (['d', 'D', 'ArrowRight'].includes(e.key)) keys.d = true;
+      keys[e.key.toLowerCase()] = true;
       
-      if (e.key === 'k' || e.key === 'K') {
+      if (e.key.toLowerCase() === 'k') {
         socket.emit('action');
       }
       if (e.key === ' ') {
         showMap = true;
-        e.preventDefault(); // スペースキーによるスクロールを防ぐ
+        e.preventDefault();
       }
     });
 
     window.addEventListener('keyup', (e) => {
-      if (['w', 'W', 'ArrowUp'].includes(e.key)) keys.w = false;
-      if (['a', 'A', 'ArrowLeft'].includes(e.key)) keys.a = false;
-      if (['s', 'S', 'ArrowDown'].includes(e.key)) keys.s = false;
-      if (['d', 'D', 'ArrowRight'].includes(e.key)) keys.d = false;
+      keys[e.key.toLowerCase()] = false;
       if (e.key === ' ') {
         showMap = false;
       }
@@ -104,65 +88,53 @@
       }
     });
 
-    socket.on('initTasks', (serverTasks) => {
-      tasks = serverTasks;
-    });
+    socket.on('initTasks', (serverTasks) => { tasks = serverTasks; });
+    socket.on('updateTasks', (serverTasks) => { tasks = serverTasks; });
+    socket.on('message', (msg) => { console.log(msg.text); });
 
-    socket.on('updateTasks', (serverTasks) => {
-      tasks = serverTasks;
-    });
-
-    socket.on('message', (msg) => {
-      console.log(msg.text);
-    });
-
-    // メインループ（更新）
     function update() {
       if (players[myId] && players[myId].isAlive) {
         let me = players[myId];
+        let moved = false;
         let newX = me.x;
         let newY = me.y;
 
-        if (keys.w) newY -= speed;
-        if (keys.s) newY += speed;
-        if (keys.a) newX -= speed;
-        if (keys.d) newX += speed;
+        if (keys['w'] || keys['arrowup']) { newY -= speed; moved = true; }
+        if (keys['s'] || keys['arrowdown']) { newY += speed; moved = true; }
+        if (keys['a'] || keys['arrowleft']) { newX -= speed; moved = true; }
+        if (keys['d'] || keys['arrowright']) { newX += speed; moved = true; }
 
-        // ワールドの端で止める（余白20px）
-        newX = Math.max(20, Math.min(WORLD_WIDTH - 20, newX));
-        newY = Math.max(20, Math.min(WORLD_HEIGHT - 20, newY));
-
-        if (newX !== me.x || newY !== me.y) {
+        if (moved) {
+          newX = Math.max(20, Math.min(WORLD_WIDTH - 20, newX));
+          newY = Math.max(20, Math.min(WORLD_HEIGHT - 20, newY));
+          
+          // クライアント側で即座に位置を更新してサーバーへ送信
+          me.x = newX;
+          me.y = newY;
           socket.emit('playerMove', { x: newX, y: newY });
         }
       }
     }
 
-    // メインループ（描画）
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-
       const me = players[myId];
 
       if (showMap) {
-        // --- 全体マップ表示モード (Spaceキー) ---
+        // 全体マップ描画
         ctx.fillStyle = 'rgba(10, 10, 15, 0.95)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-
         ctx.fillStyle = '#fff';
         ctx.font = '20px sans-serif';
         ctx.fillText('【 飛行機全体マップ ＆ パーツ状況 】', canvas.width / 2 - 160, 40);
 
-        // ミニマップ上の縮小スケール
         const scaleX = canvas.width / WORLD_WIDTH;
         const scaleY = canvas.height / WORLD_HEIGHT;
 
-        // マップ枠
         ctx.strokeStyle = '#555';
         ctx.lineWidth = 2;
         ctx.strokeRect(50, 60, WORLD_WIDTH * scaleX * 0.8, WORLD_HEIGHT * scaleY * 0.8);
 
-        // タスク（パーツ）の描画
         tasks.forEach((task) => {
           let tx = 50 + task.x * scaleX * 0.8;
           let ty = 60 + task.y * scaleY * 0.8;
@@ -172,7 +144,6 @@
           ctx.fill();
         });
 
-        // プレイヤーの位置
         for (const id in players) {
           let p = players[id];
           if (!p.isAlive) continue;
@@ -180,78 +151,61 @@
           let py = 60 + p.y * scaleY * 0.8;
           ctx.fillStyle = (id === myId) ? '#ff0' : p.color;
           ctx.beginPath();
-          ctx.arc(px, py, 4, 0, Math.PI * 2);
+          ctx.arc(px, py, 5, 0, Math.PI * 2);
           ctx.fill();
         }
-
-        ctx.fillStyle = '#aaa';
-        ctx.font = '14px sans-serif';
-        ctx.fillText('※ スペースキーを離すとゲームに戻ります', canvas.width / 2 - 130, canvas.height - 20);
         return;
       }
 
-      // --- 通常ゲームプレイモード (カメラ追従) ---
+      // カメラ追従
       let cameraX = 0;
       let cameraY = 0;
       if (me) {
-        cameraX = me.x - canvas.width / 2;
-        cameraY = me.y - canvas.height / 2;
-        // カメラがワールドの外に出ないように制限
-        cameraX = Math.max(0, Math.min(WORLD_WIDTH - canvas.width, cameraX));
-        cameraY = Math.max(0, Math.min(WORLD_HEIGHT - canvas.height, cameraY));
+        cameraX = Math.max(0, Math.min(WORLD_WIDTH - canvas.width, me.x - canvas.width / 2));
+        cameraY = Math.max(0, Math.min(WORLD_HEIGHT - canvas.height, me.y - canvas.height / 2));
       }
 
       ctx.save();
       ctx.translate(-cameraX, -cameraY);
 
-      // ワールドの背景グリッドや床を描画
+      // 床とグリッド
       ctx.fillStyle = '#222';
       ctx.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
 
-      // グリッド線の描画（広大さを感じさせるため）
       ctx.strokeStyle = '#2a2a2a';
       ctx.lineWidth = 1;
-      for (let x = 0; x < WORLD_WIDTH; x += 100) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, WORLD_HEIGHT);
-        ctx.stroke();
+      for (let x = 0; x < WORLD_WIDTH; x += 200) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, WORLD_HEIGHT); ctx.stroke();
       }
-      for (let y = 0; y < WORLD_HEIGHT; y += 100) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(WORLD_WIDTH, y);
-        ctx.stroke();
+      for (let y = 0; y < WORLD_HEIGHT; y += 200) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(WORLD_WIDTH, y); ctx.stroke();
       }
 
-      // タスク（修理パーツ）の描画
-      tasks.range = tasks.forEach((task) => {
+      // タスク
+      tasks.forEach((task) => {
         ctx.fillStyle = task.completed ? '#00ffcc' : '#ff4444';
-        ctx.fillRect(task.x - 20, task.y - 20, 40, 40);
+        ctx.fillRect(task.x - 25, task.y - 25, 50, 50);
         ctx.fillStyle = '#fff';
-        ctx.font = '12px sans-serif';
-        ctx.fillText(`パーツ #${task.id} (${task.completed ? '完了' : '未修理'})`, task.x - 45, task.y - 28);
+        ctx.font = '14px sans-serif';
+        ctx.fillText(`パーツ #${task.id} (${task.completed ? '完了' : '未修理'})`, task.x - 50, task.y - 35);
       });
 
-      // プレイヤーの描画
+      // プレイヤー
       for (const id in players) {
         const p = players[id];
-        // 死亡したプレイヤーは灰色
         ctx.fillStyle = p.isAlive ? p.color : '#555';
         ctx.beginPath();
         ctx.arc(p.x, p.y, 20, 0, Math.PI * 2);
         ctx.fill();
 
-        // 自分のプレイヤーには白い外枠をつける
         if (id === myId) {
           ctx.strokeStyle = '#fff';
           ctx.lineWidth = 3;
           ctx.stroke();
         }
 
-        // プレイヤーのロール表示（自分だけ、またはデバッグ用）
         ctx.fillStyle = '#fff';
-        ctx.font = '11px sans-serif';
+        ctx.font = '12px sans-serif';
         ctx.fillText(id === myId ? 'あなた' : 'プレイヤー', p.x - 22, p.y - 28);
       }
 
