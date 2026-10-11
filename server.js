@@ -14,24 +14,25 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-const WORLD_WIDTH = 3000;
+// Among Us風マップのサイズ
+const WORLD_WIDTH = 2400;
 const WORLD_HEIGHT = 1600;
 
-// 壁（障害物）の座標から完全に離れた、広くて安全な通路・廊下のスポーン地点
+// 中央通路の完全に安全なスポーン地点（壁に絶対重ならない場所）
 const spawnPoints = [
-  { x: 1500, y: 750 }, // 中央メイン通路
-  { x: 1500, y: 550 }, // 前方通路
-  { x: 1500, y: 950 }, // 後方通路
-  { x: 1200, y: 750 }  // 左側通路
+  { x: 1200, y: 800 },
+  { x: 1300, y: 800 },
+  { x: 1100, y: 800 }
 ];
 
 const players = {};
-// 壁に絶対にかぶらない、開けた通路や廊下に配置したタスク
+// 部屋の中や通路の開けた場所に配置したタスク
 const tasks = [
-  { id: 1, x: 1500, y: 200, completed: false },
-  { id: 2, x: 750,  y: 750, completed: false },
-  { id: 3, x: 2250, y: 750, completed: false },
-  { id: 4, x: 1500, y: 1400, completed: false }
+  { id: 1, x: 300,  y: 300, completed: false }, // コックピット
+  { id: 2, x: 2100, y: 300, completed: false }, // 右エンジン
+  { id: 3, x: 300,  y: 1300, completed: false }, // 左エンジン
+  { id: 4, x: 2100, y: 1300, completed: false }, // 通信室
+  { id: 5, x: 1200, y: 800, completed: false }  // 中央ホール
 ];
 
 io.on('connection', (socket) => {
@@ -44,7 +45,7 @@ io.on('connection', (socket) => {
     y: sp.y,
     role: Object.keys(players).length === 1 ? 'wolf' : 'citizen',
     isAlive: true,
-    color: ['#e74c3c', '#3498db', '#2ecc71', '#f1c40f', '#9b59b6', '#e67e22'][Math.floor(Math.random() * 6)]
+    color: ['#ff3333', '#3366ff', '#33cc33', '#ffcc00', '#cc33cc', '#ff9900'][Math.floor(Math.random() * 6)]
   };
 
   io.emit('updatePlayers', players);
@@ -52,8 +53,8 @@ io.on('connection', (socket) => {
 
   socket.on('playerMove', (data) => {
     if (players[socket.id] && players[socket.id].isAlive) {
-      players[socket.id].x = Math.max(50, Math.min(WORLD_WIDTH - 50, data.x));
-      players[socket.id].y = Math.max(50, Math.min(WORLD_HEIGHT - 50, data.y));
+      players[socket.id].x = Math.max(40, Math.min(WORLD_WIDTH - 40, data.x));
+      players[socket.id].y = Math.max(40, Math.min(WORLD_HEIGHT - 40, data.y));
       socket.broadcast.emit('updatePlayers', players);
     }
   });
