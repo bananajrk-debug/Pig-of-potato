@@ -6,9 +6,9 @@
   <style>
     body {
       margin: 0;
-      background: #111;
-      color: #fff;
-      font-family: sans-serif;
+      background: #0b0c10;
+      color: #c5c6c7;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       overflow: hidden;
       display: flex;
       flex-direction: column;
@@ -18,21 +18,23 @@
     }
     #gameContainer {
       position: relative;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 0 30px rgba(0, 0, 0, 0.9);
+      border: 2px solid #1f2833;
     }
     canvas {
-      background: #1a1a1a;
-      border: 2px solid #555;
-      box-shadow: 0 0 20px rgba(0,0,0,0.8);
+      background: #12161f;
       display: block;
     }
-    /* タイトル画面のオーバーレイ */
+    /* タイトル画面のスタイリッシュ化 */
     #titleScreen {
       position: absolute;
       top: 0;
       left: 0;
       width: 900px;
       height: 600px;
-      background: rgba(15, 15, 20, 0.95);
+      background: linear-gradient(135deg, #0b0c10 0%, #1f2833 100%);
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -40,36 +42,40 @@
       z-index: 10;
     }
     h1 {
-      font-size: 42px;
-      color: #00ffcc;
-      margin-bottom: 10px;
-      text-shadow: 0 0 10px rgba(0,255,204,0.5);
+      font-size: 46px;
+      color: #66fcf1;
+      margin-bottom: 8px;
+      letter-spacing: 2px;
+      text-shadow: 0 0 15px rgba(102, 252, 241, 0.4);
     }
     p {
-      color: #ccc;
-      margin-bottom: 30px;
+      color: #839798;
+      margin-bottom: 35px;
       font-size: 16px;
     }
     .btn {
-      background: #ff4444;
-      color: white;
+      background: #45a29e;
+      color: #0b0c10;
       border: none;
-      padding: 15px 40px;
-      font-size: 20px;
+      padding: 16px 45px;
+      font-size: 18px;
       font-weight: bold;
-      border-radius: 8px;
+      border-radius: 6px;
       cursor: pointer;
-      box-shadow: 0 4px 10px rgba(255,68,68,0.4);
-      transition: 0.2s;
+      box-shadow: 0 4px 15px rgba(69, 162, 158, 0.4);
+      transition: all 0.2s ease;
     }
     .btn:hover {
-      background: #ff6666;
-      transform: scale(1.05);
+      background: #66fcf1;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 252, 241, 0.6);
     }
     #ui {
-      margin-top: 10px;
-      font-size: 16px;
+      margin-top: 12px;
+      font-size: 15px;
       text-align: center;
+      color: #c5c6c7;
+      letter-spacing: 0.5px;
     }
   </style>
 </head>
@@ -78,17 +84,17 @@
   <div id="gameContainer">
     <!-- タイトル画面 -->
     <div id="titleScreen">
-      <h1>AIRPLANE WEREWOLF</h1>
-      <p>市民は飛行機を修理して脱出しろ！人狼は全員を襲撃せよ！</p>
-      <button class="btn" id="startButton">ゲームスタート</button>
+      <h1>SKY REPAIRERS</h1>
+      <p>― 墜落寸前の飛行機を修理し脱出せよ。影に潜む裏切り者を見つけ出せ ―</p>
+      <button class="btn" id="startButton">出撃する</button>
     </div>
 
     <canvas id="gameCanvas" width="900" height="600"></canvas>
   </div>
 
   <div id="ui">
-    操作: [W, A, S, D] 移動 | [K] アクション(修理/キル) | [Space] 全者マップ確認(移動不可)<br>
-    <span id="status" style="color: yellow;">タイトル画面</span>
+    操作: [W, A, S, D] 移動 | [K] 修理 / 襲撃 | [Space] 全体マップ確認（移動不可）<br>
+    <span id="status" style="color: #66fcf1;">タイトル待機中</span>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
@@ -110,27 +116,31 @@
     let showMap = false;
 
     const keys = {};
-    const speed = 4.5;
-    const playerRadius = 18; // 当たり判定・サイズ用
+    const speed = 4.2;
+    const playerRadius = 16;
 
-    // 飛行機内の壁データ（x, y, w, h）- Among Us風の部屋や通路の区切り
+    // 複雑化した通路・部屋の壁レイアウト（迷路状・入り組んだ構造）
     const walls = [
-      // 外壁フレーム
+      // 外枠
       { x: 0, y: 0, w: WORLD_WIDTH, h: 40 },
       { x: 0, y: WORLD_HEIGHT - 40, w: WORLD_WIDTH, h: 40 },
       { x: 0, y: 0, w: 40, h: WORLD_HEIGHT },
-      { x: WORLD_HEIGHT - 40, y: 0, w: 40, h: WORLD_HEIGHT }, // 修正: WORLD_WIDTH
       { x: WORLD_WIDTH - 40, y: 0, w: 40, h: WORLD_HEIGHT },
 
-      // 内部の部屋・壁のレイアウト
-      { x: 400, y: 400, w: 500, h: 300 },  // 部屋1
-      { x: 1300, y: 400, w: 600, h: 300 }, // 部屋2（操縦室など）
-      { x: 400, y: 1100, w: 500, h: 300 }, // 部屋3
-      { x: 1300, y: 1100, w: 600, h: 300 },// 部屋4
-      { x: 1000, y: 750, w: 400, h: 300 }   // 中央エリアの障害物
+      // 内部の複雑な隔壁・通路ブロック
+      { x: 250, y: 250, w: 400, h: 220 }, // 貨物室A
+      { x: 850, y: 150, w: 200, h: 400 }, // 通路・リブ
+      { x: 1250, y: 250, w: 500, h: 220 }, // コックピット周辺
+      
+      { x: 250, y: 700, w: 220, h: 450 }, // 翼廊下左
+      { x: 650, y: 650, w: 400, h: 180 }, // 中央制御室
+      { x: 1350, y: 700, w: 750, h: 200 }, // エンジン区画
+
+      { x: 250, y: 1300, w: 450, h: 250 }, // 貨物室B
+      { x: 900, y: 1100, w: 200, h: 450 }, // 後部垂直通路
+      { x: 1300, y: 1200, w: 400, h: 350 }, // ラウンジ
     ];
 
-    // スタートボタンクリック
     startButton.addEventListener('click', () => {
       titleScreen.style.display = 'none';
       gameStarted = true;
@@ -175,15 +185,13 @@
       }
 
       for (const id in players) {
-        if (!serverPlayers[id]) {
-          delete players[id];
-        }
+        if (!serverPlayers[id]) delete players[id];
       }
 
       if (players[myId] && gameStarted) {
         const roleText = players[myId].role === 'wolf' ? '人狼 (インポスター)' : '市民 (クルー)';
         const aliveText = players[myId].isAlive ? '生存' : '死亡';
-        statusDiv.innerHTML = `役割: <b>${roleText}</b> | 状態: <span style="color:${players[myId].isAlive ? '#0ff' : '#f55'}">${aliveText}</span>`;
+        statusDiv.innerHTML = `役割: <b style="color:${players[myId].role === 'wolf' ? '#ff5555' : '#66fcf1'}">${roleText}</b> | 状態: <span style="color:${players[myId].isAlive ? '#66fcf1' : '#ff5555'}">${aliveText}</span>`;
       }
     });
 
@@ -191,60 +199,33 @@
     socket.on('updateTasks', (serverTasks) => { tasks = serverTasks; });
     socket.on('message', (msg) => { console.log(msg.text); });
 
-    // 矩形（壁）と円（プレイヤー）の衝突判定
     function checkCollision(x, y, radius, rects) {
       for (let r of rects) {
-        // 円の近くにある矩形のエッジを見つける
         let closestX = Math.max(r.x, Math.min(x, r.x + r.w));
         let closestY = Math.max(r.y, Math.min(y, r.y + r.h));
-
-        let distX = x - closestX;
-        let distY = y - closestY;
-        let distance = Math.hypot(distX, distY);
-
-        if (distance < radius) {
-          return true; // 衝突している
-        }
+        if (Math.hypot(x - closestX, y - closestY) < radius) return true;
       }
       return false;
     }
 
     function update() {
-      if (!gameStarted) return;
-      // マップを開いている時は移動できないようにする
-      if (showMap) return;
+      if (!gameStarted || showMap) return;
 
       if (players[myId] && players[myId].isAlive) {
         let me = players[myId];
         let newX = me.x;
         let newY = me.y;
-
-        let vx = 0;
-        let vy = 0;
+        let vx = 0, vy = 0;
 
         if (keys['w'] || keys['arrowup']) vy -= speed;
         if (keys['s'] || keys['arrowdown']) vy += speed;
         if (keys['a'] || keys['arrowleft']) vx -= speed;
         if (keys['d'] || keys['arrowright']) vx += speed;
 
-        // 斜め移動時の速度正規化
-        if (vx !== 0 && vy !== 0) {
-          vx *= 0.7071;
-          vy *= 0.7071;
-        }
+        if (vx !== 0 && vy !== 0) { vx *= 0.7071; vy *= 0.7071; }
 
-        // X軸の移動と壁判定
-        if (vx !== 0) {
-          if (!checkCollision(newX + vx, newY, playerRadius, walls)) {
-            newX += vx;
-          }
-        }
-        // Y軸の移動と壁判定
-        if (vy !== 0) {
-          if (!checkCollision(newX, newY + vy, playerRadius, walls)) {
-            newY += vy;
-          }
-        }
+        if (vx !== 0 && !checkCollision(newX + vx, newY, playerRadius, walls)) newX += vx;
+        if (vy !== 0 && !checkCollision(newX, newY + vy, playerRadius, walls)) newY += vy;
 
         if (newX !== me.x || newY !== me.y) {
           me.x = newX;
@@ -254,49 +235,50 @@
       }
     }
 
-    // Among Us風の人型キャラクターを描画する関数
-    function drawCrewmate(ctx, x, y, color, isAlive, isMe) {
+    // スタイリッシュな宇宙服・サバイバー風プレイヤーの描画
+    function drawCharacter(ctx, x, y, color, isAlive, isMe) {
       ctx.save();
       ctx.translate(x, y);
 
       if (!isAlive) {
-        // 死亡時は少し回転して幽霊っぽく
-        ctx.rotate(Math.PI / 6);
-        ctx.globalAlpha = 0.5;
+        ctx.rotate(Math.PI / 4);
+        ctx.globalAlpha = 0.4;
       }
 
-      // 胴体・足
+      // ドロップシャドウ
+      ctx.shadowColor = 'rgba(0,0,0,0.5)';
+      ctx.shadowBlur = 8;
+
+      // 体（アーマー風多角形・カプセル）
       ctx.fillStyle = color;
       ctx.beginPath();
-      ctx.ellipse(0, 4, 14, 18, 0, 0, Math.PI * 2);
+      ctx.roundRect(-12, -14, 24, 28, 8);
       ctx.fill();
       ctx.lineWidth = 2;
-      ctx.strokeStyle = '#000';
+      ctx.strokeStyle = '#0b0c10';
       ctx.stroke();
 
-      // バックパック
-      ctx.fillRect(-18, -4, 6, 14);
-      ctx.strokeRect(-18, -4, 6, 14);
-
-      // バイザー（目元）
-      ctx.fillStyle = '#88ccff';
+      // バイザー（メカニカルなゴーグル風）
+      ctx.fillStyle = '#1f2833';
       ctx.beginPath();
-      ctx.ellipse(6, -4, 9, 6, 0, 0, Math.PI * 2);
+      ctx.roundRect(-8, -10, 16, 10, 4);
       ctx.fill();
+      ctx.strokeStyle = '#66fcf1';
+      ctx.lineWidth = 1.5;
       ctx.stroke();
 
-      // バイザーのハイライト
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.ellipse(8, -6, 3, 2, 0, 0, Math.PI * 2);
-      ctx.fill();
+      // バイザーのハイライト光沢
+      ctx.fillStyle = '#66fcf1';
+      ctx.fillRect(-5, -7, 4, 3);
 
-      // 自分の場合は足元にマーカー
+      // 自分を示すマーカー（足元のリング）
       if (isMe && isAlive) {
-        ctx.fillStyle = '#ffff00';
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = '#66fcf1';
+        ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.arc(0, 26, 4, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.ellipse(0, 18, 12, 6, 0, 0, Math.PI * 2);
+        ctx.stroke();
       }
 
       ctx.restore();
@@ -309,53 +291,62 @@
       const me = players[myId];
 
       if (showMap) {
-        // --- 全体マップ表示モード ---
-        ctx.fillStyle = 'rgba(15, 15, 20, 0.95)';
+        // --- 全体マップモード ---
+        ctx.fillStyle = 'rgba(11, 12, 16, 0.96)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#fff';
-        ctx.font = '20px sans-serif';
-        ctx.fillText('【 飛行機全体マップ ＆ パーツ状況 】', canvas.width / 2 - 160, 40);
+
+        ctx.fillStyle = '#66fcf1';
+        ctx.font = 'bold 20px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('【 航空管制マップ ＆ 修理進捗 】', canvas.width / 2, 45);
 
         const scaleX = canvas.width / WORLD_WIDTH;
         const scaleY = canvas.height / WORLD_HEIGHT;
 
-        // 壁のミニマップ描画
-        ctx.fillStyle = '#444';
+        // マップ内の壁を綺麗に描画
+        ctx.fillStyle = '#1f2833';
+        ctx.strokeStyle = '#45a29e';
+        ctx.lineWidth = 1.5;
         walls.forEach(w => {
-          ctx.fillRect(w.x * scaleX * 0.8 + 90, w.y * scaleY * 0.8 + 60, w.w * scaleX * 0.8, w.h * scaleY * 0.8);
+          let wx = 60 + w.x * scaleX * 0.85;
+          let wy = 70 + w.y * scaleY * 0.85;
+          let ww = w.w * scaleX * 0.85;
+          let wh = w.h * scaleY * 0.85;
+          ctx.fillRect(wx, wy, ww, wh);
+          ctx.strokeRect(wx, wy, ww, wh);
         });
 
         // タスク
         tasks.forEach((task) => {
-          let tx = 90 + task.x * scaleX * 0.8;
-          let ty = 60 + task.y * scaleY * 0.8;
-          ctx.fillStyle = task.completed ? '#0f0' : '#f00';
+          let tx = 60 + task.x * scaleX * 0.85;
+          let ty = 70 + task.y * scaleY * 0.85;
+          ctx.fillStyle = task.completed ? '#66fcf1' : '#ff5555';
           ctx.beginPath();
-          ctx.arc(tx, ty, 6, 0, Math.PI * 2);
+          ctx.arc(tx, ty, 5, 0, Math.PI * 2);
           ctx.fill();
         });
 
-        // プレイヤー
+        // プレイヤー位置
         for (const id in players) {
           let p = players[id];
           if (!p.isAlive) continue;
-          let px = 90 + p.x * scaleX * 0.8;
-          let py = 60 + p.y * scaleY * 0.8;
-          ctx.fillStyle = (id === myId) ? '#ff0' : p.color;
+          let px = 60 + p.x * scaleX * 0.85;
+          let py = 70 + p.y * scaleY * 0.85;
+          ctx.fillStyle = (id === myId) ? '#ffff00' : p.color;
           ctx.beginPath();
-          ctx.arc(px, py, 5, 0, Math.PI * 2);
+          ctx.arc(px, py, 4, 0, Math.PI * 2);
           ctx.fill();
         }
 
-        ctx.fillStyle = '#aaa';
+        ctx.fillStyle = '#839798';
         ctx.font = '14px sans-serif';
-        ctx.fillText('※ スペースキーを離すとゲームに戻ります（マップ中は移動不可）', canvas.width / 2 - 210, canvas.height - 25);
+        ctx.fillText('※ スペースキーを離すとゲームに戻ります（マップ展開中は移動ロック中）', canvas.width / 2, canvas.height - 25);
+        ctx.textAlign = 'left';
         return;
       }
 
-      // --- 通常ゲームプレイモード (カメラ追従) ---
-      let cameraX = 0;
-      let cameraY = 0;
+      // --- 通常ゲームプレイモード ---
+      let cameraX = 0, cameraY = 0;
       if (me) {
         cameraX = Math.max(0, Math.min(WORLD_WIDTH - canvas.width, me.x - canvas.width / 2));
         cameraY = Math.max(0, Math.min(WORLD_HEIGHT - canvas.height, me.y - canvas.height / 2));
@@ -364,55 +355,65 @@
       ctx.save();
       ctx.translate(-cameraX, -cameraY);
 
-      // 床とグリッド
-      ctx.fillStyle = '#222';
+      // 近未来的な機内床面（ダークトーン＋微細なグリッド）
+      ctx.fillStyle = '#12161f';
       ctx.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
 
-      ctx.strokeStyle = '#2a2a2a';
+      ctx.strokeStyle = '#1b2331';
       ctx.lineWidth = 1;
-      for (let x = 0; x < WORLD_WIDTH; x += 200) {
+      for (let x = 0; x < WORLD_WIDTH; x += 150) {
         ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, WORLD_HEIGHT); ctx.stroke();
       }
-      for (let y = 0; y < WORLD_HEIGHT; y += 200) {
+      for (let y = 0; y < WORLD_HEIGHT; y += 150) {
         ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(WORLD_WIDTH, y); ctx.stroke();
       }
 
-      // 壁（飛行機内の部屋・通路）の描画
-      ctx.fillStyle = '#3a3f4b';
-      ctx.strokeStyle = '#5a6275';
-      ctx.lineWidth = 4;
+      // 壁（グラフィカルな立体感を持たせた描写）
       walls.forEach(w => {
+        // 壁の影
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.fillRect(w.x + 6, w.y + 6, w.w, w.h);
+
+        // 壁本体
+        ctx.fillStyle = '#1f2833';
         ctx.fillRect(w.x, w.y, w.w, w.h);
+
+        // 壁のフレーム枠
+        ctx.strokeStyle = '#45a29e';
+        ctx.lineWidth = 3;
         ctx.strokeRect(w.x, w.y, w.w, w.h);
       });
 
-      // タスク（修理パーツ）の描画
+      // タスク（修理パーツ）
       tasks.forEach((task) => {
-        ctx.fillStyle = task.completed ? '#00ffcc' : '#ff4444';
-        ctx.fillRect(task.x - 20, task.y - 20, 40, 40);
-        ctx.strokeStyle = '#fff';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(task.x - 20, task.y - 20, 40, 40);
+        ctx.fillStyle = task.completed ? '#1f2833' : '#2b1215';
+        ctx.fillRect(task.x - 22, task.y - 22, 44, 44);
+        
+        ctx.strokeStyle = task.completed ? '#66fcf1' : '#ff5555';
+        ctx.lineWidth = 2.5;
+        ctx.strokeRect(task.x - 22, task.y - 22, 44, 44);
 
         ctx.fillStyle = '#fff';
-        ctx.font = '12px sans-serif';
-        ctx.fillText(`パーツ #${task.id} (${task.completed ? '完了' : '未修理'})`, task.x - 45, task.y - 28);
+        ctx.font = '11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(task.completed ? '修復完了' : `要修理 #${task.id}`, task.x, task.y - 28);
+        ctx.textAlign = 'left';
       });
 
-      // 人型プレイヤーの描画
+      // プレイヤーの描画
       for (const id in players) {
         const p = players[id];
         const isMe = (id === myId);
-        const drawColor = p.isAlive ? p.color : '#555';
+        const drawColor = p.isAlive ? p.color : '#454a55';
         
-        drawCrewmate(ctx, p.x, p.y, drawColor, p.isAlive, isMe);
+        drawCharacter(ctx, p.x, p.y, drawColor, p.isAlive, isMe);
 
         // ネームタグ
-        ctx.fillStyle = '#fff';
+        ctx.fillStyle = '#c5c6c7';
         ctx.font = '12px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(isMe ? 'あなた' : 'クルー', p.x, p.y - 32);
-        ctx.textAlign = 'left'; // リセット
+        ctx.fillText(isMe ? 'あなた' : 'クルー', p.x, p.y - 28);
+        ctx.textAlign = 'left';
       }
 
       ctx.restore();
