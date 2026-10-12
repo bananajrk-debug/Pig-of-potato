@@ -15,10 +15,10 @@ function updatePlayerSpawnPositions() {
   const total = ids.length;
   if (total === 0) return;
 
-  // 新しい見やすいマップの中心にある会議室（緊急ボタン）の座標
-  const centerX = 16 * 40; 
-  const centerY = 5.5 * 40;  
-  const radius = 55;         
+  // 新しく広げた大部屋（会議室）の中心座標
+  const centerX = 14 * 40; 
+  const centerY = 4.5 * 40;  
+  const radius = 60;         
 
   ids.forEach((id, index) => {
     const angle = (index / total) * Math.PI * 2;
