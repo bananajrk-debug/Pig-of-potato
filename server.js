@@ -15,10 +15,9 @@ function updatePlayerSpawnPositions() {
   const total = ids.length;
   if (total === 0) return;
 
-  // 新しく広げた大部屋（会議室）の中心座標
-  const centerX = 14 * 40; 
-  const centerY = 4.5 * 40;  
-  const radius = 60;         
+  const centerX = 16 * 30; 
+  const centerY = 7.5 * 30;  
+  const radius = 55;         
 
   ids.forEach((id, index) => {
     const angle = (index / total) * Math.PI * 2;
@@ -31,13 +30,19 @@ function assignRoles() {
   const ids = Object.keys(players);
   if (ids.length === 0) return;
 
+  // すでに役職が割り振られていない場合、または最初のプレイヤーの場合に割り当て
   for (let id of ids) {
-    players[id].role = 'crewmate';
+    if (!players[id].role) {
+      players[id].role = 'crewmate';
+    }
   }
 
-  const imposterIndex = Math.floor(Math.random() * ids.length);
-  const imposterId = ids[imposterIndex];
-  players[imposterId].role = 'imposter';
+  // もしインポスターが1人もいなければ、ランダムに1人選ぶ
+  const hasImposter = Object.values(players).some(p => p.role === 'imposter');
+  if (!hasImposter) {
+    const imposterIndex = Math.floor(Math.random() * ids.length);
+    players[ids[imposterIndex]].role = 'imposter';
+  }
 
   updatePlayerSpawnPositions();
   io.emit('currentPlayers', players);
@@ -51,7 +56,7 @@ io.on('connection', (socket) => {
     y: 0,
     color: '#' + Math.floor(Math.random() * 16777215).toString(16),
     tasksCompleted: 0,
-    role: 'crewmate',
+    role: null,
     isDead: false
   };
 
@@ -101,7 +106,7 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     console.log(`ユーザーが切断しました: ${socket.id}`);
     delete players[socket.id];
-    assignRoles();
+    // ※ 抜けたら勝手に役職を再シャッフルしないように修正
     io.emit('disconnectPlayer', socket.id);
   });
 });
