@@ -15,9 +15,10 @@ function updatePlayerSpawnPositions() {
   const total = ids.length;
   if (total === 0) return;
 
-  const centerX = 16 * 30; 
-  const centerY = 7.5 * 30;  
-  const radius = 55;         
+  // 横長マップの中央上部にある「カフェテリア（大部屋）」の中心座標
+  const centerX = 640; 
+  const centerY = 240;  
+  const radius = 60;         
 
   ids.forEach((id, index) => {
     const angle = (index / total) * Math.PI * 2;
@@ -30,14 +31,12 @@ function assignRoles() {
   const ids = Object.keys(players);
   if (ids.length === 0) return;
 
-  // すでに役職が割り振られていない場合、または最初のプレイヤーの場合に割り当て
   for (let id of ids) {
     if (!players[id].role) {
       players[id].role = 'crewmate';
     }
   }
 
-  // もしインポスターが1人もいなければ、ランダムに1人選ぶ
   const hasImposter = Object.values(players).some(p => p.role === 'imposter');
   if (!hasImposter) {
     const imposterIndex = Math.floor(Math.random() * ids.length);
@@ -106,7 +105,6 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     console.log(`ユーザーが切断しました: ${socket.id}`);
     delete players[socket.id];
-    // ※ 抜けたら勝手に役職を再シャッフルしないように修正
     io.emit('disconnectPlayer', socket.id);
   });
 });
