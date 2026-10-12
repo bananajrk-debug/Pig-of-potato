@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title>Airplane Werewolf</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #111; font-family: sans-serif; color: white; user-select: none; }
+        body { margin: 0; overflow: hidden; background: #0b0b10; font-family: sans-serif; color: white; user-select: none; }
         #titleScreen {
             position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
             background: radial-gradient(circle, #1a1a3a 0%, #0d0d15 100%);
@@ -41,7 +41,7 @@
 
     <div id="titleScreen">
         <h1>Airplane Werewolf</h1>
-        <p>通路と部屋がつながった宇宙船マップでのサバイバル</p>
+        <p>島（部屋）と橋（通路）をつないだ本格マップでのサバイバル</p>
         <button onclick="startGame()">ゲームスタート</button>
     </div>
 
@@ -54,11 +54,8 @@
             <p>緑色の範囲にバーがある時に <span style="color:#f1c40f; font-weight:bold;">K</span> キーを押せ！</p>
             <p id="taskScoreText" style="font-size: 14px; color: #2ed573; margin-bottom: 5px;">成功回数: 0 / 3</p>
             
-            <!-- 往復バーのバーエリア -->
             <div style="background: #111; border-radius: 6px; height: 35px; width: 100%; margin: 20px 0; position: relative; overflow: hidden; border: 1px solid #444;">
-                <!-- ターゲットゾーン（緑の範囲） -->
                 <div id="taskTargetZone" style="position: absolute; top: 0; left: 60%; width: 20%; height: 100%; background: rgba(46, 213, 115, 0.4); border-left: 2px dashed #2ed573; border-right: 2px dashed #2ed573;"></div>
-                <!-- 左右に動くインジケーターバー -->
                 <div id="taskIndicator" style="position: absolute; top: 0; left: 0%; width: 6px; height: 100%; background: #ff4757;"></div>
             </div>
 
@@ -102,17 +99,17 @@
         let walls = [];
         let bodies = [];
         let tasks = [];
-        let emergencyButton = { x: 1200, y: 400 };
+        let emergencyButton = { x: 1400, y: 950 };
         let isMeetingActive = false;
 
         let activeTask = null;
         let taskSuccessCount = 0;
-        let barPosition = 0; // 0% ～ 100%
-        let barDirection = 1; // 1: 右向き, -1: 左向き
+        let barPosition = 0;
+        let barDirection = 1;
         let taskAnimId = null;
 
         const keys = { w: false, a: false, s: false, d: false, space: false };
-        let playerPos = { x: 1200, y: 500 };
+        let playerPos = { x: 1400, y: 950 };
         const speed = 4;
 
         function startGame() {
@@ -209,8 +206,7 @@
             document.getElementById('taskScoreText').innerText = `成功回数: ${taskSuccessCount} / 3`;
             document.getElementById('taskModal').style.display = 'flex';
 
-            // ターゲットゾーンのランダム配置（例: 40%〜60%など）
-            const targetLeft = 35 + Math.random() * 30; // 35%〜65%の間
+            const targetLeft = 35 + Math.random() * 30;
             const zone = document.getElementById('taskTargetZone');
             zone.style.left = targetLeft + '%';
 
@@ -222,7 +218,7 @@
 
             function animate() {
                 if (!activeTask) return;
-                barPosition += barDirection * 1.5; // 動くスピード
+                barPosition += barDirection * 1.5;
                 if (barPosition >= 100) {
                     barPosition = 100;
                     barDirection = -1;
@@ -247,9 +243,8 @@
             if (!activeTask) return;
             const zone = document.getElementById('taskTargetZone');
             const targetLeft = parseFloat(zone.style.left);
-            const targetWidth = 20; // ターゲットの幅(20%)
+            const targetWidth = 20;
 
-            // 現在のバー位置がターゲットゾーン内にあるか判定
             if (barPosition >= targetLeft && barPosition <= (targetLeft + targetWidth)) {
                 taskSuccessCount++;
                 document.getElementById('taskScoreText').innerText = `成功回数: ${taskSuccessCount} / 3`;
@@ -258,13 +253,11 @@
                     socket.emit('completeTask', activeTask.id);
                     closeTaskModal();
                 } else {
-                    // 次の成功のためにターゲット位置を再ランダム化
                     const newTarget = 20 + Math.random() * 60;
                     zone.style.left = newTarget + '%';
                 }
             } else {
-                // 失敗時（ちょっとペナルティとして成功カウントをリセットや通知など）
-                alert('タイミングが外れました！もう一度！');
+                alert('タイミングが外れました！');
                 taskSuccessCount = 0;
                 document.getElementById('taskScoreText').innerText = `成功回数: ${taskSuccessCount} / 3`;
             }
@@ -361,11 +354,11 @@
             ctx.translate(-cameraX, -cameraY);
 
             // 床
-            ctx.fillStyle = '#161622';
-            ctx.fillRect(0, 0, 2400, 1900);
+            ctx.fillStyle = '#111118';
+            ctx.fillRect(0, 0, 3000, 2200);
 
-            // 部屋と通路をつなぐ壁
-            ctx.fillStyle = '#2b2b40';
+            // 島（部屋）と橋（通路）の壁
+            ctx.fillStyle = '#2f2f4f';
             walls.forEach(w => ctx.fillRect(w.x, w.y, w.width, w.height));
 
             // 非常ボタン
@@ -409,8 +402,8 @@
                 ctx.fillRect(50, 50, canvas.width - 100, canvas.height - 100);
 
                 ctx.save();
-                const mapWidth = 2400;
-                const mapHeight = 1900;
+                const mapWidth = 3000;
+                const mapHeight = 2200;
                 const viewW = canvas.width - 200;
                 const viewH = canvas.height - 200;
                 const scale = Math.min(viewW / mapWidth, viewH / mapHeight);
@@ -421,9 +414,9 @@
                 ctx.translate(offsetX, offsetY);
                 ctx.scale(scale, scale);
 
-                ctx.fillStyle = '#161622';
+                ctx.fillStyle = '#111118';
                 ctx.fillRect(0, 0, mapWidth, mapHeight);
-                ctx.fillStyle = '#3a3a5c';
+                ctx.fillStyle = '#3f3f6f';
                 walls.forEach(w => ctx.fillRect(w.x, w.y, w.width, w.height));
 
                 tasks.forEach(t => {
@@ -443,7 +436,7 @@
                 ctx.fillStyle = 'white';
                 ctx.font = 'bold 22px sans-serif';
                 ctx.textAlign = 'center';
-                ctx.fillText('--- SKELD LAYOUT (全体マップ) ---', canvas.width / 2, 90);
+                ctx.fillText('--- 船内マップ (島と橋の構造) ---', canvas.width / 2, 90);
                 
                 let completedCount = tasks.filter(t => t.completed).length;
                 ctx.font = '16px sans-serif';
