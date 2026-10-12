@@ -20,61 +20,63 @@
             background: #111;
             box-shadow: 0 0 20px rgba(0,0,0,0.8);
             border: 2px solid #444;
+            outline: none;
         }
         #ui {
             margin-top: 10px;
             font-size: 16px;
+            text-align: center;
         }
     </style>
 </head>
 <body>
 
-    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <canvas id="gameCanvas" width="800" height="600" tabindex="1"></canvas>
     <div id="ui">
         操作: W/A/S/D または 矢印キー | タスク位置に近づいて [E] キーを押す
         <div id="taskStatus">完了タスク数: 0</div>
     </div>
 
-    <!-- Socket.ioのクライアントライブラリをCDNから読み込み -->
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
+        // キャンバスにフォーカスを当てる（キー入力を確実に受け取るため）
+        canvas.focus();
+        canvas.addEventListener('click', () => canvas.focus());
+
         const playerSize = 30;
         let myData = { x: 100, y: 100, speed: 4 };
         let players = {};
-        let myTasksCompleted = 0;
 
         // キー入力の状態管理
         const keys = {};
-        window.addEventListener('keydown', (e) => { 
-            keys[e.key.toLowerCase()] = true; 
-
-            // 'e'キーでタスク実行
+        window.addEventListener('keydown', (e) => {
+            keys[e.key.toLowerCase()] = true;
             if (e.key.toLowerCase() === 'e') {
                 checkTaskInteraction();
             }
         });
-        window.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
+        window.addEventListener('keyup', (e) => {
+            keys[e.key.toLowerCase()] = false;
+        });
 
         // マップの壁データ (x, y, width, height)
-        // ここを書き換えることで自由に部屋や通路を作れます！
         const walls = [
             { x: 0, y: 0, w: 800, h: 20 },   // 上壁
             { x: 0, y: 580, w: 800, h: 20 },  // 下壁
             { x: 0, y: 0, w: 20, h: 600 },   // 左壁
             { x: 780, y: 0, w: 20, h: 600 },  // 右壁
-            // 障害物（部屋や柱など）
             { x: 200, y: 150, w: 150, h: 100 },
             { x: 450, y: 350, w: 150, h: 120 },
         ];
 
-        // タスク位置のデータ
-        const taskPoint = { x: 400, y: 100, size: 40, active: true };
+        // タスク位置
+        const taskPoint = { x: 400, y: 100, size: 40 };
 
-        // 矩形同士の当たり判定（AABB）
+        // 当たり判定 (AABB)
         function checkCollision(x, y, w, h, walls) {
             for (let wall of walls) {
                 if (
@@ -83,15 +85,20 @@
                     y < wall.y + wall.h &&
                     y + h > wall.y
                 ) {
-                    return true; // 衝突している
+                    return true;
                 }
             }
             return false;
         }
 
-        // Socket.ioイベント受信
+        // Socket.io イベント
         socket.on('currentPlayers', (serverPlayers) => {
             players = serverPlayers;
+            // 自分の初期位置をサーバーのデータに合わせる
+            if (players[socket.id]) {
+                myData.x = players[socket.id].x;
+                myData.y = players[socket.id].y;
+            }
         });
 
         socket.on('newPlayer', (data) => {
@@ -118,45 +125,47 @@
             delete players[id];
         });
 
-        // タスクに近づいてEキーを押したときの判定
         function checkTaskInteraction() {
-            // プレイヤーとタスクの距離を計算
-            const dist = Math.hypot((myData.x + playerSize/2) - (taskPoint.x + taskPoint.size/2), (myData.y + playerSize/2) - (taskPoint.y + taskPoint.size/2));
+            const dist = Math.hypot(
+                (myData.x + playerSize/2) - (taskPoint.x + taskPoint.size/2),
+                (myData.y + playerSize/2) - (taskPoint.y + taskPoint.size/2)
+            );
             if (dist < 60) {
-                alert('タスク完了！');
                 socket.emit('completeTask');
-                // タスク位置をランダムにワープさせる簡易演出
                 taskPoint.x = Math.random() * 600 + 100;
                 taskPoint.y = Math.random() * 400 + 100;
             }
         }
 
-        // ゲームのメインループ
         function update() {
             let nextX = myData.x;
             let nextY = myData.y;
 
-            // 移動入力の処理
             if (keys['w'] || keys['arrowup']) nextY -= myData.speed;
             if (keys['s'] || keys['arrowdown']) nextY += myData.speed;
             if (keys['a'] || keys['arrowleft']) nextX -= myData.speed;
             if (keys['d'] || keys['arrowright']) nextX += myData.speed;
 
-            // X軸方向の当たり判定チェック
+            // X軸方向の判定
             if (!checkCollision(nextX, myData.y, playerSize, playerSize, walls)) {
                 myData.x = nextX;
             }
-            // Y軸方向の当たり判定チェック
+            // Y軸方向の判定
             if (!checkCollision(myData.x, nextY, playerSize, playerSize, walls)) {
                 myData.y = nextY;
             }
 
-            // サーバーに自分の位置を送信
+            // ★重要：自分自身の描画用データも即座に更新する
+            if (players[socket.id]) {
+                players[socket.id].x = myData.x;
+                players[socket.id].y = myData.y;
+            }
+
+            // サーバーへ位置を送信
             socket.emit('playerMovement', { x: myData.x, y: myData.y });
         }
 
         function draw() {
-            // 画面クリア
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             // 壁の描画
@@ -165,23 +174,23 @@
                 ctx.fillRect(wall.x, wall.y, wall.w, wall.h);
             }
 
-            // タスクポイントの描画
+            // タスクの描画
             ctx.fillStyle = '#ffcc00';
             ctx.fillRect(taskPoint.x, taskPoint.y, taskPoint.size, taskPoint.size);
             ctx.fillStyle = '#fff';
             ctx.font = '12px sans-serif';
             ctx.fillText('TASK', taskPoint.x + 5, taskPoint.y - 5);
 
-            // 他のプレイヤー（自分含む）の描画
+            // 全プレイヤーの描画
             for (let id in players) {
                 const p = players[id];
                 ctx.fillStyle = p.color || '#fff';
                 ctx.fillRect(p.x, p.y, playerSize, playerSize);
                 
-                // 簡易ネームラベル（IDの一部）
+                // ネームラベル
                 ctx.fillStyle = '#fff';
                 ctx.font = '10px sans-serif';
-                ctx.fillText(id.substring(0, 4), p.x, p.y - 5);
+                ctx.fillText(id === socket.id ? '自分' : id.substring(0, 4), p.x, p.y - 5);
             }
         }
 
@@ -191,7 +200,6 @@
             requestAnimationFrame(loop);
         }
 
-        // ループ開始
         loop();
     </script>
 </body>
