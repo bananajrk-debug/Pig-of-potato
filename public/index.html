@@ -2,83 +2,73 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Airplane Werewolf</title>
+    <title>Airplane Werewolf - The Skeld Layout</title>
     <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-            background: #111;
-            font-family: sans-serif;
-            color: white;
-            user-select: none;
-        }
+        body { margin: 0; overflow: hidden; background: #111; font-family: sans-serif; color: white; user-select: none; }
         #titleScreen {
-            position: absolute;
-            top: 0; left: 0; width: 100vw; height: 100vh;
-            background: #1a1a2e;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 10;
+            position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: radial-gradient(circle, #1a1a3a 0%, #0d0d15 100%);
+            display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10;
         }
-        #titleScreen h1 { font-size: 48px; margin-bottom: 20px; color: #e94560; }
+        #titleScreen h1 { font-size: 52px; color: #ff4757; margin-bottom: 10px; }
         #titleScreen button {
-            padding: 15px 30px;
-            font-size: 20px;
-            background: #0f3460;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
+            padding: 15px 35px; font-size: 20px; background: #ff4757; color: white;
+            border: none; border-radius: 8px; cursor: pointer; font-weight: bold;
         }
-        #titleScreen button:hover { background: #e94560; }
-        
-        /* 会議用モーダル画面 */
+        #titleScreen button:hover { background: #ff6b81; }
+
+        #taskModal {
+            display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.7); z-index: 80; justify-content: center; align-items: center;
+        }
+        .task-box {
+            background: #222233; border: 2px solid #555; padding: 30px; border-radius: 12px;
+            width: 400px; text-align: center; box-shadow: 0 0 20px rgba(0,0,0,0.9);
+        }
+
         #meetingScreen {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100vw; height: 100vh;
-            background: rgba(0,0,0,0.85);
-            z-index: 100;
-            justify-content: center;
-            align-items: center;
+            display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.85); z-index: 100; justify-content: center; align-items: center;
         }
         .meeting-container {
-            background: #1f1f2e;
-            padding: 25px;
-            border-radius: 12px;
-            width: 850px;
-            height: 520px;
-            display: flex;
-            gap: 20px;
-            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+            background: #1f1f2e; padding: 25px; border-radius: 12px; width: 850px; height: 520px;
+            display: flex; gap: 20px; box-shadow: 0 0 20px rgba(0,0,0,0.8);
         }
     </style>
 </head>
 <body>
 
-    <!-- タイトル画面 -->
     <div id="titleScreen">
         <h1>Airplane Werewolf</h1>
-        <p>飛行機からの脱出と、紛れ込んだ人狼の戦い</p>
+        <p>宇宙船内サバイバル（Skeld風マップ）</p>
         <button onclick="startGame()">ゲームスタート</button>
     </div>
 
-    <!-- ゲーム画面 Canvas -->
     <canvas id="gameCanvas" style="display:none;"></canvas>
 
-    <!-- 会議・チャット・投票モーダル -->
+    <!-- タスク実行画面 -->
+    <div id="taskModal">
+        <div class="task-box">
+            <h2 id="taskTitle">タスク名</h2>
+            <p>ゲージが溜まるタイミングで <span style="color:#f1c40f; font-weight:bold;">K</span> キーを押せ！</p>
+            <div style="background: #111; border-radius: 6px; height: 25px; width: 100%; margin: 20px 0; overflow: hidden; position: relative;">
+                <div id="taskProgressBar" style="background: #2ecc71; width: 0%; height: 100%; transition: width 0.05s linear;"></div>
+            </div>
+            <button onclick="executeTaskProgress()" style="padding: 10px 20px; background: #2ecc71; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">進める (K)</button>
+            <br><br>
+            <button onclick="closeTaskModal()" style="background: #e74c3c; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">閉じる</button>
+        </div>
+    </div>
+
+    <!-- 会議画面 -->
     <div id="meetingScreen">
         <div class="meeting-container">
-            <!-- 左側：投票リスト -->
             <div style="flex: 1; border-right: 1px solid #444; padding-right: 15px; display: flex; flex-direction: column;">
                 <h2>会議フェーズ</h2>
                 <p id="meetingReason" style="font-size: 14px; color: #f1c40f;"></p>
                 <div id="playerVoteList" style="flex: 1; overflow-y: auto; margin-top: 10px;"></div>
-                <button onclick="skipVote()" style="margin-top: 10px; padding: 10px; background: #e67e22; color: white; border: none; border-radius: 6px; cursor: pointer;">スキップする</button>
+                <button onclick="skipVote()" style="margin-top: 10px; padding: 10px; background: #e67e22; color: white; border: none; border-radius: 6px; cursor: pointer;">スキップ</button>
             </div>
-            <!-- 右側：チャット -->
             <div style="flex: 1; display: flex; flex-direction: column;">
                 <h2>チャット議論</h2>
                 <div id="chatLog" style="flex: 1; background: #111; border: 1px solid #444; border-radius: 6px; padding: 10px; overflow-y: auto; margin-bottom: 10px; font-size: 14px;"></div>
@@ -103,11 +93,15 @@
         let players = {};
         let walls = [];
         let bodies = [];
-        let emergencyButton = { x: 1000, y: 1000 };
+        let tasks = [];
+        let emergencyButton = { x: 1200, y: 500 };
         let isMeetingActive = false;
 
+        let activeTask = null;
+        let taskProgressVal = 0;
+
         const keys = { w: false, a: false, s: false, d: false, space: false };
-        let playerPos = { x: 300, y: 300 };
+        let playerPos = { x: 1200, y: 600 };
         const speed = 4;
 
         function startGame() {
@@ -116,12 +110,12 @@
             requestAnimationFrame(gameLoop);
         }
 
-        // Socket 受信イベント
         socket.on('init', (data) => {
             myId = data.id;
             players = data.players;
             walls = data.walls;
             emergencyButton = data.emergencyButton;
+            tasks = data.tasks;
             if (players[myId]) {
                 playerPos.x = players[myId].x;
                 playerPos.y = players[myId].y;
@@ -138,7 +132,10 @@
             bodies = data.bodies;
         });
 
-        // キー入力リスナー
+        socket.on('updateTasks', (serverTasks) => {
+            tasks = serverTasks;
+        });
+
         window.addEventListener('keydown', (e) => {
             if (isMeetingActive) return;
             if (e.key === 'w' || e.key === 'W') keys.w = true;
@@ -147,28 +144,34 @@
             if (e.key === 'd' || e.key === 'D') keys.d = true;
             if (e.key === ' ') keys.space = true;
 
-            // Rキー: 死体通報
             if (e.key.toLowerCase() === 'r') {
                 socket.emit('reportBody');
             }
 
-            // Kキー: キル (人狼用) または 非常招集ボタン / タスク
             if (e.key.toLowerCase() === 'k') {
                 const me = players[myId];
                 if (!me || me.isDead) return;
 
-                // 非常招集ボタンの判定
+                if (activeTask) {
+                    executeTaskProgress();
+                    return;
+                }
+
                 if (Math.hypot(emergencyButton.x - playerPos.x, emergencyButton.y - playerPos.y) < 80) {
                     socket.emit('emergencyMeeting');
                     return;
                 }
 
-                // 人狼のキル判定
+                const closeTask = tasks.find(t => !t.completed && Math.hypot(t.x - playerPos.x, t.y - playerPos.y) < 70);
+                if (closeTask && me.role === 'crew') {
+                    openTaskModal(closeTask);
+                    return;
+                }
+
                 if (me.role === 'wolf') {
                     for (let id in players) {
                         if (id !== myId && !players[id].isDead) {
-                            const dist = Math.hypot(players[id].x - playerPos.x, players[id].y - playerPos.y);
-                            if (dist < 80) {
+                            if (Math.hypot(players[id].x - playerPos.x, players[id].y - playerPos.y) < 80) {
                                 socket.emit('killPlayer', id);
                                 break;
                             }
@@ -186,17 +189,36 @@
             if (e.key === ' ') keys.space = false;
         });
 
-        // 会議システム用イベント
+        function openTaskModal(task) {
+            activeTask = task;
+            taskProgressVal = 0;
+            document.getElementById('taskTitle').innerText = `タスク: ${task.name}`;
+            document.getElementById('taskProgressBar').style.width = '0%';
+            document.getElementById('taskModal').style.display = 'flex';
+        }
+
+        function closeTaskModal() {
+            activeTask = null;
+            document.getElementById('taskModal').style.display = 'none';
+        }
+
+        function executeTaskProgress() {
+            if (!activeTask) return;
+            taskProgressVal += 25;
+            document.getElementById('taskProgressBar').style.width = taskProgressVal + '%';
+            if (taskProgressVal >= 100) {
+                socket.emit('completeTask', activeTask.id);
+                closeTaskModal();
+            }
+        }
+
         socket.on('startMeeting', (data) => {
             isMeetingActive = true;
+            closeTaskModal();
             document.getElementById('meetingScreen').style.display = 'flex';
-            const reasonText = data.reason === 'body' 
-                ? `${data.reporterName} が死体を発見・通報しました！` 
-                : `${data.reporterName} が非常招集ボタンを押しました！`;
-            document.getElementById('meetingReason').innerText = reasonText;
+            document.getElementById('meetingReason').innerText = data.reason === 'body' ? '死体が発見され、会議が始まります。' : '非常招集ボタンが押されました。';
             document.getElementById('chatLog').innerHTML = '';
 
-            // 投票リスト構築
             const voteListDiv = document.getElementById('playerVoteList');
             voteListDiv.innerHTML = '';
             for (let id in players) {
@@ -224,11 +246,8 @@
             isMeetingActive = false;
             document.getElementById('meetingScreen').style.display = 'none';
             players = data.players;
-            if (data.exiledName) {
-                alert(`${data.exiledName} は宇宙へ放り出されました（追放）`);
-            } else {
-                alert('誰も追放されませんでした。');
-            }
+            if (data.exiledName) alert(`${data.exiledName} は追放されました。`);
+            else alert('誰も追放されませんでした。');
         });
 
         socket.on('gameOver', (data) => {
@@ -243,47 +262,31 @@
             input.value = '';
         }
 
-        function votePlayer(targetId) {
-            socket.emit('vote', targetId);
-            alert('投票しました');
-        }
+        function votePlayer(targetId) { socket.emit('vote', targetId); alert('投票しました'); }
+        function skipVote() { socket.emit('vote', 'skip'); alert('スキップしました'); }
 
-        function skipVote() {
-            socket.emit('vote', 'skip');
-            alert('スキップに投票しました');
-        }
-
-        // 当たり判定チェック関数
         function checkCollision(nx, ny) {
             const radius = 20;
             for (let w of walls) {
                 if (nx + radius > w.x && nx - radius < w.x + w.width &&
-                    ny + radius > w.y && ny - radius < w.y + w.height) {
-                    return true;
-                }
+                    ny + radius > w.y && ny - radius < w.y + w.height) return true;
             }
             return false;
         }
 
-        // メインゲームループ
         function gameLoop() {
             if (!isMeetingActive && players[myId]) {
                 const me = players[myId];
-                if (!me.isDead) {
+                if (!me.isDead && !activeTask) {
                     let dx = 0, dy = 0;
                     if (keys.w) dy -= 1;
                     if (keys.s) dy += 1;
                     if (keys.a) dx -= 1;
                     if (keys.d) dx += 1;
-
-                    if (dx !== 0 && dy !== 0) {
-                        dx *= 0.7071;
-                        dy *= 0.7071;
-                    }
+                    if (dx !== 0 && dy !== 0) { dx *= 0.7071; dy *= 0.7071; }
 
                     const nextX = playerPos.x + dx * speed;
                     const nextY = playerPos.y + dy * speed;
-
                     if (!checkCollision(nextX, playerPos.y)) playerPos.x = nextX;
                     if (!checkCollision(playerPos.x, nextY)) playerPos.y = nextY;
 
@@ -291,9 +294,7 @@
                 }
             }
 
-            // 描画処理
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-
             const me = players[myId];
             const cameraX = me ? me.x - canvas.width / 2 : 0;
             const cameraY = me ? me.y - canvas.height / 2 : 0;
@@ -301,69 +302,100 @@
             ctx.save();
             ctx.translate(-cameraX, -cameraY);
 
-            // マップ（床・壁）の描画
-            ctx.fillStyle = '#222';
-            ctx.fillRect(0, 0, 2000, 2000);
+            // 床
+            ctx.fillStyle = '#1e1e2f';
+            ctx.fillRect(0, 0, 2400, 2000);
 
-            ctx.fillStyle = '#444';
-            walls.forEach(w => {
-                ctx.fillRect(w.x, w.y, w.width, w.height);
+            // 壁（Skeld風）
+            ctx.fillStyle = '#3a3a5c';
+            walls.forEach(w => ctx.fillRect(w.x, w.y, w.width, w.height));
+
+            // 非常ボタン
+            ctx.fillStyle = '#ff4757';
+            ctx.beginPath(); ctx.arc(emergencyButton.x, emergencyButton.y, 25, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = 'white'; ctx.font = '12px sans-serif'; ctx.textAlign = 'center';
+            ctx.fillText('緊急ボタン (K)', emergencyButton.x, emergencyButton.y - 35);
+
+            // タスク
+            tasks.forEach(t => {
+                ctx.fillStyle = t.completed ? '#2ed573' : '#ffa502';
+                ctx.beginPath(); ctx.arc(t.x, t.y, 14, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = 'white'; ctx.font = '11px sans-serif';
+                ctx.fillText(t.name, t.x, t.y - 18);
             });
 
-            // 非常招集ボタンの描画
-            ctx.fillStyle = '#e74c3c';
-            ctx.beginPath();
-            ctx.arc(emergencyButton.x, emergencyButton.y, 30, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = 'white';
-            ctx.font = '14px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText('緊急ボタン (K)', emergencyButton.x, emergencyButton.y - 40);
-
-            // 死体の描画
+            // 死体
             bodies.forEach(b => {
-                ctx.fillStyle = b.color;
-                ctx.globalAlpha = 0.5;
-                ctx.beginPath();
-                ctx.ellipse(b.x, b.y, 20, 15, 0, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.globalAlpha = 1.0;
-                ctx.fillStyle = 'white';
-                ctx.fillText(`死体: ${b.name} (Rで通報)`, b.x, b.y - 25);
+                ctx.fillStyle = b.color; ctx.globalAlpha = 0.5;
+                ctx.beginPath(); ctx.ellipse(b.x, b.y, 18, 12, 0, 0, Math.PI * 2); ctx.fill();
+                ctx.globalAlpha = 1.0; ctx.fillStyle = 'white';
+                ctx.fillText(`死体: ${b.name} (Rで通報)`, b.x, b.y - 20);
             });
 
-            // プレイヤーの描画
+            // プレイヤー
             for (let id in players) {
                 const p = players[id];
-                ctx.fillStyle = p.color;
-                ctx.globalAlpha = p.isDead ? 0.4 : 1.0;
-
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, 20, 0, Math.PI * 2);
-                ctx.fill();
-
-                // バイザー（目元）の描画
-                ctx.fillStyle = '#a0e0ff';
-                ctx.fillRect(p.x - 5, p.y - 8, 14, 8);
-
-                // 名前表示
-                ctx.fillStyle = 'white';
-                ctx.font = '12px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.fillText(p.name + (p.role === 'wolf' && id === myId ? ' (人狼)' : ''), p.x, p.y - 28);
+                ctx.fillStyle = p.color; ctx.globalAlpha = p.isDead ? 0.3 : 1.0;
+                ctx.beginPath(); ctx.arc(p.x, p.y, 20, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#70a1ff'; ctx.fillRect(p.x - 4, p.y - 8, 12, 7);
+                ctx.fillStyle = 'white'; ctx.font = '12px sans-serif'; ctx.textAlign = 'center';
+                ctx.fillText(p.name + (p.role === 'wolf' && id === myId ? ' (人狼)' : ''), p.x, p.y - 26);
                 ctx.globalAlpha = 1.0;
             }
 
             ctx.restore();
 
-            // スペースキー長押しによる全体マップ表示
+            // --- スペースキー押下時の全体マッププレビュー（ミニマップ描画） ---
             if (keys.space) {
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-                ctx.fillRect(100, 100, canvas.width - 200, canvas.height - 200);
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+                ctx.fillRect(50, 50, canvas.width - 100, canvas.height - 100);
+
+                ctx.save();
+                // 全体マップを画面中央に収めるためのスケーリング
+                const mapWidth = 2400;
+                const mapHeight = 2000;
+                const viewW = canvas.width - 200;
+                const viewH = canvas.height - 200;
+                const scale = Math.min(viewW / mapWidth, viewH / mapHeight);
+
+                const offsetX = 100 + (viewW - mapWidth * scale) / 2;
+                const offsetY = 100 + (viewH - mapHeight * scale) / 2;
+
+                ctx.translate(offsetX, offsetY);
+                ctx.scale(scale, scale);
+
+                // マップ全体の床と壁を描画
+                ctx.fillStyle = '#1e1e2f';
+                ctx.fillRect(0, 0, mapWidth, mapHeight);
+                ctx.fillStyle = '#4a4a75';
+                walls.forEach(w => ctx.fillRect(w.x, w.y, w.width, w.height));
+
+                // タスク位置
+                tasks.forEach(t => {
+                    ctx.fillStyle = t.completed ? '#2ed573' : '#ffa502';
+                    ctx.beginPath(); ctx.arc(t.x, t.y, 25, 0, Math.PI * 2); ctx.fill();
+                });
+
+                // プレイヤー位置
+                for (let id in players) {
+                    const p = players[id];
+                    if (p.isDead) continue;
+                    ctx.fillStyle = p.color;
+                    ctx.beginPath(); ctx.arc(p.x, p.y, 30, 0, Math.PI * 2); ctx.fill();
+                }
+
+                ctx.restore();
+
+                // マップの枠タイトル
                 ctx.fillStyle = 'white';
-                ctx.font = '24px sans-serif';
+                ctx.font = 'bold 22px sans-serif';
                 ctx.textAlign = 'center';
-                ctx.fillText('--- 全体マップ ---', canvas.width / 2, 150);
+                ctx.fillText('--- THE SKELD (全体マップ & タスク状況) ---', canvas.width / 2, 90);
+                
+                let completedCount = tasks.filter(t => t.completed).length;
+                ctx.font = '16px sans-serif';
+                ctx.fillStyle = '#2ed573';
+                ctx.fillText(`タスク進捗: ${completedCount} / ${tasks.length}`, canvas.width / 2, canvas.height - 70);
             }
 
             requestAnimationFrame(gameLoop);
