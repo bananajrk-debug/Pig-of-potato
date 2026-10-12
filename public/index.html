@@ -1,68 +1,198 @@
-const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>2Dタスク人狼（プロトタイプ）</title>
+    <style>
+        body {
+            margin: 0;
+            background: #222;
+            color: #fff;
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+        canvas {
+            background: #111;
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+            border: 2px solid #444;
+        }
+        #ui {
+            margin-top: 10px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
 
-const app = express();
-const server = http.createServer(app);
-const io = new Server(server);
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <div id="ui">
+        操作: W/A/S/D または 矢印キー | タスク位置に近づいて [E] キーを押す
+        <div id="taskStatus">完了タスク数: 0</div>
+    </div>
 
-// publicフォルダ内の静的ファイルを提供
-app.use(express.static('public'));
+    <!-- Socket.ioのクライアントライブラリをCDNから読み込み -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
 
-// 接続中のプレイヤーを管理するオブジェクト
-const players = {};
+        const playerSize = 30;
+        let myData = { x: 100, y: 100, speed: 4 };
+        let players = {};
+        let myTasksCompleted = 0;
 
-io.on('connection', (socket) => {
-  console.log(`ユーザーが接続しました: ${socket.id}`);
+        // キー入力の状態管理
+        const keys = {};
+        window.addEventListener('keydown', (e) => { 
+            keys[e.key.toLowerCase()] = true; 
 
-  // 新規プレイヤーの初期データ作成
-  players[socket.id] = {
-    x: 100,
-    y: 100,
-    color: '#' + Math.floor(Math.random() * 16777215).toString(16), // ランダムカラー
-    tasksCompleted: 0
-  };
+            // 'e'キーでタスク実行
+            if (e.key.toLowerCase() === 'e') {
+                checkTaskInteraction();
+            }
+        });
+        window.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
 
-  // 現在いる全員のプレイヤー情報を新しい人に送る
-  socket.emit('currentPlayers', players);
+        // マップの壁データ (x, y, width, height)
+        // ここを書き換えることで自由に部屋や通路を作れます！
+        const walls = [
+            { x: 0, y: 0, w: 800, h: 20 },   // 上壁
+            { x: 0, y: 580, w: 800, h: 20 },  // 下壁
+            { x: 0, y: 0, w: 20, h: 600 },   // 左壁
+            { x: 780, y: 0, w: 20, h: 600 },  // 右壁
+            // 障害物（部屋や柱など）
+            { x: 200, y: 150, w: 150, h: 100 },
+            { x: 450, y: 350, w: 150, h: 120 },
+        ];
 
-  // 新しいプレイヤーが入ってきたことを他の人に知らせる
-  socket.broadcast.emit('newPlayer', {
-    id: socket.id,
-    player: players[socket.id]
-  });
+        // タスク位置のデータ
+        const taskPoint = { x: 400, y: 100, size: 40, active: true };
 
-  // プレイヤーが移動したとき
-  socket.on('playerMovement', (movementData) => {
-    if (players[socket.id]) {
-      players[socket.id].x = movementData.x;
-      players[socket.id].y = movementData.y;
-      // 他のプレイヤーに位置をブロードキャスト
-      socket.broadcast.emit('playerMoved', {
-        id: socket.id,
-        x: players[socket.id].x,
-        y: players[socket.id].y
-      });
-    }
-  });
+        // 矩形同士の当たり判定（AABB）
+        function checkCollision(x, y, w, h, walls) {
+            for (let wall of walls) {
+                if (
+                    x < wall.x + wall.w &&
+                    x + w > wall.x &&
+                    y < wall.y + wall.h &&
+                    y + h > wall.y
+                ) {
+                    return true; // 衝突している
+                }
+            }
+            return false;
+        }
 
-  // タスクを完了したとき
-  socket.on('completeTask', () => {
-    if (players[socket.id]) {
-      players[socket.id].tasksCompleted += 1;
-      io.emit('taskUpdate', { id: socket.id, tasksCompleted: players[socket.id].tasksCompleted });
-    }
-  });
+        // Socket.ioイベント受信
+        socket.on('currentPlayers', (serverPlayers) => {
+            players = serverPlayers;
+        });
 
-  // 切断されたとき
-  socket.on('disconnect', () => {
-    console.log(`ユーザーが切断しました: ${socket.id}`);
-    delete players[socket.id];
-    io.emit('disconnectPlayer', socket.id);
-  });
-});
+        socket.on('newPlayer', (data) => {
+            players[data.id] = data.player;
+        });
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`サーバーが起動しました: http://localhost:${PORT}`);
-});
+        socket.on('playerMoved', (data) => {
+            if (players[data.id]) {
+                players[data.id].x = data.x;
+                players[data.id].y = data.y;
+            }
+        });
+
+        socket.on('taskUpdate', (data) => {
+            if (players[data.id]) {
+                players[data.id].tasksCompleted = data.tasksCompleted;
+                if (data.id === socket.id) {
+                    document.getElementById('taskStatus').innerText = `完了タスク数: ${data.tasksCompleted}`;
+                }
+            }
+        });
+
+        socket.on('disconnectPlayer', (id) => {
+            delete players[id];
+        });
+
+        // タスクに近づいてEキーを押したときの判定
+        function checkTaskInteraction() {
+            // プレイヤーとタスクの距離を計算
+            const dist = Math.hypot((myData.x + playerSize/2) - (taskPoint.x + taskPoint.size/2), (myData.y + playerSize/2) - (taskPoint.y + taskPoint.size/2));
+            if (dist < 60) {
+                alert('タスク完了！');
+                socket.emit('completeTask');
+                // タスク位置をランダムにワープさせる簡易演出
+                taskPoint.x = Math.random() * 600 + 100;
+                taskPoint.y = Math.random() * 400 + 100;
+            }
+        }
+
+        // ゲームのメインループ
+        function update() {
+            let nextX = myData.x;
+            let nextY = myData.y;
+
+            // 移動入力の処理
+            if (keys['w'] || keys['arrowup']) nextY -= myData.speed;
+            if (keys['s'] || keys['arrowdown']) nextY += myData.speed;
+            if (keys['a'] || keys['arrowleft']) nextX -= myData.speed;
+            if (keys['d'] || keys['arrowright']) nextX += myData.speed;
+
+            // X軸方向の当たり判定チェック
+            if (!checkCollision(nextX, myData.y, playerSize, playerSize, walls)) {
+                myData.x = nextX;
+            }
+            // Y軸方向の当たり判定チェック
+            if (!checkCollision(myData.x, nextY, playerSize, playerSize, walls)) {
+                myData.y = nextY;
+            }
+
+            // サーバーに自分の位置を送信
+            socket.emit('playerMovement', { x: myData.x, y: myData.y });
+        }
+
+        function draw() {
+            // 画面クリア
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 壁の描画
+            ctx.fillStyle = '#666';
+            for (let wall of walls) {
+                ctx.fillRect(wall.x, wall.y, wall.w, wall.h);
+            }
+
+            // タスクポイントの描画
+            ctx.fillStyle = '#ffcc00';
+            ctx.fillRect(taskPoint.x, taskPoint.y, taskPoint.size, taskPoint.size);
+            ctx.fillStyle = '#fff';
+            ctx.font = '12px sans-serif';
+            ctx.fillText('TASK', taskPoint.x + 5, taskPoint.y - 5);
+
+            // 他のプレイヤー（自分含む）の描画
+            for (let id in players) {
+                const p = players[id];
+                ctx.fillStyle = p.color || '#fff';
+                ctx.fillRect(p.x, p.y, playerSize, playerSize);
+                
+                // 簡易ネームラベル（IDの一部）
+                ctx.fillStyle = '#fff';
+                ctx.font = '10px sans-serif';
+                ctx.fillText(id.substring(0, 4), p.x, p.y - 5);
+            }
+        }
+
+        function loop() {
+            update();
+            draw();
+            requestAnimationFrame(loop);
+        }
+
+        // ループ開始
+        loop();
+    </script>
+</body>
+</html>
