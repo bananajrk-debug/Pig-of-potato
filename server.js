@@ -10,6 +10,25 @@ app.use(express.static('public'));
 
 const players = {};
 
+// プレイヤー全員の位置を中央ボタンの周りに円形に再配置する関数
+function updatePlayerSpawnPositions() {
+  const ids = Object.keys(players);
+  const total = ids.length;
+  if (total === 0) return;
+
+  // 中央ホールの中心座標
+  const centerX = 13.5 * 40; // マップ中央のX
+  const centerY = 9.5 * 40;  // マップ中央のY
+  const radius = 70;         // ボタンの周りの円の半径
+
+  ids.forEach((id, index) => {
+    // 円形に綺麗に並べるための角度計算 (ラジアン)
+    const angle = (index / total) * Math.PI * 2;
+    players[id].x = centerX + Math.cos(angle) * radius;
+    players[id].y = centerY + Math.sin(angle) * radius;
+  });
+}
+
 function assignRoles() {
   const ids = Object.keys(players);
   if (ids.length === 0) return;
@@ -22,16 +41,17 @@ function assignRoles() {
   const imposterId = ids[imposterIndex];
   players[imposterId].role = 'imposter';
 
+  // 役割を振ると同時に円形スポーン位置を更新
+  updatePlayerSpawnPositions();
   io.emit('currentPlayers', players);
 }
 
 io.on('connection', (socket) => {
   console.log(`ユーザーが接続しました: ${socket.id}`);
 
-  // マップの中央付近（安全なスポーンエリア）にランダムに配置
   players[socket.id] = {
-    x: 480 + Math.random() * 80,
-    y: 320 + Math.random() * 80,
+    x: 0,
+    y: 0,
     color: '#' + Math.floor(Math.random() * 16777215).toString(16),
     tasksCompleted: 0,
     role: 'crewmate',
@@ -69,7 +89,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // 死体通報 または 緊急会議ボタン
   socket.on('startMeeting', (data) => {
     io.emit('startMeeting', { reporterId: data.reporterId, reason: data.reason });
   });
