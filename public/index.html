@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>2Dタスク人狼 - 4:6大型ズームマップ</title>
+    <title>2Dタスク人狼 - マップ改良＆全体マップ</title>
     <style>
         body {
             margin: 0;
@@ -147,8 +147,6 @@
     <div id="roleBanner">役職を読み込み中...</div>
 
     <div id="game-container">
-        <!-- 4:6比率の大型画面（1152px × 1728px をスケーリング表示、または表示領域に合わせた大型キャンバス） -->
-        <!-- ここでは画面に収まりつつ見やすい縦横比 4:6（例: 800px × 1200px または 720px × 1080px）に設定し、カメラズームを適用 -->
         <canvas id="gameCanvas" width="800" height="1200" tabindex="1"></canvas>
         
         <div id="taskModal">
@@ -172,7 +170,7 @@
     </div>
 
     <div id="ui">
-        移動: W/A/S/D | タスク: 近づいて <b>[K]</b> | <span id="killInstruction" style="display:none; color:#ff4444;">人狼: <b>[Q]</b> キル</span> | 通報: <b>[R]</b> | 緊急ボタン: 上部大広間で <b>[E]</b>
+        移動: W/A/S/D | タスク: <b>[K]</b> | <span id="killInstruction" style="display:none; color:#ff4444;">人狼: <b>[Q]</b> キル</span> | 通報: <b>[R]</b> | 緊急: <b>[E]</b> | <b>[SPACE長押し]</b> で全体マップ
         <div id="taskStatus">完了タスク数: 0</div>
     </div>
 
@@ -185,45 +183,47 @@
         canvas.focus();
         canvas.addEventListener('click', () => canvas.focus());
 
-        const tileSize = 36; // 1マスのサイズ
+        const tileSize = 40; 
         
         // ========================================================
-        // 【4:6比率の大型マップ設計図】 横38マス × 縦57マス (4:6比率、約2.5倍の広さ)
-        // 上部に「縦横4:6比率の大きめの大部屋（会議室）」があり、四方に出入り口を完備。
-        // 行き止まりがなく、すべての通路がループ・接続するように設計。
+        // 【すっきり整理された大型マップ】 28列 × 42行 (4:6比率)
+        // 0: 床・通路（広くて快適）, 1: 壁（大きなブロックで綺麗に配置）
+        // 上部に広い大部屋（会議室）、四方に独立した大きめの部屋を配置
         // ========================================================
         const mapGrid = [
-            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,1,1,1,1,0,0,1,1,1,1,1,1,1,1,1,1,0,0,1,1,1,1,1,1,1,1,1,1,1,0,0,1,1,1,1,1,1],
-            [1,1,1,1,1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1,1,1,1,1,1],
-            [1,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
-            [1,0,0,0,0,0,0,1,0,0,1,1,1,1,1,1,0,0,1,1,1,1,1,1,0,0,1,0,0,1,0,0,0,0,0,0,0,1],
-            [1,0,0,0,0,0,0,1,0,0,1,1,1,1,1,1,0,0,1,1,1,1,1,1,0,0,1,0,0,1,0,0,0,0,0,0,0,1],
-            [1,1,1,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1,1,1,0,0,1,1,1,1],
-            [1,1,1,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1,1,1,0,0,1,1,1,1],
-            [1,0,0,0,0,0,0,1,0,0,1,1,1,1,1,1,0,0,1,1,1,1,1,1,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
-            [1,0,0,0,0,0,0,1,0,0,1,1,1,1,1,1,0,0,1,1,1,1,1,1,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,1,1,1,1,0,0,1,1,1,1,1,1,0,0,1,1,1,0,0,1,1,1,0,0,1,1,1,1,1,0,0,1,1,1,1,1,1],
-            [1,1,1,1,1,0,0,1,1,1,1,1,1,0,0,1,1,1,0,0,1,1,1,0,0,1,1,1,1,1,0,0,1,1,1,1,1,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+            [1,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,0,0,0,0,0,0,1],
+            [1,1,1,1,1,1,0,0,1,1,1,1,1,0,0,0,0,1,1,1,1,1,0,0,1,1,1,1],
+            [1,1,1,1,1,1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1,1,1,1],
+            [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,1,0,0,0,1,1,1,1,0,0,0,0,0,1,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,1,0,0,0,1,1,1,1,0,0,0,0,0,1,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1],
+            [1,1,1,1,1,1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1,1,1,1],
+            [1,1,1,1,1,1,0,0,1,1,1,1,1,0,0,1,1,1,1,1,1,1,0,0,1,1,1,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,1,1,1,1,1,0,0,1,1,1,1,1,0,0,1,1,1,1,1,1,1,0,0,1,1,1,1],
+            [1,1,1,1,1,1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1,1,1,1],
+            [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,1,0,0,0,1,1,1,1,0,0,0,0,0,1,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,1,0,0,0,1,1,1,1,0,0,0,0,0,1,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1],
+            [1,1,1,1,1,1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1,1,1,1],
+            [1,1,1,1,1,1,0,0,1,1,1,1,1,0,0,1,1,1,1,1,1,1,0,0,1,1,1,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
         ];
 
-        const playerSize = 26;
-        let myData = { x: 19 * tileSize, y: 7 * tileSize, speed: 3.5 };
+        const playerSize = 28;
+        let myData = { x: 14 * tileSize, y: 3.5 * tileSize, speed: 3.5 };
         let players = {};
         let myRole = 'crewmate';
         let isDead = false;
@@ -231,6 +231,7 @@
 
         const keys = {};
         let isTaskActive = false;
+        let isMapOpen = false; // スペースキーで全体マップが開いているかどうか
 
         let cursorPosition = 0;
         let cursorSpeed = 1.5;
@@ -238,6 +239,13 @@
         let taskInterval = null;
 
         window.addEventListener('keydown', (e) => {
+            // スペースキーで全体マップ表示（長押し・押しっぱなし対応）
+            if (e.code === 'Space') {
+                isMapOpen = true;
+                e.preventDefault(); // 画面スクロールを防ぐ
+                return;
+            }
+
             if (isDead || isMeetingActive) return;
             const key = e.key.toLowerCase();
             keys[key] = true;
@@ -264,6 +272,11 @@
         });
 
         window.addEventListener('keyup', (e) => {
+            if (e.code === 'Space') {
+                isMapOpen = false;
+                e.preventDefault();
+                return;
+            }
             keys[e.key.toLowerCase()] = false;
         });
 
@@ -289,7 +302,7 @@
             return false;
         }
 
-        const emergencyButton = { x: 19 * tileSize, y: 7 * tileSize, size: 36 };
+        const emergencyButton = { x: 14 * tileSize, y: 3.5 * tileSize, size: 38 };
         const taskPoint = { x: 2 * tileSize, y: 2 * tileSize, size: 32 };
 
         socket.on('currentPlayers', (serverPlayers) => {
@@ -355,11 +368,11 @@
             const banner = document.getElementById('roleBanner');
             const killInstruction = document.getElementById('killInstruction');
             if (myRole === 'imposter') {
-                banner.innerText = '役職: 人狼 (インポスター) - 広いマップで市民を奇襲しろ！';
+                banner.innerText = '役職: 人狼 (インポスター) - スペースキーで全体マップを確認して奇襲しろ！';
                 banner.style.color = '#ff4444';
                 killInstruction.style.display = 'inline';
             } else {
-                banner.innerText = '役職: 市民 (クルーメイト) - 安全に巡回してタスクを完了させろ！';
+                banner.innerText = '役職: 市民 (クルーメイト) - スペースキーで全体マップを見てタスクをこなせ！';
                 banner.style.color = '#44ff44';
                 killInstruction.style.display = 'none';
             }
@@ -442,9 +455,9 @@
                     socket.emit('completeTask');
                     const roomPositions = [
                         {x: 2 * tileSize, y: 2 * tileSize},
-                        {x: 33 * tileSize, y: 2 * tileSize},
-                        {x: 2 * tileSize, y: 23 * tileSize},
-                        {x: 33 * tileSize, y: 23 * tileSize}
+                        {x: 24 * tileSize, y: 2 * tileSize},
+                        {x: 2 * tileSize, y: 25 * tileSize},
+                        {x: 24 * tileSize, y: 25 * tileSize}
                     ];
                     const nextRoom = roomPositions[Math.floor(Math.random() * roomPositions.length)];
                     taskPoint.x = nextRoom.x;
@@ -488,7 +501,7 @@
         }
 
         function update() {
-            if (isTaskActive || isDead || isMeetingActive) return;
+            if (isTaskActive || isDead || isMeetingActive || isMapOpen) return;
 
             let nextX = myData.x;
             let nextY = myData.y;
@@ -517,16 +530,66 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             // ========================================================
-            // 【カメラのズーム＆プレイヤー追従処理】
-            // 自分のキャラクターが常に画面の中央にくるようオフセットを計算
+            // 【全体マップ表示（SPACEキーを押している間）】
+            // ========================================================
+            if (isMapOpen) {
+                ctx.save();
+                // マップ全体がキャンバス全体に収まるようにスケールを自動計算
+                const scaleX = canvas.width / (mapGrid[0].length * tileSize);
+                const scaleY = canvas.height / (mapGrid.length * tileSize);
+                ctx.scale(scaleX, scaleY);
+
+                // マップ全体の描画
+                for (let row = 0; row < mapGrid.length; row++) {
+                    for (let col = 0; col < mapGrid[row].length; col++) {
+                        if (mapGrid[row][col] === 1) {
+                            ctx.fillStyle = '#444';
+                            ctx.fillRect(col * tileSize, row * tileSize, tileSize, tileSize);
+                        } else {
+                            ctx.fillStyle = '#222';
+                            ctx.fillRect(col * tileSize, row * tileSize, tileSize, tileSize);
+                        }
+                    }
+                }
+
+                // 全体マップ上での緊急ボタン表示
+                ctx.fillStyle = '#ff2222';
+                ctx.beginPath();
+                ctx.arc(emergencyButton.x + emergencyButton.size/2, emergencyButton.y + emergencyButton.size/2, emergencyButton.size, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 全体マップ上でのタスク表示
+                if (myRole !== 'imposter') {
+                    ctx.fillStyle = '#ffcc00';
+                    ctx.fillRect(taskPoint.x - 10, taskPoint.y - 10, taskPoint.size + 20, taskPoint.size + 20);
+                }
+
+                // 全プレイヤーの位置を全体マップ上に表示
+                for (let id in players) {
+                    const p = players[id];
+                    ctx.fillStyle = id === socket.id ? '#44ff44' : (p.isDead ? '#666' : p.color);
+                    ctx.beginPath();
+                    ctx.arc(p.x + playerSize/2, p.y + playerSize/2, 16, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                // 「MAP」文字の表示
+                ctx.restore();
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                ctx.font = 'bold 24px sans-serif';
+                ctx.fillText('--- 全体マップ表示中 (SPACE長押し) ---', 200, 40);
+                return; // 通常のゲーム描画をスキップ
+            }
+
+            // ========================================================
+            // 【通常時のゲーム画面（カメラズーム＆プレイヤー追従）】
             // ========================================================
             ctx.save();
-            const zoomScale = 1.35; // ズーム倍率（数字を大きくするとさらに拡大）
+            const zoomScale = 1.35; 
             ctx.translate(canvas.width / 2, canvas.height / 2);
             ctx.scale(zoomScale, zoomScale);
             ctx.translate(-myData.x - playerSize/2, -myData.y - playerSize/2);
 
-            // マップ（タイル）の描画
             for (let row = 0; row < mapGrid.length; row++) {
                 for (let col = 0; col < mapGrid[row].length; col++) {
                     if (mapGrid[row][col] === 1) {
@@ -550,7 +613,6 @@
             ctx.font = '10px sans-serif';
             ctx.fillText('EMERGENCY', emergencyButton.x - 15, emergencyButton.y - 10);
 
-            // タスク（市民のみ）
             if (myRole !== 'imposter') {
                 ctx.fillStyle = '#ffcc00';
                 ctx.fillRect(taskPoint.x, taskPoint.y, taskPoint.size, taskPoint.size);
@@ -559,7 +621,6 @@
                 ctx.fillText('TASK', taskPoint.x + 2, taskPoint.y - 5);
             }
 
-            // 全プレイヤーの描画
             for (let id in players) {
                 const p = players[id];
                 if (p.isDead) {
@@ -577,10 +638,10 @@
                 }
             }
 
-            ctx.restore(); // ズーム・追従の適用を終了
+            ctx.restore();
 
             // ========================================================
-            // 【視野制限（ビュー暗転）のマスク処理】（プレイヤー中心）
+            // 【視野制限（ビュー暗転）のマスク処理】
             // ========================================================
             if (!isDead) {
                 ctx.save();
@@ -588,7 +649,6 @@
                 ctx.beginPath();
                 ctx.rect(0, 0, canvas.width, canvas.height);
 
-                // 画面中央に固定された自分の位置を基準にくり抜く
                 const screenCenterX = canvas.width / 2;
                 const screenCenterY = canvas.height / 2;
                 const visionRadius = 180 * zoomScale;
