@@ -17,7 +17,7 @@
     <div id="ui-layer">
         <div class="hud-box" id="role-display">ロール: 読み込み中...</div>
         <div class="hud-box" id="task-display">タスク: 0 / 0</div>
-        <div class="hud-box">操作: [WASD] 移動 | [K] キル / タスク | [R] 死体通報 | [Space] ミニマップ</div>
+        <div class="hud-box">操作: [WASD] 移動 | [K] キル / タスク | [R] 死体通報 | [Space] 全体ミニマップ</div>
     </div>
 
     <div id="meeting-modal">
@@ -47,6 +47,7 @@
         let bodies = [];
         let emergencyButton = null;
         let tasks = [];
+        let walls = [];
         let gameState = 'PLAYING';
         let keys = {};
         let showMinimap = false;
@@ -57,6 +58,7 @@
             bodies = data.bodies;
             emergencyButton = data.emergencyButton;
             tasks = data.tasks;
+            walls = data.walls;
 
             let myRole = players[myId].role;
             document.getElementById('role-display').innerText = `ロール: ${myRole === 'wolf' ? '人狼 (Wolf)' : '市民 (Crew)'}`;
@@ -95,23 +97,19 @@
             location.reload();
         });
 
-        // 入力ハンドリング
         window.addEventListener('keydown', (e) => {
             keys[e.key.toLowerCase()] = true;
             if (e.code === 'Space') showMinimap = true;
 
             if (e.key.toLowerCase() === 'k') {
-                // キル または タスク実行
                 let me = players[myId];
                 if (!me || !me.isAlive) return;
 
                 if (me.role === 'wolf') {
-                    // 最寄りのプレイヤーを探してキル
                     let target = Object.values(players).find(p => p.id !== myId && p.isAlive && Math.hypot(p.x - me.x, p.y - me.y) < 100);
                     if (target) socket.emit('player-kill', target.id);
                 }
 
-                // タスクチェック
                 let task = tasks.find(t => Math.hypot(t.x - me.x, t.y - me.y) < 80);
                 let myTask = me.tasks.find(t => t.id === task?.id);
                 if (myTask && !myTask.completed) {
@@ -122,13 +120,11 @@
             }
 
             if (e.key.toLowerCase() === 'r') {
-                // 死体通報
                 let me = players[myId];
                 if (!me || !me.isAlive) return;
                 let body = bodies.find(b => Math.hypot(b.x - me.x, b.y - me.y) < 100);
                 if (body) socket.emit('report-body', body.id);
 
-                // 非常ボタンチェック
                 if (emergencyButton && Math.hypot(emergencyButton.x - me.x, emergencyButton.y - me.y) < emergencyButton.radius + 30) {
                     socket.emit('emergency-meeting');
                 }
@@ -170,13 +166,11 @@
             container.appendChild(skipBtn);
         }
 
-        // メインループ・描画
         function gameLoop() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             let me = players[myId];
             if (me) {
-                // 移動送信
                 let vx = 0, vy = 0;
                 if (keys['w']) vy -= 1;
                 if (keys['s']) vy += 1;
@@ -194,26 +188,13 @@
                 ctx.scale(zoom, zoom);
                 ctx.translate(-me.x, -me.y);
 
-                // マップ背景・壁の描画
+                // マップ背景描画
                 ctx.fillStyle = '#1e1e24';
                 ctx.fillRect(0, 0, 4000, 3000);
 
-                // 簡易壁の描画
+                // 壁の描画
                 ctx.fillStyle = '#3a3a48';
-                // (サーバー側の walls 配列と同じ内容を描画)
-                const wallList = [
-                    { x: 0, y: 0, w: 4000, h: 40 },
-                    { x: 0, y: 2960, w: 4000, h: 40 },
-                    { x: 0, y: 0, w: 40, h: 3000 },
-                    { x: 3960, y: 0, w: 40, h: 3000 },
-                    { x: 1600, y: 1100, w: 800, h: 40 },
-                    { x: 1600, y: 1860, w: 800, h: 40 },
-                    { x: 1600, y: 1100, w: 40, h: 380 },
-                    { x: 2360, y: 1100, w: 40, h: 380 },
-                    { x: 1600, y: 1520, w: 40, h: 380 },
-                    { x: 2360, y: 1520, w: 40, h: 380 },
-                ];
-                wallList.forEach(w => {
+                walls.forEach(w => {
                     ctx.fillRect(w.x, w.y, w.w, w.h);
                 });
 
@@ -228,12 +209,21 @@
                     ctx.stroke();
                 }
 
-                // タスク描画
+                // タスクの描画（種類ごとに色を変える）
                 tasks.forEach(t => {
+                    let myTask = me.tasks?.find(mt => mt.id === t.id);
+                    let isDone = myTask ? myTask.completed : false;
+
                     ctx.beginPath();
-                    ctx.arc(t.x, t.y, 15, 0, Math.PI * 2);
-                    ctx.fillStyle = '#ffff00';
+                    ctx.arc(t.x, t.y, 14, 0, Math.PI * 2);
+                    // タスク種類に応じたカラー
+                    if (t.type === 'WIRING') ctx.fillStyle = isDone ? '#555' : '#ffaa00';
+                    else if (t.type === 'DOWNLOAD') ctx.fillStyle = isDone ? '#555' : '#00aaff';
+                    else if (t.type === 'ENGINE') ctx.fillStyle = isDone ? '#555' : '#00ffaa';
                     ctx.fill();
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
                 });
 
                 // 死体描画
@@ -262,25 +252,32 @@
 
                 ctx.restore();
 
-                // スペースキー押下によるミニマップ表示
+                // 全体ミニマップ (スペースキー押下中)
                 if (showMinimap) {
-                    ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-                    ctx.fillRect(canvas.width / 2 - 300, canvas.height / 2 - 225, 600, 450);
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+                    ctx.fillRect(canvas.width / 2 - 350, canvas.height / 2 - 262, 700, 525);
                     ctx.strokeStyle = '#fff';
-                    ctx.strokeRect(canvas.width / 2 - 300, canvas.height / 2 - 225, 600, 450);
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(canvas.width / 2 - 350, canvas.height / 2 - 262, 700, 525);
 
                     ctx.save();
-                    ctx.translate(canvas.width / 2 - 300, canvas.height / 2 - 225);
-                    let scaleX = 600 / 4000;
-                    let scaleY = 450 / 3000;
+                    ctx.translate(canvas.width / 2 - 350, canvas.height / 2 - 262);
+                    let scaleX = 700 / 4000;
+                    let scaleY = 525 / 3000;
                     ctx.scale(scaleX, scaleY);
 
-                    // ミニマップ上のプレイヤー描画
+                    // ミニマップ上の壁
+                    ctx.fillStyle = '#444';
+                    walls.forEach(w => {
+                        ctx.fillRect(w.x, w.y, w.w, w.h);
+                    });
+
+                    // ミニマップ上のプレイヤー位置
                     Object.values(players).forEach(p => {
                         if (!p.isAlive) return;
                         ctx.fillStyle = p.color;
                         ctx.beginPath();
-                        ctx.arc(p.x, p.y, 40, 0, Math.PI * 2);
+                        ctx.arc(p.x, p.y, 35, 0, Math.PI * 2);
                         ctx.fill();
                     });
                     ctx.restore();
