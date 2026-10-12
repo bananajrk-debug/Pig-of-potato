@@ -14,162 +14,155 @@ let bodies = [];
 let meetingTimer = null;
 let votes = {};
 
-// 非常招集ボタン（中央カフェテリア）
-const emergencyButton = { x: 1200, y: 900 };
+// 非常招集ボタン（カフェテリア中央）
+const emergencyButton = { x: 2050, y: 1530 };
 
-// 【コンパクトかつ通路が広いAmong Us風マップ】 (マップサイズ: 2400 x 1800)
+// ご提示いただいた完璧な11部屋・広め通路のマップデータ
 const walls = [
-    // --- 外周の壁 ---
-    { x: 100, y: 100, width: 2200, height: 25 },
-    { x: 100, y: 1675, width: 2200, height: 25 },
-    { x: 100, y: 100, width: 25, height: 1600 },
-    { x: 2275, y: 100, width: 25, height: 1600 },
+    // 外周の壁
+    { x: 200, y: 200, width: 3600, height: 30 },
+    { x: 200, y: 2800, width: 3600, height: 30 },
+    { x: 200, y: 200, width: 30, height: 2630 },
+    { x: 3800, y: 200, width: 30, height: 2630 },
 
-    // ==========================================
-    // 1. カフェテリア (中央: 1000,750 〜 1400,1050) 大部屋
-    // ==========================================
-    { x: 1000, y: 750, width: 140, height: 25 },
-    { x: 1260, y: 750, width: 140, height: 25 }, // 上ドア (1140-1260)
-    { x: 1000, y: 1025, width: 140, height: 25 },
-    { x: 1260, y: 1025, width: 140, height: 25 }, // 下ドア (1140-1260)
-    { x: 1000, y: 750, width: 25, height: 100 },
-    { x: 1000, y: 890, width: 25, height: 135 },  // 左ドア (850-890)
-    { x: 1375, y: 750, width: 25, height: 100 },
-    { x: 1375, y: 890, width: 25, height: 135 },  // 右ドア (850-890)
+    // ===== 1. カフェテリア (1650,1250)-(2450,1810) 大部屋 800x560 =====
+    { x: 1650, y: 1250, width: 50, height: 30 },
+    { x: 1790, y: 1250, width: 510, height: 30 },
+    { x: 2390, y: 1250, width: 60, height: 30 },
+    { x: 1650, y: 1780, width: 450, height: 30 },
+    { x: 2190, y: 1780, width: 260, height: 30 },
+    { x: 1650, y: 1250, width: 30, height: 170 },
+    { x: 1650, y: 1510, width: 30, height: 300 },
+    { x: 2420, y: 1250, width: 30, height: 100 },
+    { x: 2420, y: 1440, width: 30, height: 370 },
 
-    // ==========================================
-    // 2. ストレージ (下部中央: 1050,1300 〜 1350,1550) 中部屋
-    // ==========================================
-    { x: 1050, y: 1300, width: 100, height: 25 },
-    { x: 1250, y: 1300, width: 100, height: 25 }, // 上ドア (1150-1250)
-    { x: 1050, y: 1525, width: 300, height: 25 },
-    { x: 1050, y: 1300, width: 25, height: 100 },
-    { x: 1050, y: 1440, width: 25, height: 85 },  // 左ドア (1400-1440)
-    { x: 1325, y: 1300, width: 25, height: 100 },
-    { x: 1325, y: 1440, width: 25, height: 85 },  // 右ドア (1400-1440)
+    // ===== 2. ストレージ (1900,2250)-(2500,2650) 中部屋 600x400 =====
+    { x: 1900, y: 2250, width: 200, height: 30 },
+    { x: 2190, y: 2250, width: 310, height: 30 },
+    { x: 1900, y: 2620, width: 600, height: 30 },
+    { x: 1900, y: 2250, width: 30, height: 150 },
+    { x: 1900, y: 2490, width: 30, height: 160 },
+    { x: 2470, y: 2250, width: 30, height: 80 },
+    { x: 2470, y: 2420, width: 30, height: 230 },
 
-    // ==========================================
-    // 3. ナビゲーション (上部中央: 1050,250 〜 1350,500)
-    // ==========================================
-    { x: 1050, y: 250, width: 300, height: 25 },
-    { x: 1050, y: 475, width: 100, height: 25 },
-    { x: 1250, y: 475, width: 100, height: 25 }, // 下ドア (1150-1250)
-    { x: 1050, y: 250, width: 25, height: 100 },
-    { x: 1050, y: 390, width: 25, height: 85 },  // 左ドア (350-390)
-    { x: 1325, y: 250, width: 25, height: 100 },
-    { x: 1325, y: 390, width: 25, height: 85 },  // 右ドア (350-390)
+    // ===== 3. アッパーエンジン (500,450)-(900,820) 400x370 =====
+    { x: 500, y: 450, width: 400, height: 30 },
+    { x: 500, y: 790, width: 250, height: 30 },
+    { x: 840, y: 790, width: 60, height: 30 },
+    { x: 500, y: 450, width: 30, height: 370 },
+    { x: 870, y: 450, width: 30, height: 130 },
+    { x: 870, y: 670, width: 30, height: 150 },
 
-    // ==========================================
-    // 4. メッドベイ (中左上: 650,350 〜 900,600)
-    // ==========================================
-    { x: 650, y: 350, width: 250, height: 25 },
-    { x: 650, y: 575, width: 250, height: 25 },
-    { x: 650, y: 350, width: 25, height: 100 },
-    { x: 650, y: 490, width: 25, height: 85 },  // 左ドア (450-490)
-    { x: 875, y: 350, width: 25, height: 95 },
-    { x: 875, y: 480, width: 25, height: 95 },  // 右ドア (440-480)
+    // ===== 4. メッドベイ (1450,500)-(1850,870) 400x370 =====
+    { x: 1450, y: 500, width: 400, height: 30 },
+    { x: 1450, y: 840, width: 250, height: 30 },
+    { x: 1790, y: 840, width: 60, height: 30 },
+    { x: 1450, y: 500, width: 30, height: 80 },
+    { x: 1450, y: 670, width: 30, height: 200 },
+    { x: 1820, y: 500, width: 30, height: 370 },
 
-    // ==========================================
-    // 5. エンジン (左上: 250,300 〜 500,600)
-    // ==========================================
-    { x: 250, y: 300, width: 250, height: 25 },
-    { x: 250, y: 575, width: 100, height: 25 },
-    { x: 400, y: 575, width: 100, height: 25 }, // 下ドア (350-400)
-    { x: 250, y: 300, width: 25, height: 275 },
-    { x: 475, y: 300, width: 25, height: 95 },
-    { x: 475, y: 430, width: 25, height: 145 }, // 右ドア (390-430)
+    // ===== 5. ナビゲーション (2250,500)-(2650,880) 400x380 =====
+    { x: 2250, y: 500, width: 400, height: 30 },
+    { x: 2250, y: 850, width: 50, height: 30 },
+    { x: 2390, y: 850, width: 260, height: 30 },
+    { x: 2250, y: 500, width: 30, height: 380 },
+    { x: 2620, y: 500, width: 30, height: 60 },
+    { x: 2620, y: 650, width: 30, height: 230 },
 
-    // ==========================================
-    // 6. セキュリティ (左中: 300,800 〜 550,1100)
-    // ==========================================
-    { x: 300, y: 800, width: 250, height: 25 },
-    { x: 300, y: 1075, width: 250, height: 25 },
-    { x: 300, y: 800, width: 25, height: 100 },
-    { x: 300, y: 940, width: 25, height: 135 },  // 左ドア (900-940)
-    { x: 525, y: 800, width: 25, height: 95 },
-    { x: 525, y: 935, width: 25, height: 140 },  // 右ドア (895-935)
+    // ===== 6. ウェポン (3050,450)-(3500,820) 450x370 =====
+    { x: 3050, y: 450, width: 450, height: 30 },
+    { x: 3050, y: 790, width: 310, height: 30 },
+    { x: 3450, y: 790, width: 50, height: 30 },
+    { x: 3050, y: 450, width: 30, height: 110 },
+    { x: 3050, y: 650, width: 30, height: 170 },
+    { x: 3470, y: 450, width: 30, height: 370 },
 
-    // ==========================================
-    // 7. エレクトリカル (左下: 350,1300 〜 600,1550)
-    // ==========================================
-    { x: 350, y: 1300, width: 250, height: 25 },
-    { x: 350, y: 1525, width: 250, height: 25 },
-    { x: 350, y: 1300, width: 25, height: 90 },
-    { x: 350, y: 1430, width: 25, height: 95 },  // 左ドア (1390-1430)
-    { x: 575, y: 1300, width: 25, height: 95 },
-    { x: 575, y: 1435, width: 25, height: 90 },  // Right door
+    // ===== 7. コックピット (3300,1250)-(3750,1620) 450x370 =====
+    { x: 3300, y: 1250, width: 60, height: 30 },
+    { x: 3450, y: 1250, width: 300, height: 30 },
+    { x: 3300, y: 1590, width: 100, height: 30 },
+    { x: 3490, y: 1590, width: 260, height: 30 },
+    { x: 3300, y: 1250, width: 30, height: 100 },
+    { x: 3300, y: 1440, width: 30, height: 180 },
+    { x: 3720, y: 1250, width: 30, height: 370 },
 
-    // ==========================================
-    // 8. ウェポン (右上: 1500,350 〜 1750,600)
-    // ==========================================
-    { x: 1500, y: 350, width: 250, height: 25 },
-    { x: 1500, y: 575, width: 250, height: 25 },
-    { x: 1500, y: 350, width: 25, height: 95 },
-    { x: 1500, y: 485, width: 25, height: 90 },  // Left door
-    { x: 1725, y: 350, width: 25, height: 100 },
-    { x: 1725, y: 490, width: 25, height: 85 },  // Right door
+    // ===== 8. シールド (3150,2150)-(3600,2530) 450x380 =====
+    { x: 3150, y: 2150, width: 250, height: 30 },
+    { x: 3490, y: 2150, width: 110, height: 30 },
+    { x: 3150, y: 2500, width: 450, height: 30 },
+    { x: 3150, y: 2150, width: 30, height: 180 },
+    { x: 3150, y: 2420, width: 30, height: 110 },
+    { x: 3570, y: 2150, width: 30, height: 380 },
 
-    // ==========================================
-    // 9. アドミン (中右: 1550,800 〜 1850,1100)
-    // ==========================================
-    { x: 1550, y: 800, width: 300, height: 25 },
-    { x: 1550, y: 1075, width: 300, height: 25 },
-    { x: 1550, y: 800, width: 25, height: 100 },
-    { x: 1550, y: 940, width: 25, height: 135 },  // Left door
-    { x: 1825, y: 800, width: 25, height: 100 },
-    { x: 1825, y: 940, width: 25, height: 135 },  // Right door
+    // ===== 9. セキュリティ (700,1300)-(1100,1660) 400x360 =====
+    { x: 700, y: 1300, width: 50, height: 30 },
+    { x: 840, y: 1300, width: 260, height: 30 },
+    { x: 700, y: 1630, width: 60, height: 30 },
+    { x: 850, y: 1630, width: 250, height: 30 },
+    { x: 700, y: 1300, width: 30, height: 360 },
+    { x: 1070, y: 1300, width: 30, height: 120 },
+    { x: 1070, y: 1510, width: 30, height: 150 },
 
-    // ==========================================
-    // 10. シールド (右下: 1600,1300 〜 1850,1550)
-    // ==========================================
-    { x: 1600, y: 1300, width: 250, height: 25 },
-    { x: 1600, y: 1525, width: 250, height: 25 },
-    { x: 1600, y: 1300, width: 25, height: 90 },
-    { x: 1600, y: 1430, width: 25, height: 95 },  // Left door
-    { x: 1825, y: 1300, width: 25, height: 95 },
-    { x: 1825, y: 1435, width: 25, height: 90 },  // Right door
+    // ===== 10. ロワーエンジン (500,2250)-(900,2620) 400x370 =====
+    { x: 500, y: 2250, width: 260, height: 30 },
+    { x: 850, y: 2250, width: 50, height: 30 },
+    { x: 500, y: 2590, width: 400, height: 30 },
+    { x: 500, y: 2250, width: 30, height: 370 },
+    { x: 870, y: 2250, width: 30, height: 150 },
+    { x: 870, y: 2490, width: 30, height: 130 },
 
-    // ==========================================
-    // 11. 広めの接続通路（幅を約80ピクセルに拡張）
-    // ==========================================
-    // カフェテリア ⇔ ナビゲーション
-    { x: 1140, y: 500, width: 25, height: 250 },
-    { x: 1220, y: 500, width: 25, height: 250 },
-    // カフェテリア ⇔ ストレージ
-    { x: 1140, y: 1025, width: 25, height: 275 },
-    { x: 1220, y: 1025, width: 25, height: 275 },
-    // カフェテリア ⇔ セキュリティ
-    { x: 525, y: 850, width: 475, height: 25 },
-    { x: 525, y: 930, width: 475, height: 25 },
-    // カフェテリア ⇔ アドミン
-    { x: 1400, y: 850, width: 150, height: 25 },
-    { x: 1400, y: 930, width: 150, height: 25 },
-    // エンジン ⇔ メッドベイ
-    { x: 500, y: 440, width: 150, height: 25 },
-    { x: 500, y: 520, width: 150, height: 25 },
-    // メッドベイ ⇔ ウェポン
-    { x: 900, y: 440, width: 600, height: 25 },
-    { x: 900, y: 520, width: 600, height: 25 },
-    // アドミン ⇔ シールド
-    { x: 1350, y: 1400, width: 250, height: 25 },
-    { x: 1350, y: 1480, width: 250, height: 25 },
-    // ストレージ ⇔ エレクトリカル
-    { x: 600, y: 1400, width: 450, height: 25 },
-    { x: 600, y: 1480, width: 450, height: 25 },
+    // ===== 11. エレクトリカル (1150,2300)-(1550,2680) 400x380 =====
+    { x: 1150, y: 2300, width: 400, height: 30 },
+    { x: 1150, y: 2650, width: 400, height: 30 },
+    { x: 1150, y: 2300, width: 30, height: 100 },
+    { x: 1150, y: 2490, width: 30, height: 190 },
+    { x: 1520, y: 2300, width: 30, height: 100 },
+    { x: 1520, y: 2490, width: 30, height: 190 },
+
+    // ===== 通路（幅90・平行2本壁・直角のみ）=====
+    { x: 900, y: 550, width: 550, height: 30 },
+    { x: 900, y: 670, width: 550, height: 30 },
+    { x: 1670, y: 870, width: 30, height: 380 },
+    { x: 1790, y: 870, width: 30, height: 380 },
+    { x: 2270, y: 880, width: 30, height: 370 },
+    { x: 2390, y: 880, width: 30, height: 370 },
+    { x: 2650, y: 530, width: 400, height: 30 },
+    { x: 2650, y: 650, width: 400, height: 30 },
+    { x: 3330, y: 820, width: 30, height: 430 },
+    { x: 3450, y: 820, width: 30, height: 430 },
+    { x: 2450, y: 1320, width: 850, height: 30 },
+    { x: 2450, y: 1440, width: 850, height: 30 },
+    { x: 3370, y: 1620, width: 30, height: 530 },
+    { x: 3490, y: 1620, width: 30, height: 530 },
+    { x: 2500, y: 2300, width: 650, height: 30 },
+    { x: 2500, y: 2420, width: 650, height: 30 },
+    { x: 2070, y: 1810, width: 30, height: 440 },
+    { x: 2190, y: 1810, width: 30, height: 440 },
+    { x: 1550, y: 2370, width: 350, height: 30 },
+    { x: 1550, y: 2490, width: 350, height: 30 },
+    { x: 900, y: 2370, width: 250, height: 30 },
+    { x: 900, y: 2490, width: 250, height: 30 },
+    { x: 730, y: 1660, width: 30, height: 590 },
+    { x: 850, y: 1660, width: 30, height: 590 },
+    { x: 720, y: 820, width: 30, height: 480 },
+    { x: 840, y: 820, width: 30, height: 480 },
+    { x: 1100, y: 1390, width: 550, height: 30 },
+    { x: 1100, y: 1510, width: 550, height: 30 }
 ];
 
+// タスクデータ (11個)
 let tasks = [
-    { id: 1,  x: 1200, y: 900,  name: 'カフェテリア：配線修理', completed: false },
-    { id: 2,  x: 1200, y: 1420, name: 'ストレージ：ゴミ捨て',     completed: false },
-    { id: 3,  x: 1200, y: 370,  name: 'ナビゲーション：操縦',   completed: false },
-    { id: 4,  x: 775,  y: 475,  name: 'メッドベイ：スキャン',   completed: false },
-    { id: 5,  x: 375,  y: 440,  name: 'エンジン：燃料補給',     completed: false },
-    { id: 6,  x: 410,  y: 940,  name: 'セキュリティ：カメラ',   completed: false },
-    { id: 7,  x: 460,  y: 1410, name: 'エレクトリカル：配電盤', completed: false },
-    { id: 8,  x: 1610, y: 460,  name: 'ウェポン：砲台調整',     completed: false },
-    { id: 9,  x: 1690, y: 940,  name: 'アドミン：カードキー',   completed: false },
-    { id: 10, x: 1715, y: 1415, name: 'シールド：バリア起動',   completed: false },
-    { id: 11, x: 1200, y: 1200, name: '廊下：緊急点検',         completed: false }
+    { id: 1,  x: 1800, y: 1620, name: 'カフェテリア：ゴミ捨て',           completed: false },
+    { id: 2,  x: 2200, y: 2450, name: 'ストレージ：燃料補給',              completed: false },
+    { id: 3,  x: 700,  y: 620,  name: 'アッパーエンジン：出力調整',        completed: false },
+    { id: 4,  x: 1650, y: 700,  name: 'メッドベイ：スキャン',              completed: false },
+    { id: 5,  x: 2450, y: 700,  name: 'ナビゲーション：航路入力',          completed: false },
+    { id: 6,  x: 3250, y: 620,  name: 'ウェポン：砲台キャリブレーション', completed: false },
+    { id: 7,  x: 3550, y: 1450, name: 'コックピット：操縦ログ提出',        completed: false },
+    { id: 8,  x: 3400, y: 2350, name: 'シールド：バリア起動',              completed: false },
+    { id: 9,  x: 900,  y: 1480, name: 'セキュリティ：カメラ確認',          completed: false },
+    { id: 10, x: 700,  y: 2450, name: 'ロワーエンジン：燃料注入',          completed: false },
+    { id: 11, x: 1350, y: 2560, name: 'エレクトリカル：配線修理',          completed: false }
 ];
 
 io.on('connection', (socket) => {
@@ -180,8 +173,8 @@ io.on('connection', (socket) => {
     
     players[socket.id] = {
         id: socket.id,
-        x: emergencyButton.x + (Math.random() * 20 - 10),
-        y: emergencyButton.y + (Math.random() * 20 - 10),
+        x: emergencyButton.x + (Math.random() * 30 - 15),
+        y: emergencyButton.y + (Math.random() * 30 - 15),
         role: Object.keys(players).length === 1 ? 'wolf' : 'crew',
         isDead: false,
         color: randomColor,
