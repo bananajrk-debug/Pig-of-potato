@@ -28,9 +28,10 @@ function assignRoles() {
 io.on('connection', (socket) => {
   console.log(`ユーザーが接続しました: ${socket.id}`);
 
+  // マップの中央付近（安全なスポーンエリア）にランダムに配置
   players[socket.id] = {
-    x: 100 + Math.random() * 200,
-    y: 100 + Math.random() * 200,
+    x: 480 + Math.random() * 80,
+    y: 320 + Math.random() * 80,
     color: '#' + Math.floor(Math.random() * 16777215).toString(16),
     tasksCompleted: 0,
     role: 'crewmate',
@@ -68,14 +69,11 @@ io.on('connection', (socket) => {
     }
   });
 
-  // 死体通報イベント
-  socket.on('reportBody', () => {
-    if (players[socket.id] && !players[socket.id].isDead) {
-      io.emit('startMeeting', { reporterId: socket.id });
-    }
+  // 死体通報 または 緊急会議ボタン
+  socket.on('startMeeting', (data) => {
+    io.emit('startMeeting', { reporterId: data.reporterId, reason: data.reason });
   });
 
-  // チャットメッセージ送信イベント
   socket.on('chatMessage', (data) => {
     io.emit('chatMessage', {
       id: socket.id,
