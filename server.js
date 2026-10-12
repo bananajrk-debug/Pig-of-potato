@@ -14,78 +14,77 @@ let bodies = [];
 let meetingTimer = null;
 let votes = {};
 
-// 非常招集ボタン（カフェテリア中央）
-const emergencyButton = { x: 1200, y: 400 };
+// 非常招集ボタン（カフェテリアの中央）
+const emergencyButton = { x: 1400, y: 950 };
 
-// 部屋と通路をしっかりとつないだSkeld風のレイアウト（壁データ）
+// 「島（部屋）と橋（通路）」構造の壁データ (マップサイズ: 3000 x 2200)
+// 部屋の四方を壁で囲み、出入り口（通路につながる隙間）だけを空けています。
 const walls = [
-    // --- 外周の壁 ---
-    { x: 200, y: 100, width: 2000, height: 30 }, // 上
-    { x: 200, y: 1700, width: 2000, height: 30 }, // 下
-    { x: 200, y: 100, width: 30, height: 1630 }, // 左
-    { x: 2200, y: 100, width: 30, height: 1630 }, // 右
+    // --- 【中央島：カフェテリア】 (x: 1100〜1700, y: 700〜1200) ---
+    // 上壁（左右に隙間）
+    { x: 1100, y: 700, width: 220, height: 25 },
+    { x: 1480, y: 700, width: 220, height: 25 },
+    // 下壁（左右に隙間）
+    { x: 1100, y: 1200, width: 220, height: 25 },
+    { x: 1480, y: 1200, width: 220, height: 25 },
+    // 左壁（上下に隙間）
+    { x: 1100, y: 700, width: 25, height: 180 },
+    { x: 1100, y: 1020, width: 25, height: 180 },
+    // 右壁（上下に隙間）
+    { x: 1675, y: 700, width: 25, height: 180 },
+    { x: 1675, y: 1020, width: 25, height: 180 },
 
-    // --- カフェテリア（中央上・広場）の壁 ---
-    { x: 900, y: 250, width: 600, height: 30 },
-    { x: 900, y: 650, width: 600, height: 30 },
-    { x: 900, y: 250, width: 30, height: 120 },
-    { x: 1470, y: 250, width: 30, height: 120 },
-    { x: 900, y: 530, width: 30, height: 120 },
-    { x: 1470, y: 530, width: 30, height: 120 },
 
-    // --- 左側エリア（リアクター、エンジン） ---
-    // リアクター
-    { x: 300, y: 700, width: 250, height: 30 },
-    { x: 300, y: 1100, width: 250, height: 30 },
-    { x: 300, y: 700, width: 30, height: 430 },
-    // アッパーエンジン
-    { x: 600, y: 350, width: 250, height: 30 },
-    { x: 600, y: 700, width: 250, height: 30 },
-    { x: 600, y: 350, width: 30, height: 380 },
-    // ロワーエンジン
-    { x: 600, y: 1100, width: 250, height: 30 },
-    { x: 600, y: 1450, width: 250, height: 30 },
-    { x: 600, y: 1100, width: 30, height: 380 },
+    // --- 【左上島：コックピット】 (x: 400〜800, y: 500〜850) ---
+    { x: 400, y: 500, width: 400, height: 25 },
+    { x: 400, y: 850, width: 160, height: 25 }, // 下壁（右側通路へ隙間）
+    { x: 680, y: 850, width: 120, height: 25 },
+    { x: 400, y: 500, width: 25, height: 350 },
+    { x: 775, y: 500, width: 25, height: 350 },
 
-    // --- 中央エリア（メッドベイ、セキュリティ、エレクトリカル） ---
-    { x: 950, y: 750, width: 200, height: 30 },
-    { x: 950, y: 1100, width: 200, height: 30 },
-    { x: 950, y: 750, width: 30, height: 380 },
-    { x: 1250, y: 900, width: 250, height: 30 },
-    { x: 1250, y: 1300, width: 250, height: 30 },
-    { x: 1250, y: 900, width: 30, height: 430 },
 
-    // --- 下部エリア（ストレージ、コミニュケーション） ---
-    { x: 950, y: 1400, width: 400, height: 30 },
-    { x: 950, y: 1700, width: 400, height: 30 }, // 下壁に接続
-    { x: 1550, y: 1350, width: 300, height: 30 },
-    { x: 1550, y: 1650, width: 300, height: 30 },
-    { x: 1550, y: 1350, width: 30, height: 330 },
+    // --- 【左下島：エンジンルーム】 (x: 400〜800, y: 1050〜1400) ---
+    { x: 400, y: 1050, width: 160, height: 25 }, // 上壁（右側通路へ隙間）
+    { x: 680, y: 1050, width: 120, height: 25 },
+    { x: 400, y: 1400, width: 400, height: 25 },
+    { x: 400, y: 1050, width: 25, height: 350 },
+    { x: 775, y: 1050, width: 25, height: 350 },
 
-    // --- 右側エリア（アドミン、O2、シールド、ウェポン、ナビゲーション） ---
-    { x: 1650, y: 700, width: 250, height: 30 },
-    { x: 1650, y: 1100, width: 250, height: 30 },
-    { x: 1650, y: 700, width: 30, height: 430 },
-    { x: 1950, y: 350, width: 200, height: 30 },
-    { x: 1950, y: 750, width: 200, height: 30 },
-    { x: 1950, y: 350, width: 30, height: 430 },
-    { x: 1950, y: 1050, width: 200, height: 30 },
-    { x: 1950, y: 1450, width: 200, height: 30 },
-    { x: 1950, y: 1050, width: 30, height: 430 }
+
+    // --- 【右上島：ウェポンルーム】 (x: 2000〜2400, y: 500〜850) ---
+    { x: 2000, y: 500, width: 400, height: 25 },
+    { x: 2000, y: 850, width: 120, height: 25 }, // 下壁（左側通路へ隙間）
+    { x: 2240, y: 850, width: 160, height: 25 },
+    { x: 2000, y: 500, width: 25, height: 350 },
+    { x: 2375, y: 500, width: 25, height: 350 },
+
+
+    // --- 【右下島：ナビゲーションルーム】 (x: 2000〜2400, y: 1050〜1400) ---
+    { x: 2000, y: 1050, width: 120, height: 25 }, // 上壁（左側通路へ隙間）
+    { x: 2240, y: 1050, width: 160, height: 25 },
+    { x: 2000, y: 1400, width: 400, height: 25 },
+    { x: 2000, y: 1050, width: 25, height: 350 },
+    { x: 2375, y: 1050, width: 25, height: 350 },
+
+
+    // --- 【島と島をつなぐ「橋（通路）」の壁】（上下または左右の平行な壁で道を作る） ---
+    // カフェテリア左側から左エリアへ延びる通路の壁
+    { x: 800, y: 820, width: 300, height: 25 },   // 通路上の壁
+    { x: 800, y: 1080, width: 300, height: 25 },  // 通路下の壁
+
+    // カフェテリア右側から右エリアへ延びる通路の壁
+    { x: 1700, y: 820, width: 300, height: 25 },  // 通路上の壁
+    { x: 1700, y: 1080, width: 300, height: 25 }, // 通路下の壁
 ];
 
-// マップ各所のタスク
+// 各島の部屋の中に配置されたタスク
 let tasks = [
-    { id: 1, x: 350, y: 900, name: 'リアクター調整', completed: false },
-    { id: 2, x: 700, y: 500, name: 'アッパーエンジン点検', completed: false },
-    { id: 3, x: 700, y: 1300, name: 'ロワーエンジン点検', completed: false },
-    { id: 4, x: 1200, y: 350, name: 'カフェテリア配線', completed: false },
-    { id: 5, x: 1050, y: 900, name: 'メッドベイ診断', completed: false },
-    { id: 6, x: 1350, y: 1100, name: 'エレクトリカル修理', completed: false },
-    { id: 7, x: 1100, y: 1550, name: 'ストレージ燃料補給', completed: false },
-    { id: 8, x: 1750, y: 900, name: 'アドミンデータ入力', completed: false },
-    { id: 9, x: 2050, y: 550, name: 'ウェポンシステム調整', completed: false },
-    { id: 10, x: 2050, y: 1250, name: 'ナビゲーション設定', completed: false }
+    { id: 1, x: 600, y: 675, name: 'コックピット調整', completed: false },
+    { id: 2, x: 600, y: 1225, name: 'エンジン燃料補給', completed: false },
+    { id: 3, x: 1400, y: 800, name: 'カフェテリア配線', completed: false },
+    { id: 4, x: 1400, y: 1100, name: 'テーブル清掃', completed: false },
+    { id: 5, x: 2200, y: 675, name: 'ウェポンシステム確認', completed: false },
+    { id: 6, x: 2200, y: 1225, name: 'ナビゲーション設定', completed: false }
 ];
 
 io.on('connection', (socket) => {
@@ -96,8 +95,8 @@ io.on('connection', (socket) => {
     
     players[socket.id] = {
         id: socket.id,
-        x: 1200 + Math.random() * 40,
-        y: 500 + Math.random() * 40,
+        x: 1400 + Math.random() * 30,
+        y: 950 + Math.random() * 30,
         role: Object.keys(players).length === 1 ? 'wolf' : 'crew',
         isDead: false,
         color: randomColor,
