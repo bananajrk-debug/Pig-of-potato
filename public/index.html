@@ -4,22 +4,52 @@
     <meta charset="UTF-8">
     <title>2D人狼ゲーム (Among Us風)</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #111; font-family: sans-serif; color: #fff; }
+        body { margin: 0; overflow: hidden; background: #0b0b12; font-family: sans-serif; color: #fff; }
         canvas { display: block; }
-        #ui-layer { position: absolute; top: 10px; left: 10px; pointer-events: none; }
+        
+        /* タイトル画面スタイル */
+        #title-screen {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: linear-gradient(135deg, #14142b 0%, #05050a 100%);
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            z-index: 1000;
+        }
+        #title-screen h1 { font-size: 3rem; margin-bottom: 20px; color: #ff3333; text-shadow: 0 0 10px rgba(255,51,51,0.5); }
+        .input-group { background: rgba(255,255,255,0.05); padding: 30px; border-radius: 12px; border: 1px solid #333; text-align: center; }
+        input[type="text"] { padding: 10px 15px; font-size: 1.1rem; border-radius: 6px; border: 1px solid #555; background: #222; color: #fff; width: 250px; margin-bottom: 15px; }
+        
+        button { background: #ff3333; color: white; border: none; padding: 12px 24px; font-size: 1.1rem; border-radius: 6px; cursor: pointer; font-weight: bold; transition: background 0.2s; }
+        button:hover { background: #ff5555; }
+
+        /* ゲーム中UI */
+        #ui-layer { position: absolute; top: 10px; left: 10px; pointer-events: none; display: none; }
         .hud-box { background: rgba(0,0,0,0.6); padding: 10px; border-radius: 8px; margin-bottom: 5px; pointer-events: auto; }
+        
         #meeting-modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 600px; background: rgba(20,20,30,0.95); border: 2px solid #555; border-radius: 12px; padding: 20px; z-index: 100; text-align: center; }
-        button { background: #333; color: white; border: 1px solid #777; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin: 4px; }
-        button:hover { background: #555; }
+        .meeting-btn { background: #333; color: white; border: 1px solid #777; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin: 4px; }
+        .meeting-btn:hover { background: #555; }
     </style>
 </head>
 <body>
+    <!-- タイトル画面 -->
+    <div id="title-screen">
+        <h1>SPACESHIP WOLF</h1>
+        <div class="input-group">
+            <p>プレイヤー名を入力してください</p>
+            <input type="text" id="player-name-input" placeholder="Crewmate" maxlength="12" value="Player">
+            <br>
+            <button id="start-btn">ゲームに参加</button>
+        </div>
+    </div>
+
+    <!-- ゲーム内HUD -->
     <div id="ui-layer">
         <div class="hud-box" id="role-display">ロール: 読み込み中...</div>
         <div class="hud-box" id="task-display">タスク: 0 / 0</div>
         <div class="hud-box">操作: [WASD] 移動 | [K] キル / タスク | [R] 死体通報 | [Space] 全体ミニマップ</div>
     </div>
 
+    <!-- 会議モーダル -->
     <div id="meeting-modal">
         <h2 id="meeting-title">緊急会議</h2>
         <p id="meeting-timer">残り時間: 45秒</p>
@@ -52,6 +82,14 @@
         let keys = {};
         let showMinimap = false;
 
+        // タイトル画面のスタートボタン
+        document.getElementById('start-btn').addEventListener('click', () => {
+            let name = document.getElementById('player-name-input').value.trim() || 'Player';
+            socket.emit('join-game', name);
+            document.getElementById('title-screen').style.display = 'none';
+            document.getElementById('ui-layer').style.display = 'block';
+        });
+
         socket.on('init', (data) => {
             myId = data.id;
             players = data.players;
@@ -61,7 +99,7 @@
             walls = data.walls;
 
             let myRole = players[myId].role;
-            document.getElementById('role-display').innerText = `ロール: ${myRole === 'wolf' ? '人狼 (Wolf)' : '市民 (Crew)'}`;
+            document.getElementById('role-display').innerText = `ロール: ${myRole === 'wolf' ? '人狼 (Wolf)' : '市民 (Crew)'} (${players[myId].name})`;
             updateTaskHud();
         });
 
@@ -149,7 +187,8 @@
             Object.values(players).forEach(p => {
                 if (p.isAlive) {
                     let btn = document.createElement('button');
-                    btn.innerText = `${p.id.substr(4,4)} (${p.role === 'wolf' && players[myId].role === 'wolf' ? '人狼' : 'プレイヤー'})`;
+                    btn.className = 'meeting-btn';
+                    btn.innerText = `${p.name} (${p.role === 'wolf' && players[myId].role === 'wolf' ? '人狼' : 'プレイヤー'})`;
                     btn.onclick = () => {
                         socket.emit('cast-vote', p.id);
                         container.innerHTML = '<p>投票完了しました。結果を待っています...</p>';
@@ -158,6 +197,7 @@
                 }
             });
             let skipBtn = document.createElement('button');
+            skipBtn.className = 'meeting-btn';
             skipBtn.innerText = 'スキップ';
             skipBtn.onclick = () => {
                 socket.emit('cast-vote', null);
@@ -189,9 +229,10 @@
                 ctx.translate(-me.x, -me.y);
 
                 // マップ背景描画
-                ctx.fillStyle = '#1e1e24';
+                ctx.fillStyle = '#16161d';
                 ctx.fillRect(0, 0, 4000, 3000);
 
+                // 床の部屋ごとにほんのり色をつける演出（お好みで）
                 // 壁の描画
                 ctx.fillStyle = '#3a3a48';
                 walls.forEach(w => {
@@ -209,17 +250,16 @@
                     ctx.stroke();
                 }
 
-                // タスクの描画（種類ごとに色を変える）
+                // タスクの描画
                 tasks.forEach(t => {
                     let myTask = me.tasks?.find(mt => mt.id === t.id);
                     let isDone = myTask ? myTask.completed : false;
 
                     ctx.beginPath();
                     ctx.arc(t.x, t.y, 14, 0, Math.PI * 2);
-                    // タスク種類に応じたカラー
-                    if (t.type === 'WIRING') ctx.fillStyle = isDone ? '#555' : '#ffaa00';
-                    else if (t.type === 'DOWNLOAD') ctx.fillStyle = isDone ? '#555' : '#00aaff';
-                    else if (t.type === 'ENGINE') ctx.fillStyle = isDone ? '#555' : '#00ffaa';
+                    if (t.type === 'WIRING') ctx.fillStyle = isDone ? '#444' : '#ffaa00';
+                    else if (t.type === 'DOWNLOAD') ctx.fillStyle = isDone ? '#444' : '#00aaff';
+                    else if (t.type === 'ENGINE') ctx.fillStyle = isDone ? '#444' : '#00ffaa';
                     ctx.fill();
                     ctx.strokeStyle = '#fff';
                     ctx.lineWidth = 2;
@@ -234,7 +274,7 @@
                     ctx.fill();
                     ctx.fillStyle = '#fff';
                     ctx.font = '12px sans-serif';
-                    ctx.fillText('DEAD', b.x - 18, b.y - 20);
+                    ctx.fillText(`${b.name} (DEAD)`, b.x - 30, b.y - 20);
                 });
 
                 // プレイヤー描画
@@ -247,7 +287,7 @@
 
                     ctx.fillStyle = '#fff';
                     ctx.font = '12px sans-serif';
-                    ctx.fillText(p.id.substr(4, 4), p.x - 15, p.y - 28);
+                    ctx.fillText(p.name, p.x - 20, p.y - 28);
                 });
 
                 ctx.restore();
@@ -267,7 +307,7 @@
                     ctx.scale(scaleX, scaleY);
 
                     // ミニマップ上の壁
-                    ctx.fillStyle = '#444';
+                    ctx.fillStyle = '#333';
                     walls.forEach(w => {
                         ctx.fillRect(w.x, w.y, w.w, w.h);
                     });
@@ -277,7 +317,7 @@
                         if (!p.isAlive) return;
                         ctx.fillStyle = p.color;
                         ctx.beginPath();
-                        ctx.arc(p.x, p.y, 35, 0, Math.PI * 2);
+                        ctx.arc(p.x, p.y, 40, 0, Math.PI * 2);
                         ctx.fill();
                     });
                     ctx.restore();
