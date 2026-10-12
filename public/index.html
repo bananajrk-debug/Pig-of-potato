@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>2Dタスク人狼 - 会議システム</title>
+    <title>2Dタスク人狼 - 拡張マップ</title>
     <style>
         body {
             margin: 0;
@@ -33,7 +33,6 @@
             border-radius: 4px;
             background: #333;
         }
-        /* タスク用ミニゲーム */
         #taskModal {
             display: none;
             position: absolute;
@@ -80,7 +79,6 @@
             background: #ff3333;
         }
 
-        /* 会議・チャット画面用モーダル */
         #meetingModal {
             display: none;
             position: absolute;
@@ -148,9 +146,9 @@
     <div id="roleBanner">役職を読み込み中...</div>
 
     <div id="game-container">
-        <canvas id="gameCanvas" width="800" height="600" tabindex="1"></canvas>
+        <!-- マップを広め（1100×750）に変更 -->
+        <canvas id="gameCanvas" width="1100" height="750" tabindex="1"></canvas>
         
-        <!-- タスク用ミニゲーム -->
         <div id="taskModal">
             <h2>タスク: 圧力調整</h2>
             <p>緑色のエリアで <b>[K]</b> キーを押して止めろ！</p>
@@ -161,9 +159,8 @@
             <p id="taskMessage" style="font-size: 14px; color: #aaa;"></p>
         </div>
 
-        <!-- 緊急会議・チャットモーダル -->
         <div id="meetingModal" style="display: none;">
-            <h2>🚨 緊急会議（死体発見 / 通報） 🚨</h2>
+            <h2>🚨 緊急会議中 🚨</h2>
             <div id="chatLogs"></div>
             <div class="chat-input-area">
                 <input type="text" id="chatInput" placeholder="メッセージを入力..." autocomplete="off">
@@ -173,7 +170,7 @@
     </div>
 
     <div id="ui">
-        移動: W/A/S/D | タスク: 近づいて <b>[K]</b> | <span id="killInstruction" style="display:none; color:#ff4444;">人狼: 近づいて <b>[Q]</b> キル</span> | 通報: 死体の近くで <b>[R]</b>
+        移動: W/A/S/D | タスク: 近づいて <b>[K]</b> | <span id="killInstruction" style="display:none; color:#ff4444;">人狼: <b>[Q]</b> キル</span> | 通報: 死体付近で <b>[R]</b> | 緊急ボタン: 中央の赤ボタン付近で <b>[E]</b>
         <div id="taskStatus">完了タスク数: 0</div>
     </div>
 
@@ -187,7 +184,7 @@
         canvas.addEventListener('click', () => canvas.focus());
 
         const playerSize = 30;
-        let myData = { x: 100, y: 100, speed: 4 };
+        let myData = { x: 500, y: 350, speed: 4 }; // 中央付近の安全な位置
         let players = {};
         let myRole = 'crewmate';
         let isDead = false;
@@ -218,9 +215,13 @@
                 tryKillPlayer();
             }
 
-            // [R]キーで死体を通報
             if (key === 'r') {
                 tryReportBody();
+            }
+
+            // [E]キーで中央の緊急会議ボタンを押す
+            if (key === 'e') {
+                tryPressEmergencyButton();
             }
         });
 
@@ -228,16 +229,40 @@
             keys[e.key.toLowerCase()] = false;
         });
 
+        // 広めのマップと中央ホール・部屋の壁データ
+        // 通路（ドア部分）の隙間を空けて壁を配置しています
         const walls = [
-            { x: 0, y: 0, w: 800, h: 20 },
-            { x: 0, y: 580, w: 800, h: 20 },
-            { x: 0, y: 0, w: 20, h: 600 },
-            { x: 780, y: 0, w: 20, h: 600 },
-            { x: 200, y: 150, w: 150, h: 100 },
-            { x: 450, y: 350, w: 150, h: 120 },
+            // 外周壁
+            { x: 0, y: 0, w: 1100, h: 20 },   // 上
+            { x: 0, y: 730, w: 1100, h: 20 },  // 下
+            { x: 0, y: 0, w: 20, h: 750 },   // 左
+            { x: 1080, y: 0, w: 20, h: 750 },  // 右
+
+            // --- 中央の広め会議室（真ん中に緊急ボタンがある） ---
+            // 上壁（左右に通路の隙間を開ける）
+            { x: 380, y: 220, w: 140, h: 20 },
+            { x: 580, y: 220, w: 140, h: 20 },
+            // 下壁
+            { x: 380, y: 520, w: 140, h: 20 },
+            { x: 580, y: 520, w: 140, h: 20 },
+            // 左壁（上下に通路の隙間を開ける）
+            { x: 380, y: 220, w: 20, h: 100 },
+            { x: 380, y: 400, w: 20, h: 120 },
+            // 右壁
+            { x: 700, y: 220, w: 20, h: 100 },
+            { x: 700, y: 400, w: 20, h: 120 },
+
+            // --- 周囲の部屋や障害物 ---
+            { x: 100, y: 100, w: 160, h: 100 },
+            { x: 840, y: 100, w: 160, h: 100 },
+            { x: 100, y: 550, w: 160, h: 100 },
+            { x: 840, y: 550, w: 160, h: 100 },
         ];
 
-        const taskPoint = { x: 400, y: 100, size: 40 };
+        // 中央の会議室の真ん中に配置する緊急ボタンの位置
+        const emergencyButton = { x: 535, y: 365, size: 30 };
+
+        const taskPoint = { x: 180, y: 350, size: 40 };
 
         function checkCollision(x, y, w, h, walls) {
             for (let wall of walls) {
@@ -253,7 +278,6 @@
             return false;
         }
 
-        // Socket.io イベント
         socket.on('currentPlayers', (serverPlayers) => {
             players = serverPlayers;
             if (players[socket.id]) {
@@ -291,7 +315,6 @@
             }
         });
 
-        // 会議開始イベント受信
         socket.on('startMeeting', (data) => {
             isMeetingActive = true;
             isTaskActive = false;
@@ -299,11 +322,10 @@
             document.getElementById('meetingModal').style.display = 'flex';
             
             const logs = document.getElementById('chatLogs');
-            logs.innerHTML += `<div style="color: #ff4444; font-weight: bold; margin-bottom: 5px;">--- ${data.reporterId.substring(0,4)} が死体を通報しました！ ---</div>`;
+            logs.innerHTML += `<div style="color: #ff4444; font-weight: bold; margin-bottom: 5px;">--- ${data.reason} (${data.reporterId.substring(0,4)}) ---</div>`;
             logs.scrollTop = logs.scrollHeight;
         });
 
-        // チャットメッセージ受信
         socket.on('chatMessage', (data) => {
             const logs = document.getElementById('chatLogs');
             const isMe = data.id === socket.id;
@@ -354,7 +376,6 @@
             }
         }
 
-        // 死体の近く（60px以内）にいるか確認して通報する
         function tryReportBody() {
             for (let id in players) {
                 if (id === socket.id) continue;
@@ -362,10 +383,21 @@
                 if (p.isDead) {
                     const dist = Math.hypot(myData.x - p.x, myData.y - p.y);
                     if (dist < 60) {
-                        socket.emit('reportBody');
+                        socket.emit('startMeeting', { reporterId: socket.id, reason: '死体が通報されました！' });
                         break;
                     }
                 }
+            }
+        }
+
+        // 緊急ボタンを押したときの判定
+        function tryPressEmergencyButton() {
+            const dist = Math.hypot(
+                (myData.x + playerSize/2) - (emergencyButton.x + emergencyButton.size/2),
+                (myData.y + playerSize/2) - (emergencyButton.y + emergencyButton.size/2)
+            );
+            if (dist < 60) {
+                socket.emit('startMeeting', { reporterId: socket.id, reason: '緊急ボタンが押されました！' });
             }
         }
 
@@ -395,8 +427,8 @@
                 setTimeout(() => {
                     closeTaskMinigame();
                     socket.emit('completeTask');
-                    taskPoint.x = Math.random() * 600 + 100;
-                    taskPoint.y = Math.random() * 400 + 100;
+                    taskPoint.x = Math.random() * 800 + 150;
+                    taskPoint.y = Math.random() * 500 + 100;
                 }, 500);
             } else {
                 document.getElementById('taskMessage').style.color = '#ff3333';
@@ -421,7 +453,6 @@
             canvas.focus();
         }
 
-        // チャット送信処理
         document.getElementById('sendBtn').addEventListener('click', sendChatMessage);
         document.getElementById('chatInput').addEventListener('keydown', (e) => {
             if (e.key === 'Enter') sendChatMessage();
@@ -465,11 +496,22 @@
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            ctx.fillStyle = '#666';
+            // 壁の描画
+            ctx.fillStyle = '#555';
             for (let wall of walls) {
                 ctx.fillRect(wall.x, wall.y, wall.w, wall.h);
             }
 
+            // 中央の緊急会議ボタン（赤い丸）の描画
+            ctx.fillStyle = '#ff2222';
+            ctx.beginPath();
+            ctx.arc(emergencyButton.x + emergencyButton.size/2, emergencyButton.y + emergencyButton.size/2, emergencyButton.size/2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#fff';
+            ctx.font = '10px sans-serif';
+            ctx.fillText('EMERGENCY', emergencyButton.x - 12, emergencyButton.y - 8);
+
+            // タスクの描画（市民のみ）
             if (myRole !== 'imposter') {
                 ctx.fillStyle = '#ffcc00';
                 ctx.fillRect(taskPoint.x, taskPoint.y, taskPoint.size, taskPoint.size);
@@ -478,6 +520,7 @@
                 ctx.fillText('TASK', taskPoint.x + 5, taskPoint.y - 5);
             }
 
+            // プレイヤーの描画
             for (let id in players) {
                 const p = players[id];
                 
