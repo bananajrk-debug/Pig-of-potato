@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>2Dタスク人狼 - 本格ルームマップ</title>
+    <title>2Dタスク人狼 - グリッドマップ</title>
     <style>
         body {
             margin: 0;
@@ -147,7 +147,7 @@
     <div id="roleBanner">役職を読み込み中...</div>
 
     <div id="game-container">
-        <canvas id="gameCanvas" width="1100" height="750" tabindex="1"></canvas>
+        <canvas id="gameCanvas" width="1080" height="720" tabindex="1"></canvas>
         
         <div id="taskModal">
             <h2>タスク: 圧力調整</h2>
@@ -183,8 +183,33 @@
         canvas.focus();
         canvas.addEventListener('click', () => canvas.focus());
 
-        const playerSize = 30;
-        let myData = { x: 535, y: 375, speed: 4 }; // 中央ホールの安全な初期位置
+        const tileSize = 40; // 1マスの大きさ (40px)
+        
+        // ========================================================
+        // 【マップ設計図】 0 = 通路・床（歩ける）, 1 = 壁（歩けない）
+        // 見たままの形で部屋と通路が綺麗につながります！
+        // ========================================================
+        const mapGrid = [
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+            [1,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,1],
+            [1,1,1,0,0,0,0,0,0,0,0,1,1,1,1,1,0,0,0,0,0,0,0,0,1,1,1],
+            [1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1],
+            [1,1,1,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1,1,1],
+            [1,1,1,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1,1,1],
+            [1,0,0,0,0,0,1,0,0,0,0,1,1,1,1,1,0,0,0,0,1,0,0,0,0,0,1],
+            [1,0,0,0,0,0,1,1,1,0,0,1,1,1,1,1,0,0,1,1,1,0,0,0,0,0,1],
+            [1,1,1,0,0,0,1,1,1,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,1,1,1],
+            [1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1],
+            [1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1],
+            [1,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,1],
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+        ];
+
+        const playerSize = 24; // プレイヤーのサイズ
+        let myData = { x: 13 * tileSize, y: 7 * tileSize, speed: 3.5 }; // 中央の安全な場所からスタート
         let players = {};
         let myRole = 'crewmate';
         let isDead = false;
@@ -228,82 +253,33 @@
             keys[e.key.toLowerCase()] = false;
         });
 
-        // ========================================================
-        // 部屋と通路でしっかり構築された本格マップの壁データ
-        // ========================================================
-        const walls = [
-            // --- 外周 ---
-            { x: 0, y: 0, w: 1100, h: 20 },
-            { x: 0, y: 730, w: 1100, h: 20 },
-            { x: 0, y: 0, w: 20, h: 750 },
-            { x: 1080, y: 0, w: 20, h: 750 },
+        // グリッド座標ベースの当たり判定（タイルの値が 1 なら衝突）
+        function checkGridCollision(x, y, size) {
+            // プレイヤーの4隅がどのタイルに触れているかチェック
+            const corners = [
+                { x: x, y: y },
+                { x: x + size, y: y },
+                { x: x, y: y + size },
+                { x: x + size, y: y + size }
+            ];
 
-            // --- 中央ホール（カフェテリア） ---
-            // 上壁（左右に通路用の隙間）
-            { x: 400, y: 260, w: 100, h: 20 },
-            { x: 600, y: 260, w: 100, h: 20 },
-            // 下壁
-            { x: 400, y: 480, w: 100, h: 20 },
-            { x: 600, y: 480, w: 100, h: 20 },
-            // 左壁（上下に通路用の隙間）
-            { x: 400, y: 260, w: 20, h: 80 },
-            { x: 400, y: 400, w: 20, h: 80 },
-            // 右壁
-            { x: 680, y: 260, w: 20, h: 80 },
-            { x: 680, y: 400, w: 20, h: 80 },
+            for (let c of corners) {
+                const col = Math.floor(c.x / tileSize);
+                const row = Math.floor(c.y / tileSize);
 
-            // --- 左上の部屋（実験室） ---
-            { x: 100, y: 80, w: 220, h: 160 },
-            // ※左上の部屋の右側に通路へ抜けるドア用の隙間を作るため、壁を分割配置しています
-            // （上記は一塊の箱なので、ドアの隙間を開けた部屋の壁を以下で構成）
-            // 実質的な部屋の壁をきれいに作るため再定義：
-            // [左上ルーム] 
-            { x: 80, y: 60, w: 240, h: 20 },   // 上
-            { x: 80, y: 60, w: 20, h: 180 },   // 左
-            { x: 80, y: 220, w: 160, h: 20 },  // 下（右側に入口の隙間 240~320 を開ける）
-            { x: 300, y: 60, w: 20, h: 100 },  // 右（下側に入口の隙間 160~220 を開ける）
-
-            // --- 右上の部屋（電気室） ---
-            { x: 780, y: 60, w: 240, h: 20 },  // 上
-            { x: 1000, y: 60, w: 20, h: 180 }, // 右
-            { x: 860, y: 220, w: 160, h: 20 }, // 下（左側に入口の隙間を開ける）
-            { x: 780, y: 60, w: 20, h: 100 },  // 左
-
-            // --- 左下の部屋（エンジンルーム） ---
-            { x: 80, y: 510, w: 160, h: 20 },  // 上（右側に入口の隙間）
-            { x: 80, y: 510, w: 20, h: 160 },  // 左
-            { x: 80, y: 650, w: 240, h: 20 },  // 下
-            { x: 300, y: 570, w: 20, h: 100 }, // 右
-
-            // --- 右下の部屋（セキュリティルーム） ---
-            { x: 860, y: 510, w: 160, h: 20 }, // 上（左側に入口の隙間）
-            { x: 1000, y: 510, w: 20, h: 160 },// 右
-            { x: 780, y: 650, w: 240, h: 20 },// 下
-            { x: 780, y: 570, w: 20, h: 100 },// 左
-
-            // --- 通路を区切る壁（迷路感と死角を生み出す廊下の壁） ---
-            { x: 340, y: 160, w: 20, h: 140 },
-            { x: 740, y: 160, w: 20, h: 140 },
-            { x: 340, y: 450, w: 20, h: 140 },
-            { x: 740, y: 450, w: 20, h: 140 },
-        ];
-
-        const emergencyButton = { x: 535, y: 355, size: 30 };
-        const taskPoint = { x: 180, y: 130, size: 40 }; // 左上の部屋の中にタスクを配置
-
-        function checkCollision(x, y, w, h, walls) {
-            for (let wall of walls) {
-                if (
-                    x < wall.x + wall.w &&
-                    x + w > wall.x &&
-                    y < wall.y + wall.h &&
-                    y + h > wall.y
-                ) {
+                // マップ外または壁(1)に接触している場合
+                if (row < 0 || row >= mapGrid.length || col < 0 || col >= mapGrid[0].length) {
+                    return true;
+                }
+                if (mapGrid[row][col] === 1) {
                     return true;
                 }
             }
             return false;
         }
+
+        const emergencyButton = { x: 13.3 * tileSize, y: 7.3 * tileSize, size: 30 };
+        const taskPoint = { x: 2 * tileSize, y: 2 * tileSize, size: 30 };
 
         socket.on('currentPlayers', (serverPlayers) => {
             players = serverPlayers;
@@ -384,7 +360,7 @@
                 (myData.x + playerSize/2) - (taskPoint.x + taskPoint.size/2),
                 (myData.y + playerSize/2) - (taskPoint.y + taskPoint.size/2)
             );
-            if (dist < 60) {
+            if (dist < 50) {
                 openTaskMinigame();
             }
         }
@@ -395,7 +371,7 @@
                 const p = players[id];
                 if (!p.isDead) {
                     const dist = Math.hypot(myData.x - p.x, myData.y - p.y);
-                    if (dist < 50) {
+                    if (dist < 45) {
                         socket.emit('killPlayer', id);
                         break;
                     }
@@ -409,7 +385,7 @@
                 const p = players[id];
                 if (p.isDead) {
                     const dist = Math.hypot(myData.x - p.x, myData.y - p.y);
-                    if (dist < 60) {
+                    if (dist < 50) {
                         socket.emit('startMeeting', { reporterId: socket.id, reason: '死体が通報されました！' });
                         break;
                     }
@@ -422,7 +398,7 @@
                 (myData.x + playerSize/2) - (emergencyButton.x + emergencyButton.size/2),
                 (myData.y + playerSize/2) - (emergencyButton.y + emergencyButton.size/2)
             );
-            if (dist < 60) {
+            if (dist < 50) {
                 socket.emit('startMeeting', { reporterId: socket.id, reason: '緊急ボタンが押されました！' });
             }
         }
@@ -453,12 +429,12 @@
                 setTimeout(() => {
                     closeTaskMinigame();
                     socket.emit('completeTask');
-                    // タスク位置を別の部屋にランダム移動
+                    // タスク位置を別の部屋へランダム移動
                     const roomPositions = [
-                        {x: 180, y: 130}, // 左上
-                        {x: 880, y: 130}, // 右上
-                        {x: 180, y: 580}, // 左下
-                        {x: 880, y: 580}  // 右下
+                        {x: 2 * tileSize, y: 2 * tileSize},
+                        {x: 22 * tileSize, y: 2 * tileSize},
+                        {x: 2 * tileSize, y: 13 * tileSize},
+                        {x: 22 * tileSize, y: 13 * tileSize}
                     ];
                     const nextRoom = roomPositions[Math.floor(Math.random() * roomPositions.length)];
                     taskPoint.x = nextRoom.x;
@@ -512,10 +488,12 @@
             if (keys['a'] || keys['arrowleft']) nextX -= myData.speed;
             if (keys['d'] || keys['arrowright']) nextX += myData.speed;
 
-            if (!checkCollision(nextX, myData.y, playerSize, playerSize, walls)) {
+            // X軸方向の判定
+            if (!checkGridCollision(nextX, myData.y, playerSize)) {
                 myData.x = nextX;
             }
-            if (!checkCollision(myData.x, nextY, playerSize, playerSize, walls)) {
+            // Y軸方向の判定
+            if (!checkGridCollision(myData.x, nextY, playerSize)) {
                 myData.y = nextY;
             }
 
@@ -530,28 +508,39 @@
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // 1. マップ・壁・部屋の描画
-            ctx.fillStyle = '#444';
-            for (let wall of walls) {
-                ctx.fillRect(wall.x, wall.y, wall.w, wall.h);
+            // 1. マップ（グリッド配列）の描画
+            for (let row = 0; row < mapGrid.length; row++) {
+                for (let col = 0; col < mapGrid[row].length; col++) {
+                    if (mapGrid[row][col] === 1) {
+                        // 壁の描画
+                        ctx.fillStyle = '#333';
+                        ctx.fillRect(col * tileSize, row * tileSize, tileSize, tileSize);
+                        ctx.strokeStyle = '#222';
+                        ctx.strokeRect(col * tileSize, row * tileSize, tileSize, tileSize);
+                    } else {
+                        // 床の描画
+                        ctx.fillStyle = '#181818';
+                        ctx.fillRect(col * tileSize, row * tileSize, tileSize, tileSize);
+                    }
+                }
             }
 
-            // 中央ホールの床や目印、緊急会議ボタン
+            // 緊急会議ボタン
             ctx.fillStyle = '#ff2222';
             ctx.beginPath();
             ctx.arc(emergencyButton.x + emergencyButton.size/2, emergencyButton.y + emergencyButton.size/2, emergencyButton.size/2, 0, Math.PI * 2);
             ctx.fill();
             ctx.fillStyle = '#fff';
             ctx.font = '10px sans-serif';
-            ctx.fillText('EMERGENCY', emergencyButton.x - 12, emergencyButton.y - 8);
+            ctx.fillText('EMERGENCY', emergencyButton.x - 15, emergencyButton.y - 8);
 
             // タスク（市民のみ）
             if (myRole !== 'imposter') {
                 ctx.fillStyle = '#ffcc00';
                 ctx.fillRect(taskPoint.x, taskPoint.y, taskPoint.size, taskPoint.size);
                 ctx.fillStyle = '#fff';
-                ctx.font = '12px sans-serif';
-                ctx.fillText('TASK', taskPoint.x + 5, taskPoint.y - 5);
+                ctx.font = '11px sans-serif';
+                ctx.fillText('TASK', taskPoint.x + 2, taskPoint.y - 5);
             }
 
             // プレイヤーの描画
@@ -581,7 +570,7 @@
 
                 const centerX = myData.x + playerSize / 2;
                 const centerY = myData.y + playerSize / 2;
-                const visionRadius = 170; // 視界の広さ
+                const visionRadius = 160;
 
                 ctx.arc(centerX, centerY, visionRadius, 0, Math.PI * 2, true);
                 ctx.fill('evenodd');
