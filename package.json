@@ -1,7 +1,7 @@
 {
   "name": "among-us-clone",
   "version": "1.0.0",
-  "description": "2D Multiplayer Social Deduction Game (Node.js + Socket.io + Canvas)",
+  "description": "2D Multiplayer Social Deduction Game with Title Screen and Connected Rooms",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
