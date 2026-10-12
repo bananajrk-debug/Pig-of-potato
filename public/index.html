@@ -16,11 +16,62 @@
             height: 100vh;
             overflow: hidden;
         }
+        #game-container {
+            position: relative;
+        }
         canvas {
             background: #111;
             box-shadow: 0 0 20px rgba(0,0,0,0.8);
             border: 2px solid #444;
             outline: none;
+        }
+        /* ミニゲーム用のモーダル画面 */
+        #taskModal {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 400px;
+            background: #2a2a2a;
+            border: 3px solid #666;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 0 30px rgba(0,0,0,0.9);
+        }
+        #taskModal h2 {
+            margin-top: 0;
+            color: #ffcc00;
+        }
+        /* タイミングバーの枠 */
+        .bar-container {
+            width: 100%;
+            height: 30px;
+            background: #111;
+            border: 2px solid #555;
+            position: relative;
+            margin: 20px 0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        /* 成功エリア（真ん中あたり） */
+        .target-zone {
+            position: absolute;
+            left: 40%;
+            width: 20%;
+            height: 100%;
+            background: rgba(0, 255, 0, 0.4);
+            border-left: 2px dashed #0f0;
+            border-right: 2px dashed #0f0;
+        }
+        /* 往復するカーソル */
+        .cursor-bar {
+            position: absolute;
+            top: 0;
+            width: 6px;
+            height: 100%;
+            background: #ff3333;
         }
         #ui {
             margin-top: 10px;
@@ -31,9 +82,23 @@
 </head>
 <body>
 
-    <canvas id="gameCanvas" width="800" height="600" tabindex="1"></canvas>
+    <div id="game-container">
+        <canvas id="gameCanvas" width="800" height="600" tabindex="1"></canvas>
+        
+        <!-- タスク用ミニゲームのポップアップ -->
+        <div id="taskModal">
+            <h2>タスク: 圧力調整</h2>
+            <p>緑色のエリアで <b>[K]</b> キーを押して止めろ！</p>
+            <div class="bar-container">
+                <div class="target-zone"></div>
+                <div id="cursor" class="cursor-bar" style="left: 0%;"></div>
+            </div>
+            <p id="taskMessage" style="font-size: 14px; color: #aaa;"></p>
+        </div>
+    </div>
+
     <div id="ui">
-        操作: W/A/S/D または 矢印キー | タスク位置に近づいて [E] キーを押す
+        操作: W/A/S/D または 矢印キー | タスク位置に近づいて <b>[K]</b> キーを押す
         <div id="taskStatus">完了タスク数: 0</div>
     </div>
 
@@ -43,7 +108,6 @@
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
-        // キャンバスにフォーカスを当てる（キー入力を確実に受け取るため）
         canvas.focus();
         canvas.addEventListener('click', () => canvas.focus());
 
@@ -51,32 +115,46 @@
         let myData = { x: 100, y: 100, speed: 4 };
         let players = {};
 
-        // キー入力の状態管理
         const keys = {};
+        let isTaskActive = false; // ミニゲーム中かどうか
+
+        // ミニゲーム用の変数
+        let cursorPosition = 0; // 0% ~ 100%
+        let cursorSpeed = 1.5;  // 往復のスピード
+        let cursorDirection = 1; // 1: 右向き, -1: 左向き
+        let taskInterval = null;
+
         window.addEventListener('keydown', (e) => {
-            keys[e.key.toLowerCase()] = true;
-            if (e.key.toLowerCase() === 'e') {
-                checkTaskInteraction();
+            const key = e.key.toLowerCase();
+            keys[key] = true;
+
+            // Kキーが押されたとき
+            if (key === 'k') {
+                if (isTaskActive) {
+                    // ミニゲーム中ならタイミングを判定する
+                    judgeTaskTiming();
+                } else {
+                    // 通常時ならタスク開始判定
+                    checkTaskInteraction();
+                }
             }
         });
+
         window.addEventListener('keyup', (e) => {
             keys[e.key.toLowerCase()] = false;
         });
 
-        // マップの壁データ (x, y, width, height)
         const walls = [
-            { x: 0, y: 0, w: 800, h: 20 },   // 上壁
-            { x: 0, y: 580, w: 800, h: 20 },  // 下壁
-            { x: 0, y: 0, w: 20, h: 600 },   // 左壁
-            { x: 780, y: 0, w: 20, h: 600 },  // 右壁
+            { x: 0, y: 0, w: 800, h: 20 },
+            { x: 0, y: 580, w: 800, h: 20 },
+            { x: 0, y: 0, w: 20, h: 600 },
+            { x: 780, y: 0, w: 20, h: 600 },
             { x: 200, y: 150, w: 150, h: 100 },
             { x: 450, y: 350, w: 150, h: 120 },
         ];
 
-        // タスク位置
         const taskPoint = { x: 400, y: 100, size: 40 };
 
-        // 当たり判定 (AABB)
         function checkCollision(x, y, w, h, walls) {
             for (let wall of walls) {
                 if (
@@ -91,10 +169,8 @@
             return false;
         }
 
-        // Socket.io イベント
         socket.on('currentPlayers', (serverPlayers) => {
             players = serverPlayers;
-            // 自分の初期位置をサーバーのデータに合わせる
             if (players[socket.id]) {
                 myData.x = players[socket.id].x;
                 myData.y = players[socket.id].y;
@@ -125,19 +201,78 @@
             delete players[id];
         });
 
+        // タスクエリアにいるかチェックしてミニゲームを開く
         function checkTaskInteraction() {
             const dist = Math.hypot(
                 (myData.x + playerSize/2) - (taskPoint.x + taskPoint.size/2),
                 (myData.y + playerSize/2) - (taskPoint.y + taskPoint.size/2)
             );
             if (dist < 60) {
-                socket.emit('completeTask');
-                taskPoint.x = Math.random() * 600 + 100;
-                taskPoint.y = Math.random() * 400 + 100;
+                openTaskMinigame();
             }
         }
 
+        function openTaskMinigame() {
+            isTaskActive = true;
+            cursorPosition = 0;
+            cursorDirection = 1;
+            document.getElementById('taskModal').style.display = 'block';
+            document.getElementById('taskMessage').innerText = '';
+
+            // カーソルを動かすアニメーションループ
+            taskInterval = setInterval(() => {
+                cursorPosition += cursorSpeed * cursorDirection;
+                if (cursorPosition >= 100 || cursorPosition <= 0) {
+                    cursorDirection *= -1; // 往復させる
+                }
+                document.getElementById('cursor').style.left = cursorPosition + '%';
+            }, 20);
+        }
+
+        // Kキーでタイミングを判定
+        function judgeTaskTiming() {
+            clearInterval(taskInterval);
+
+            // 成功エリアはCSSで left: 40%, width: 20% なので 40% ~ 60% の間
+            if (cursorPosition >= 40 && cursorPosition <= 60) {
+                document.getElementById('taskMessage').style.color = '#0f0';
+                document.getElementById('taskMessage').innerText = '大成功！';
+                
+                setTimeout(() => {
+                    closeTaskMinigame();
+                    socket.emit('completeTask');
+                    // タスク位置を別の場所に移動
+                    taskPoint.x = Math.random() * 600 + 100;
+                    taskPoint.y = Math.random() * 400 + 100;
+                }, 500);
+            } else {
+                document.getElementById('taskMessage').style.color = '#ff3333';
+                document.getElementById('taskMessage').innerText = '失敗…もう一度Kキーで再挑戦';
+                
+                setTimeout(() => {
+                    // 再びカーソルを動かし始める
+                    taskInterval = setInterval(() => {
+                        cursorPosition += cursorSpeed * cursorDirection;
+                        if (cursorPosition >= 100 || cursorPosition <= 0) {
+                            cursorDirection *= -1;
+                        }
+                        document.getElementById('cursor').style.left = cursorPosition + '%';
+                    }, 20);
+                    document.getElementById('taskMessage').innerText = '';
+                }, 800);
+            }
+        }
+
+        function closeTaskMinigame() {
+            isTaskActive = false;
+            document.getElementById('taskModal').style.display = 'none';
+            canvas.focus();
+        }
+
         function update() {
+            // ミニゲーム中はキャラクターを動かさない
+            if (isTaskActive) return;
+
             let nextX = myData.x;
             let nextY = myData.y;
 
@@ -146,48 +281,40 @@
             if (keys['a'] || keys['arrowleft']) nextX -= myData.speed;
             if (keys['d'] || keys['arrowright']) nextX += myData.speed;
 
-            // X軸方向の判定
             if (!checkCollision(nextX, myData.y, playerSize, playerSize, walls)) {
                 myData.x = nextX;
             }
-            // Y軸方向の判定
             if (!checkCollision(myData.x, nextY, playerSize, playerSize, walls)) {
                 myData.y = nextY;
             }
 
-            // ★重要：自分自身の描画用データも即座に更新する
             if (players[socket.id]) {
                 players[socket.id].x = myData.x;
                 players[socket.id].y = myData.y;
             }
 
-            // サーバーへ位置を送信
             socket.emit('playerMovement', { x: myData.x, y: myData.y });
         }
 
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // 壁の描画
             ctx.fillStyle = '#666';
             for (let wall of walls) {
                 ctx.fillRect(wall.x, wall.y, wall.w, wall.h);
             }
 
-            // タスクの描画
             ctx.fillStyle = '#ffcc00';
             ctx.fillRect(taskPoint.x, taskPoint.y, taskPoint.size, taskPoint.size);
             ctx.fillStyle = '#fff';
             ctx.font = '12px sans-serif';
             ctx.fillText('TASK', taskPoint.x + 5, taskPoint.y - 5);
 
-            // 全プレイヤーの描画
             for (let id in players) {
                 const p = players[id];
                 ctx.fillStyle = p.color || '#fff';
                 ctx.fillRect(p.x, p.y, playerSize, playerSize);
                 
-                // ネームラベル
                 ctx.fillStyle = '#fff';
                 ctx.font = '10px sans-serif';
                 ctx.fillText(id === socket.id ? '自分' : id.substring(0, 4), p.x, p.y - 5);
