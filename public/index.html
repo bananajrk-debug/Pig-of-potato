@@ -1,343 +1,68 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <title>2D人狼ゲーム (Among Us風)</title>
-    <style>
-        body { margin: 0; overflow: hidden; background: #0b0b12; font-family: sans-serif; color: #fff; }
-        canvas { display: block; }
-        
-        #title-screen {
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            background: linear-gradient(135deg, #14142b 0%, #05050a 100%);
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            z-index: 1000;
-        }
-        #title-screen h1 { font-size: 3rem; margin-bottom: 20px; color: #ff3333; text-shadow: 0 0 10px rgba(255,51,51,0.5); }
-        .input-group { background: rgba(255,255,255,0.05); padding: 30px; border-radius: 12px; border: 1px solid #333; text-align: center; }
-        input[type="text"] { padding: 10px 15px; font-size: 1.1rem; border-radius: 6px; border: 1px solid #555; background: #222; color: #fff; width: 250px; margin-bottom: 15px; }
-        
-        button { background: #ff3333; color: white; border: none; padding: 12px 24px; font-size: 1.1rem; border-radius: 6px; cursor: pointer; font-weight: bold; transition: background 0.2s; }
-        button:hover { background: #ff5555; }
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
 
-        #ui-layer { position: absolute; top: 10px; left: 10px; pointer-events: none; display: none; }
-        .hud-box { background: rgba(0,0,0,0.6); padding: 10px; border-radius: 8px; margin-bottom: 5px; pointer-events: auto; }
-        
-        #meeting-modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 600px; background: rgba(20,20,30,0.95); border: 2px solid #555; border-radius: 12px; padding: 20px; z-index: 100; text-align: center; }
-        .meeting-btn { background: #333; color: white; border: 1px solid #777; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin: 4px; }
-        .meeting-btn:hover { background: #555; }
-    </style>
-</head>
-<body>
-    <div id="title-screen">
-        <h1>SPACESHIP WOLF</h1>
-        <div class="input-group">
-            <p>プレイヤー名を入力してください</p>
-            <input type="text" id="player-name-input" placeholder="Crewmate" maxlength="12" value="Player">
-            <br>
-            <button id="start-btn">ゲームに参加</button>
-        </div>
-    </div>
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
 
-    <div id="ui-layer">
-        <div class="hud-box" id="role-display">ロール: 読み込み中...</div>
-        <div class="hud-box" id="task-display">タスク: 0 / 0</div>
-        <div class="hud-box">操作: [WASD] 移動 | [K] キル / タスク | [R] 死体通報 | [Space] 全体ミニマップ</div>
-    </div>
+// publicフォルダ内の静的ファイルを提供
+app.use(express.static('public'));
 
-    <div id="meeting-modal">
-        <h2 id="meeting-title">緊急会議</h2>
-        <p id="meeting-timer">残り時間: 45秒</p>
-        <div id="player-list-voting"></div>
-    </div>
+// 接続中のプレイヤーを管理するオブジェクト
+const players = {};
 
-    <canvas id="gameCanvas"></canvas>
+io.on('connection', (socket) => {
+  console.log(`ユーザーが接続しました: ${socket.id}`);
 
-    <script src="/socket.io/socket.io.js"></script>
-    <script>
-        const socket = io();
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
+  // 新規プレイヤーの初期データ作成
+  players[socket.id] = {
+    x: 100,
+    y: 100,
+    color: '#' + Math.floor(Math.random() * 16777215).toString(16), // ランダムカラー
+    tasksCompleted: 0
+  };
 
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
+  // 現在いる全員のプレイヤー情報を新しい人に送る
+  socket.emit('currentPlayers', players);
 
-        window.addEventListener('resize', () => {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        });
+  // 新しいプレイヤーが入ってきたことを他の人に知らせる
+  socket.broadcast.emit('newPlayer', {
+    id: socket.id,
+    player: players[socket.id]
+  });
 
-        let myId = null;
-        let players = {};
-        let bodies = {};
-        let emergencyButton = null;
-        let tasks = [];
-        let walls = [];
-        let gameState = 'PLAYING';
-        let keys = {};
-        let showMinimap = false;
+  // プレイヤーが移動したとき
+  socket.on('playerMovement', (movementData) => {
+    if (players[socket.id]) {
+      players[socket.id].x = movementData.x;
+      players[socket.id].y = movementData.y;
+      // 他のプレイヤーに位置をブロードキャスト
+      socket.broadcast.emit('playerMoved', {
+        id: socket.id,
+        x: players[socket.id].x,
+        y: players[socket.id].y
+      });
+    }
+  });
 
-        document.getElementById('start-btn').addEventListener('click', () => {
-            let name = document.getElementById('player-name-input').value.trim() || 'Player';
-            socket.emit('join-game', name);
-            document.getElementById('title-screen').style.display = 'none';
-            document.getElementById('ui-layer').style.display = 'block';
-        });
+  // タスクを完了したとき
+  socket.on('completeTask', () => {
+    if (players[socket.id]) {
+      players[socket.id].tasksCompleted += 1;
+      io.emit('taskUpdate', { id: socket.id, tasksCompleted: players[socket.id].tasksCompleted });
+    }
+  });
 
-        socket.on('init', (data) => {
-            myId = data.id;
-            players = data.players;
-            bodies = data.bodies;
-            emergencyButton = data.emergencyButton;
-            tasks = data.tasks;
-            walls = data.walls;
+  // 切断されたとき
+  socket.on('disconnect', () => {
+    console.log(`ユーザーが切断しました: ${socket.id}`);
+    delete players[socket.id];
+    io.emit('disconnectPlayer', socket.id);
+  });
+});
 
-            let myRole = players[myId].role;
-            document.getElementById('role-display').innerText = `ロール: ${myRole === 'wolf' ? '人狼 (Wolf)' : '市民 (Crew)'} (${players[myId].name})`;
-            updateTaskHud();
-        });
-
-        socket.on('game-state', (data) => {
-            players = data.players;
-            bodies = data.bodies;
-        });
-
-        socket.on('start-meeting', (data) => {
-            gameState = 'MEETING';
-            players = data.players;
-            document.getElementById('meeting-title').innerText = data.reason;
-            document.getElementById('meeting-modal').style.display = 'block';
-            updateVotingUI();
-        });
-
-        socket.on('meeting-timer', (sec) => {
-            document.getElementById('meeting-timer').innerText = `残り時間: ${sec}秒`;
-        });
-
-        socket.on('end-meeting', (updatedPlayers) => {
-            gameState = 'PLAYING';
-            players = updatedPlayers;
-            document.getElementById('meeting-modal').style.display = 'none';
-        });
-
-        socket.on('notification', (msg) => {
-            console.log(msg);
-        });
-
-        socket.on('game-over', (msg) => {
-            alert(msg);
-            location.reload();
-        });
-
-        window.addEventListener('keydown', (e) => {
-            keys[e.key.toLowerCase()] = true;
-            if (e.code === 'Space') showMinimap = true;
-
-            if (e.key.toLowerCase() === 'k') {
-                let me = players[myId];
-                if (!me || !me.isAlive) return;
-
-                if (me.role === 'wolf') {
-                    let target = Object.values(players).find(p => p.id !== myId && p.isAlive && Math.hypot(p.x - me.x, p.y - me.y) < 100);
-                    if (target) socket.emit('player-kill', target.id);
-                }
-
-                let task = tasks.find(t => Math.hypot(t.x - me.x, t.y - me.y) < 80);
-                let myTask = me.tasks.find(t => t.id === task?.id);
-                if (myTask && !myTask.completed) {
-                    socket.emit('complete-task', myTask.id);
-                    myTask.completed = true;
-                    updateTaskHud();
-                }
-            }
-
-            if (e.key.toLowerCase() === 'r') {
-                let me = players[myId];
-                if (!me || !me.isAlive) return;
-                let bodyList = Object.values(bodies);
-                let body = bodyList.find(b => Math.hypot(b.x - me.x, b.y - me.y) < 100);
-                if (body) socket.emit('report-body', body.id);
-
-                if (emergencyButton && Math.hypot(emergencyButton.x - me.x, emergencyButton.y - me.y) < emergencyButton.radius + 30) {
-                    socket.emit('emergency-meeting');
-                }
-            }
-        });
-
-        window.addEventListener('keyup', (e) => {
-            keys[e.key.toLowerCase()] = false;
-            if (e.code === 'Space') showMinimap = false;
-        });
-
-        function updateTaskHud() {
-            let me = players[myId];
-            if (!me) return;
-            let completedCount = me.tasks.filter(t => t.completed).length;
-            document.getElementById('task-display').innerText = `タスク: ${completedCount} / ${me.tasks.length}`;
-        }
-
-        function updateVotingUI() {
-            let container = document.getElementById('player-list-voting');
-            container.innerHTML = '<h3>投票先を選んでください</h3>';
-            Object.values(players).forEach(p => {
-                if (p.isAlive) {
-                    let btn = document.createElement('button');
-                    btn.className = 'meeting-btn';
-                    btn.innerText = `${p.name} (${p.role === 'wolf' && players[myId].role === 'wolf' ? '人狼' : 'プレイヤー'})`;
-                    btn.onclick = () => {
-                        socket.emit('cast-vote', p.id);
-                        container.innerHTML = '<p>投票完了しました。結果を待っています...</p>';
-                    };
-                    container.appendChild(btn);
-                }
-            });
-            let skipBtn = document.createElement('button');
-            skipBtn.className = 'meeting-btn';
-            skipBtn.innerText = 'スキップ';
-            skipBtn.onclick = () => {
-                socket.emit('cast-vote', null);
-                container.innerHTML = '<p>スキップに投票しました。</p>';
-            };
-            container.appendChild(skipBtn);
-        }
-
-        function gameLoop() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            let me = players[myId];
-            if (me) {
-                let vx = 0, vy = 0;
-                if (keys['w']) vy -= 1;
-                if (keys['s']) vy += 1;
-                if (keys['a']) vx -= 1;
-                if (keys['d']) vx += 1;
-                if (vx !== 0 || vy !== 0) {
-                    let len = Math.hypot(vx, vy);
-                    socket.emit('player-move', { vx: vx / len, vy: vy / len });
-                }
-
-                // カメラ追従 & ズーム (1.4倍)
-                ctx.save();
-                const zoom = 1.4;
-                ctx.translate(canvas.width / 2, canvas.height / 2);
-                ctx.scale(zoom, zoom);
-                ctx.translate(-me.x, -me.y);
-
-                // マップ背景描画
-                ctx.fillStyle = '#16161d';
-                ctx.fillRect(0, 0, 3600, 2600);
-
-                // 壁の描画
-                ctx.fillStyle = '#3a3a48';
-                walls.forEach(w => {
-                    ctx.fillRect(w.x, w.y, w.w, w.h);
-                });
-
-                // 非常ボタン描画
-                if (emergencyButton) {
-                    ctx.beginPath();
-                    ctx.arc(emergencyButton.x, emergencyButton.y, emergencyButton.radius, 0, Math.PI * 2);
-                    ctx.fillStyle = '#ff2222';
-                    ctx.fill();
-                    ctx.strokeStyle = '#fff';
-                    ctx.lineWidth = 4;
-                    ctx.stroke();
-                }
-
-                // タスクの描画
-                tasks.forEach(t => {
-                    let myTask = me.tasks?.find(mt => mt.id === t.id);
-                    let isDone = myTask ? myTask.completed : false;
-
-                    ctx.beginPath();
-                    ctx.arc(t.x, t.y, 14, 0, Math.PI * 2);
-                    if (t.type === 'WIRING') ctx.fillStyle = isDone ? '#444' : '#ffaa00';
-                    else if (t.type === 'DOWNLOAD') ctx.fillStyle = isDone ? '#444' : '#00aaff';
-                    else if (t.type === 'ENGINE') ctx.fillStyle = isDone ? '#444' : '#00ffaa';
-                    ctx.fill();
-                    ctx.strokeStyle = '#fff';
-                    ctx.lineWidth = 2;
-                    ctx.stroke();
-                });
-
-                // 死体描画
-                Object.values(bodies).forEach(b => {
-                    ctx.fillStyle = b.color;
-                    ctx.beginPath();
-                    ctx.arc(b.x, b.y, 15, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.fillStyle = '#fff';
-                    ctx.font = '12px sans-serif';
-                    ctx.fillText(`${b.name} (DEAD)`, b.x - 30, b.y - 20);
-                });
-
-                // プレイヤー描画
-                Object.values(players).forEach(p => {
-                    if (!p.isAlive) return;
-                    ctx.fillStyle = p.color;
-                    ctx.beginPath();
-                    ctx.arc(p.x, p.y, 20, 0, Math.PI * 2);
-                    ctx.fill();
-
-                    ctx.fillStyle = '#fff';
-                    ctx.font = '12px sans-serif';
-                    ctx.fillText(p.name, p.x - 20, p.y - 28);
-                });
-
-                ctx.restore();
-
-                // 全体ミニマップ (スペースキー押下中) - クリップ処理で枠外への飛び出しを完全防止
-                if (showMinimap) {
-                    const mapWidth = 700;
-                    const mapHeight = 525;
-                    const mapX = canvas.width / 2 - mapWidth / 2;
-                    const mapY = canvas.height / 2 - mapHeight / 2;
-
-                    ctx.save();
-                    // ミニマップ矩形領域でクリップ
-                    ctx.beginPath();
-                    ctx.rect(mapX, mapY, mapWidth, mapHeight);
-                    ctx.clip();
-
-                    // 背景
-                    ctx.fillStyle = 'rgba(10, 10, 15, 0.95)';
-                    ctx.fillRect(mapX, mapY, mapWidth, mapHeight);
-
-                    ctx.save();
-                    ctx.translate(mapX, mapY);
-                    let scaleX = mapWidth / 3600;
-                    let scaleY = mapHeight / 2600;
-                    ctx.scale(scaleX, scaleY);
-
-                    // ミニマップ上の壁
-                    ctx.fillStyle = '#555566';
-                    walls.forEach(w => {
-                        ctx.fillRect(w.x, w.y, w.w, w.h);
-                    });
-
-                    // ミニマップ上のプレイヤー位置
-                    Object.values(players).forEach(p => {
-                        if (!p.isAlive) return;
-                        ctx.fillStyle = p.color;
-                        ctx.beginPath();
-                        ctx.arc(p.x, p.y, 35, 0, Math.PI * 2);
-                        ctx.fill();
-                    });
-                    ctx.restore();
-
-                    ctx.restore();
-
-                    // ミニマップの白枠
-                    ctx.strokeStyle = '#ffffff';
-                    ctx.lineWidth = 3;
-                    ctx.strokeRect(mapX, mapY, mapWidth, mapHeight);
-                }
-            }
-
-            requestAnimationFrame(gameLoop);
-        }
-
-        requestAnimationFrame(gameLoop);
-    </script>
-</body>
-</html>
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`サーバーが起動しました: http://localhost:${PORT}`);
+});
