@@ -10,19 +10,17 @@ app.use(express.static('public'));
 
 const players = {};
 
-// プレイヤー全員の位置を中央ボタンの周りに円形に再配置する関数
 function updatePlayerSpawnPositions() {
   const ids = Object.keys(players);
   const total = ids.length;
   if (total === 0) return;
 
-  // 中央ホールの中心座標
-  const centerX = 13.5 * 40; // マップ中央のX
-  const centerY = 9.5 * 40;  // マップ中央のY
-  const radius = 70;         // ボタンの周りの円の半径
+  // 上方に移動した大広間（会議室）の中央座標に合わせて円形に配置
+  const centerX = 15 * 40; 
+  const centerY = 5.5 * 40;  
+  const radius = 65;         
 
   ids.forEach((id, index) => {
-    // 円形に綺麗に並べるための角度計算 (ラジアン)
     const angle = (index / total) * Math.PI * 2;
     players[id].x = centerX + Math.cos(angle) * radius;
     players[id].y = centerY + Math.sin(angle) * radius;
@@ -41,7 +39,6 @@ function assignRoles() {
   const imposterId = ids[imposterIndex];
   players[imposterId].role = 'imposter';
 
-  // 役割を振ると同時に円形スポーン位置を更新
   updatePlayerSpawnPositions();
   io.emit('currentPlayers', players);
 }
