@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>2Dタスク人狼</title>
+    <title>2Dタスク人狼 - 会議システム</title>
     <style>
         body {
             margin: 0;
@@ -26,13 +26,14 @@
             outline: none;
         }
         #roleBanner {
-            font-size: 20px;
+            font-size: 18px;
             font-weight: bold;
             margin-bottom: 8px;
             padding: 5px 15px;
             border-radius: 4px;
             background: #333;
         }
+        /* タスク用ミニゲーム */
         #taskModal {
             display: none;
             position: absolute;
@@ -46,6 +47,7 @@
             padding: 20px;
             text-align: center;
             box-shadow: 0 0 30px rgba(0,0,0,0.9);
+            z-index: 10;
         }
         #taskModal h2 {
             margin-top: 0;
@@ -77,6 +79,63 @@
             height: 100%;
             background: #ff3333;
         }
+
+        /* 会議・チャット画面用モーダル */
+        #meetingModal {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 600px;
+            height: 450px;
+            background: #1a1a1a;
+            border: 4px solid #ff4444;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 0 40px rgba(255,0,0,0.5);
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+        }
+        #meetingModal h2 {
+            margin: 0 0 10px 0;
+            color: #ff4444;
+            text-align: center;
+        }
+        #chatLogs {
+            flex: 1;
+            background: #111;
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 10px;
+            overflow-y: auto;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        .chat-input-area {
+            display: flex;
+            gap: 10px;
+        }
+        .chat-input-area input {
+            flex: 1;
+            padding: 10px;
+            background: #222;
+            border: 1px solid #555;
+            color: #fff;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .chat-input-area button {
+            padding: 10px 20px;
+            background: #ff4444;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
         #ui {
             margin-top: 10px;
             font-size: 14px;
@@ -91,6 +150,7 @@
     <div id="game-container">
         <canvas id="gameCanvas" width="800" height="600" tabindex="1"></canvas>
         
+        <!-- タスク用ミニゲーム -->
         <div id="taskModal">
             <h2>タスク: 圧力調整</h2>
             <p>緑色のエリアで <b>[K]</b> キーを押して止めろ！</p>
@@ -100,10 +160,20 @@
             </div>
             <p id="taskMessage" style="font-size: 14px; color: #aaa;"></p>
         </div>
+
+        <!-- 緊急会議・チャットモーダル -->
+        <div id="meetingModal" style="display: none;">
+            <h2>🚨 緊急会議（死体発見 / 通報） 🚨</h2>
+            <div id="chatLogs"></div>
+            <div class="chat-input-area">
+                <input type="text" id="chatInput" placeholder="メッセージを入力..." autocomplete="off">
+                <button id="sendBtn">送信</button>
+            </div>
+        </div>
     </div>
 
     <div id="ui">
-        移動: W/A/S/D | タスク: 近づいて <b>[K]</b> キー | <span id="killInstruction" style="display:none; color:#ff4444;">人狼スキル: 近くで <b>[Q]</b> キーでキル</span>
+        移動: W/A/S/D | タスク: 近づいて <b>[K]</b> | <span id="killInstruction" style="display:none; color:#ff4444;">人狼: 近づいて <b>[Q]</b> キル</span> | 通報: 死体の近くで <b>[R]</b>
         <div id="taskStatus">完了タスク数: 0</div>
     </div>
 
@@ -121,6 +191,7 @@
         let players = {};
         let myRole = 'crewmate';
         let isDead = false;
+        let isMeetingActive = false;
 
         const keys = {};
         let isTaskActive = false;
@@ -131,7 +202,7 @@
         let taskInterval = null;
 
         window.addEventListener('keydown', (e) => {
-            if (isDead) return; // 死亡時は操作不可
+            if (isDead || isMeetingActive) return;
             const key = e.key.toLowerCase();
             keys[key] = true;
 
@@ -143,9 +214,13 @@
                 }
             }
 
-            // [Q]キーでキル（人狼専用）
             if (key === 'q' && myRole === 'imposter') {
                 tryKillPlayer();
+            }
+
+            // [R]キーで死体を通報
+            if (key === 'r') {
+                tryReportBody();
             }
         });
 
@@ -211,9 +286,29 @@
                 players[data.targetId].isDead = true;
                 if (data.targetId === socket.id) {
                     isDead = true;
-                    alert('あなたは人狼にキルされてしまいました…！（幽霊になりました）');
+                    alert('あなたは人狼にキルされてしまいました…！');
                 }
             }
+        });
+
+        // 会議開始イベント受信
+        socket.on('startMeeting', (data) => {
+            isMeetingActive = true;
+            isTaskActive = false;
+            document.getElementById('taskModal').style.display = 'none';
+            document.getElementById('meetingModal').style.display = 'flex';
+            
+            const logs = document.getElementById('chatLogs');
+            logs.innerHTML += `<div style="color: #ff4444; font-weight: bold; margin-bottom: 5px;">--- ${data.reporterId.substring(0,4)} が死体を通報しました！ ---</div>`;
+            logs.scrollTop = logs.scrollHeight;
+        });
+
+        // チャットメッセージ受信
+        socket.on('chatMessage', (data) => {
+            const logs = document.getElementById('chatLogs');
+            const isMe = data.id === socket.id;
+            logs.innerHTML += `<div style="margin-bottom: 4px;"><span style="color: ${isMe ? '#44ff44' : '#ffcc00'}; font-weight: bold;">[${data.name}]:</span> ${data.message}</div>`;
+            logs.scrollTop = logs.scrollHeight;
         });
 
         socket.on('disconnectPlayer', (id) => {
@@ -235,7 +330,7 @@
         }
 
         function checkTaskInteraction() {
-            if (myRole === 'imposter') return; // 人狼はタスクができない設定にする場合
+            if (myRole === 'imposter') return;
             const dist = Math.hypot(
                 (myData.x + playerSize/2) - (taskPoint.x + taskPoint.size/2),
                 (myData.y + playerSize/2) - (taskPoint.y + taskPoint.size/2)
@@ -245,15 +340,29 @@
             }
         }
 
-        // 近くにいる市民をキルする判定
         function tryKillPlayer() {
             for (let id in players) {
                 if (id === socket.id) continue;
                 const p = players[id];
                 if (!p.isDead) {
                     const dist = Math.hypot(myData.x - p.x, myData.y - p.y);
-                    if (dist < 50) { // 50px以内のプレイヤーをキル対象にする
+                    if (dist < 50) {
                         socket.emit('killPlayer', id);
+                        break;
+                    }
+                }
+            }
+        }
+
+        // 死体の近く（60px以内）にいるか確認して通報する
+        function tryReportBody() {
+            for (let id in players) {
+                if (id === socket.id) continue;
+                const p = players[id];
+                if (p.isDead) {
+                    const dist = Math.hypot(myData.x - p.x, myData.y - p.y);
+                    if (dist < 60) {
+                        socket.emit('reportBody');
                         break;
                     }
                 }
@@ -312,8 +421,23 @@
             canvas.focus();
         }
 
+        // チャット送信処理
+        document.getElementById('sendBtn').addEventListener('click', sendChatMessage);
+        document.getElementById('chatInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') sendChatMessage();
+        });
+
+        function sendChatMessage() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            if (message) {
+                socket.emit('chatMessage', { message });
+                input.value = '';
+            }
+        }
+
         function update() {
-            if (isTaskActive || isDead) return;
+            if (isTaskActive || isDead || isMeetingActive) return;
 
             let nextX = myData.x;
             let nextY = myData.y;
@@ -341,13 +465,11 @@
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // 壁の描画
             ctx.fillStyle = '#666';
             for (let wall of walls) {
                 ctx.fillRect(wall.x, wall.y, wall.w, wall.h);
             }
 
-            // タスクの描画（市民のみ）
             if (myRole !== 'imposter') {
                 ctx.fillStyle = '#ffcc00';
                 ctx.fillRect(taskPoint.x, taskPoint.y, taskPoint.size, taskPoint.size);
@@ -356,12 +478,10 @@
                 ctx.fillText('TASK', taskPoint.x + 5, taskPoint.y - 5);
             }
 
-            // 全プレイヤーの描画
             for (let id in players) {
                 const p = players[id];
                 
                 if (p.isDead) {
-                    // 死亡したプレイヤーは半透明の×印またはゴーストとして描画
                     ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
                     ctx.fillRect(p.x, p.y, playerSize, playerSize);
                     ctx.fillStyle = '#ff4444';
