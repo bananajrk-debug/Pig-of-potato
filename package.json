@@ -1,13 +1,13 @@
 {
-  "name": "airplane-werewolf",
+  "name": "among-us-clone",
   "version": "1.0.0",
-  "description": "Among Us style 2D werewolf game with Node.js and Canvas",
+  "description": "2D Multiplayer Social Deduction Game (Node.js + Socket.io + Canvas)",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "express": "^4.19.2",
-    "socket.io": "^4.7.5"
+    "express": "^4.18.2",
+    "socket.io": "^4.7.2"
   }
 }
