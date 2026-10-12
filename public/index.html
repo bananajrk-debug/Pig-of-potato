@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>2Dタスク人狼（プロトタイプ）</title>
+    <title>2Dタスク人狼</title>
     <style>
         body {
             margin: 0;
@@ -25,7 +25,14 @@
             border: 2px solid #444;
             outline: none;
         }
-        /* ミニゲーム用のモーダル画面 */
+        #roleBanner {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 8px;
+            padding: 5px 15px;
+            border-radius: 4px;
+            background: #333;
+        }
         #taskModal {
             display: none;
             position: absolute;
@@ -44,7 +51,6 @@
             margin-top: 0;
             color: #ffcc00;
         }
-        /* タイミングバーの枠 */
         .bar-container {
             width: 100%;
             height: 30px;
@@ -55,7 +61,6 @@
             border-radius: 4px;
             overflow: hidden;
         }
-        /* 成功エリア（真ん中あたり） */
         .target-zone {
             position: absolute;
             left: 40%;
@@ -65,7 +70,6 @@
             border-left: 2px dashed #0f0;
             border-right: 2px dashed #0f0;
         }
-        /* 往復するカーソル */
         .cursor-bar {
             position: absolute;
             top: 0;
@@ -75,17 +79,18 @@
         }
         #ui {
             margin-top: 10px;
-            font-size: 16px;
+            font-size: 14px;
             text-align: center;
         }
     </style>
 </head>
 <body>
 
+    <div id="roleBanner">役職を読み込み中...</div>
+
     <div id="game-container">
         <canvas id="gameCanvas" width="800" height="600" tabindex="1"></canvas>
         
-        <!-- タスク用ミニゲームのポップアップ -->
         <div id="taskModal">
             <h2>タスク: 圧力調整</h2>
             <p>緑色のエリアで <b>[K]</b> キーを押して止めろ！</p>
@@ -98,7 +103,7 @@
     </div>
 
     <div id="ui">
-        操作: W/A/S/D または 矢印キー | タスク位置に近づいて <b>[K]</b> キーを押す
+        移動: W/A/S/D | タスク: 近づいて <b>[K]</b> キー | <span id="killInstruction" style="display:none; color:#ff4444;">人狼スキル: 近くで <b>[Q]</b> キーでキル</span>
         <div id="taskStatus">完了タスク数: 0</div>
     </div>
 
@@ -114,29 +119,33 @@
         const playerSize = 30;
         let myData = { x: 100, y: 100, speed: 4 };
         let players = {};
+        let myRole = 'crewmate';
+        let isDead = false;
 
         const keys = {};
-        let isTaskActive = false; // ミニゲーム中かどうか
+        let isTaskActive = false;
 
-        // ミニゲーム用の変数
-        let cursorPosition = 0; // 0% ~ 100%
-        let cursorSpeed = 1.5;  // 往復のスピード
-        let cursorDirection = 1; // 1: 右向き, -1: 左向き
+        let cursorPosition = 0;
+        let cursorSpeed = 1.5;
+        let cursorDirection = 1;
         let taskInterval = null;
 
         window.addEventListener('keydown', (e) => {
+            if (isDead) return; // 死亡時は操作不可
             const key = e.key.toLowerCase();
             keys[key] = true;
 
-            // Kキーが押されたとき
             if (key === 'k') {
                 if (isTaskActive) {
-                    // ミニゲーム中ならタイミングを判定する
                     judgeTaskTiming();
                 } else {
-                    // 通常時ならタスク開始判定
                     checkTaskInteraction();
                 }
+            }
+
+            // [Q]キーでキル（人狼専用）
+            if (key === 'q' && myRole === 'imposter') {
+                tryKillPlayer();
             }
         });
 
@@ -169,16 +178,16 @@
             return false;
         }
 
+        // Socket.io イベント
         socket.on('currentPlayers', (serverPlayers) => {
             players = serverPlayers;
             if (players[socket.id]) {
                 myData.x = players[socket.id].x;
                 myData.y = players[socket.id].y;
+                myRole = players[socket.id].role;
+                isDead = players[socket.id].isDead;
+                updateRoleUI();
             }
-        });
-
-        socket.on('newPlayer', (data) => {
-            players[data.id] = data.player;
         });
 
         socket.on('playerMoved', (data) => {
@@ -197,18 +206,57 @@
             }
         });
 
+        socket.on('playerKilled', (data) => {
+            if (players[data.targetId]) {
+                players[data.targetId].isDead = true;
+                if (data.targetId === socket.id) {
+                    isDead = true;
+                    alert('あなたは人狼にキルされてしまいました…！（幽霊になりました）');
+                }
+            }
+        });
+
         socket.on('disconnectPlayer', (id) => {
             delete players[id];
         });
 
-        // タスクエリアにいるかチェックしてミニゲームを開く
+        function updateRoleUI() {
+            const banner = document.getElementById('roleBanner');
+            const killInstruction = document.getElementById('killInstruction');
+            if (myRole === 'imposter') {
+                banner.innerText = '役職: 人狼 (インポスター) - 市民を全員倒せ！';
+                banner.style.color = '#ff4444';
+                killInstruction.style.display = 'inline';
+            } else {
+                banner.innerText = '役職: 市民 (クルーメイト) - タスクを完了させろ！';
+                banner.style.color = '#44ff44';
+                killInstruction.style.display = 'none';
+            }
+        }
+
         function checkTaskInteraction() {
+            if (myRole === 'imposter') return; // 人狼はタスクができない設定にする場合
             const dist = Math.hypot(
                 (myData.x + playerSize/2) - (taskPoint.x + taskPoint.size/2),
                 (myData.y + playerSize/2) - (taskPoint.y + taskPoint.size/2)
             );
             if (dist < 60) {
                 openTaskMinigame();
+            }
+        }
+
+        // 近くにいる市民をキルする判定
+        function tryKillPlayer() {
+            for (let id in players) {
+                if (id === socket.id) continue;
+                const p = players[id];
+                if (!p.isDead) {
+                    const dist = Math.hypot(myData.x - p.x, myData.y - p.y);
+                    if (dist < 50) { // 50px以内のプレイヤーをキル対象にする
+                        socket.emit('killPlayer', id);
+                        break;
+                    }
+                }
             }
         }
 
@@ -219,21 +267,18 @@
             document.getElementById('taskModal').style.display = 'block';
             document.getElementById('taskMessage').innerText = '';
 
-            // カーソルを動かすアニメーションループ
             taskInterval = setInterval(() => {
                 cursorPosition += cursorSpeed * cursorDirection;
                 if (cursorPosition >= 100 || cursorPosition <= 0) {
-                    cursorDirection *= -1; // 往復させる
+                    cursorDirection *= -1;
                 }
                 document.getElementById('cursor').style.left = cursorPosition + '%';
             }, 20);
         }
 
-        // Kキーでタイミングを判定
         function judgeTaskTiming() {
             clearInterval(taskInterval);
 
-            // 成功エリアはCSSで left: 40%, width: 20% なので 40% ~ 60% の間
             if (cursorPosition >= 40 && cursorPosition <= 60) {
                 document.getElementById('taskMessage').style.color = '#0f0';
                 document.getElementById('taskMessage').innerText = '大成功！';
@@ -241,7 +286,6 @@
                 setTimeout(() => {
                     closeTaskMinigame();
                     socket.emit('completeTask');
-                    // タスク位置を別の場所に移動
                     taskPoint.x = Math.random() * 600 + 100;
                     taskPoint.y = Math.random() * 400 + 100;
                 }, 500);
@@ -250,7 +294,6 @@
                 document.getElementById('taskMessage').innerText = '失敗…もう一度Kキーで再挑戦';
                 
                 setTimeout(() => {
-                    // 再びカーソルを動かし始める
                     taskInterval = setInterval(() => {
                         cursorPosition += cursorSpeed * cursorDirection;
                         if (cursorPosition >= 100 || cursorPosition <= 0) {
@@ -270,8 +313,7 @@
         }
 
         function update() {
-            // ミニゲーム中はキャラクターを動かさない
-            if (isTaskActive) return;
+            if (isTaskActive || isDead) return;
 
             let nextX = myData.x;
             let nextY = myData.y;
@@ -299,25 +341,40 @@
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+            // 壁の描画
             ctx.fillStyle = '#666';
             for (let wall of walls) {
                 ctx.fillRect(wall.x, wall.y, wall.w, wall.h);
             }
 
-            ctx.fillStyle = '#ffcc00';
-            ctx.fillRect(taskPoint.x, taskPoint.y, taskPoint.size, taskPoint.size);
-            ctx.fillStyle = '#fff';
-            ctx.font = '12px sans-serif';
-            ctx.fillText('TASK', taskPoint.x + 5, taskPoint.y - 5);
+            // タスクの描画（市民のみ）
+            if (myRole !== 'imposter') {
+                ctx.fillStyle = '#ffcc00';
+                ctx.fillRect(taskPoint.x, taskPoint.y, taskPoint.size, taskPoint.size);
+                ctx.fillStyle = '#fff';
+                ctx.font = '12px sans-serif';
+                ctx.fillText('TASK', taskPoint.x + 5, taskPoint.y - 5);
+            }
 
+            // 全プレイヤーの描画
             for (let id in players) {
                 const p = players[id];
-                ctx.fillStyle = p.color || '#fff';
-                ctx.fillRect(p.x, p.y, playerSize, playerSize);
                 
-                ctx.fillStyle = '#fff';
-                ctx.font = '10px sans-serif';
-                ctx.fillText(id === socket.id ? '自分' : id.substring(0, 4), p.x, p.y - 5);
+                if (p.isDead) {
+                    // 死亡したプレイヤーは半透明の×印またはゴーストとして描画
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+                    ctx.fillRect(p.x, p.y, playerSize, playerSize);
+                    ctx.fillStyle = '#ff4444';
+                    ctx.font = '12px sans-serif';
+                    ctx.fillText('DEAD', p.x, p.y - 5);
+                } else {
+                    ctx.fillStyle = p.color || '#fff';
+                    ctx.fillRect(p.x, p.y, playerSize, playerSize);
+                    
+                    ctx.fillStyle = '#fff';
+                    ctx.font = '10px sans-serif';
+                    ctx.fillText(id === socket.id ? '自分' : id.substring(0, 4), p.x, p.y - 5);
+                }
             }
         }
 
