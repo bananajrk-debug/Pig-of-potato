@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Airplane Werewolf - The Skeld Layout</title>
+    <title>Airplane Werewolf</title>
     <style>
         body { margin: 0; overflow: hidden; background: #111; font-family: sans-serif; color: white; user-select: none; }
         #titleScreen {
@@ -17,13 +17,14 @@
         }
         #titleScreen button:hover { background: #ff6b81; }
 
+        /* 往復バー形式のタスクモーダル */
         #taskModal {
             display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            background: rgba(0,0,0,0.7); z-index: 80; justify-content: center; align-items: center;
+            background: rgba(0,0,0,0.75); z-index: 80; justify-content: center; align-items: center;
         }
         .task-box {
             background: #222233; border: 2px solid #555; padding: 30px; border-radius: 12px;
-            width: 400px; text-align: center; box-shadow: 0 0 20px rgba(0,0,0,0.9);
+            width: 420px; text-align: center; box-shadow: 0 0 20px rgba(0,0,0,0.9);
         }
 
         #meetingScreen {
@@ -40,23 +41,30 @@
 
     <div id="titleScreen">
         <h1>Airplane Werewolf</h1>
-        <p>宇宙船内サバイバル（Skeld風マップ）</p>
+        <p>通路と部屋がつながった宇宙船マップでのサバイバル</p>
         <button onclick="startGame()">ゲームスタート</button>
     </div>
 
     <canvas id="gameCanvas" style="display:none;"></canvas>
 
-    <!-- タスク実行画面 -->
+    <!-- 往復バータスク画面 -->
     <div id="taskModal">
         <div class="task-box">
             <h2 id="taskTitle">タスク名</h2>
-            <p>ゲージが溜まるタイミングで <span style="color:#f1c40f; font-weight:bold;">K</span> キーを押せ！</p>
-            <div style="background: #111; border-radius: 6px; height: 25px; width: 100%; margin: 20px 0; overflow: hidden; position: relative;">
-                <div id="taskProgressBar" style="background: #2ecc71; width: 0%; height: 100%; transition: width 0.05s linear;"></div>
+            <p>緑色の範囲にバーがある時に <span style="color:#f1c40f; font-weight:bold;">K</span> キーを押せ！</p>
+            <p id="taskScoreText" style="font-size: 14px; color: #2ed573; margin-bottom: 5px;">成功回数: 0 / 3</p>
+            
+            <!-- 往復バーのバーエリア -->
+            <div style="background: #111; border-radius: 6px; height: 35px; width: 100%; margin: 20px 0; position: relative; overflow: hidden; border: 1px solid #444;">
+                <!-- ターゲットゾーン（緑の範囲） -->
+                <div id="taskTargetZone" style="position: absolute; top: 0; left: 60%; width: 20%; height: 100%; background: rgba(46, 213, 115, 0.4); border-left: 2px dashed #2ed573; border-right: 2px dashed #2ed573;"></div>
+                <!-- 左右に動くインジケーターバー -->
+                <div id="taskIndicator" style="position: absolute; top: 0; left: 0%; width: 6px; height: 100%; background: #ff4757;"></div>
             </div>
-            <button onclick="executeTaskProgress()" style="padding: 10px 20px; background: #2ecc71; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">進める (K)</button>
+
+            <button onclick="triggerTaskAction()" style="padding: 10px 25px; background: #2ed573; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">合わせる (K)</button>
             <br><br>
-            <button onclick="closeTaskModal()" style="background: #e74c3c; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">閉じる</button>
+            <button onclick="closeTaskModal()" style="background: #e74c3c; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">やめる</button>
         </div>
     </div>
 
@@ -94,14 +102,17 @@
         let walls = [];
         let bodies = [];
         let tasks = [];
-        let emergencyButton = { x: 1200, y: 500 };
+        let emergencyButton = { x: 1200, y: 400 };
         let isMeetingActive = false;
 
         let activeTask = null;
-        let taskProgressVal = 0;
+        let taskSuccessCount = 0;
+        let barPosition = 0; // 0% ～ 100%
+        let barDirection = 1; // 1: 右向き, -1: 左向き
+        let taskAnimId = null;
 
         const keys = { w: false, a: false, s: false, d: false, space: false };
-        let playerPos = { x: 1200, y: 600 };
+        let playerPos = { x: 1200, y: 500 };
         const speed = 4;
 
         function startGame() {
@@ -153,7 +164,7 @@
                 if (!me || me.isDead) return;
 
                 if (activeTask) {
-                    executeTaskProgress();
+                    triggerTaskAction();
                     return;
                 }
 
@@ -191,24 +202,71 @@
 
         function openTaskModal(task) {
             activeTask = task;
-            taskProgressVal = 0;
+            taskSuccessCount = 0;
+            barPosition = 0;
+            barDirection = 1;
             document.getElementById('taskTitle').innerText = `タスク: ${task.name}`;
-            document.getElementById('taskProgressBar').style.width = '0%';
+            document.getElementById('taskScoreText').innerText = `成功回数: ${taskSuccessCount} / 3`;
             document.getElementById('taskModal').style.display = 'flex';
+
+            // ターゲットゾーンのランダム配置（例: 40%〜60%など）
+            const targetLeft = 35 + Math.random() * 30; // 35%〜65%の間
+            const zone = document.getElementById('taskTargetZone');
+            zone.style.left = targetLeft + '%';
+
+            startTaskBarAnimation();
+        }
+
+        function startTaskBarAnimation() {
+            if (taskAnimId) cancelAnimationFrame(taskAnimId);
+
+            function animate() {
+                if (!activeTask) return;
+                barPosition += barDirection * 1.5; // 動くスピード
+                if (barPosition >= 100) {
+                    barPosition = 100;
+                    barDirection = -1;
+                } else if (barPosition <= 0) {
+                    barPosition = 0;
+                    barDirection = 1;
+                }
+
+                document.getElementById('taskIndicator').style.left = barPosition + '%';
+                taskAnimId = requestAnimationFrame(animate);
+            }
+            taskAnimId = requestAnimationFrame(animate);
         }
 
         function closeTaskModal() {
             activeTask = null;
+            if (taskAnimId) cancelAnimationFrame(taskAnimId);
             document.getElementById('taskModal').style.display = 'none';
         }
 
-        function executeTaskProgress() {
+        function triggerTaskAction() {
             if (!activeTask) return;
-            taskProgressVal += 25;
-            document.getElementById('taskProgressBar').style.width = taskProgressVal + '%';
-            if (taskProgressVal >= 100) {
-                socket.emit('completeTask', activeTask.id);
-                closeTaskModal();
+            const zone = document.getElementById('taskTargetZone');
+            const targetLeft = parseFloat(zone.style.left);
+            const targetWidth = 20; // ターゲットの幅(20%)
+
+            // 現在のバー位置がターゲットゾーン内にあるか判定
+            if (barPosition >= targetLeft && barPosition <= (targetLeft + targetWidth)) {
+                taskSuccessCount++;
+                document.getElementById('taskScoreText').innerText = `成功回数: ${taskSuccessCount} / 3`;
+
+                if (taskSuccessCount >= 3) {
+                    socket.emit('completeTask', activeTask.id);
+                    closeTaskModal();
+                } else {
+                    // 次の成功のためにターゲット位置を再ランダム化
+                    const newTarget = 20 + Math.random() * 60;
+                    zone.style.left = newTarget + '%';
+                }
+            } else {
+                // 失敗時（ちょっとペナルティとして成功カウントをリセットや通知など）
+                alert('タイミングが外れました！もう一度！');
+                taskSuccessCount = 0;
+                document.getElementById('taskScoreText').innerText = `成功回数: ${taskSuccessCount} / 3`;
             }
         }
 
@@ -303,11 +361,11 @@
             ctx.translate(-cameraX, -cameraY);
 
             // 床
-            ctx.fillStyle = '#1e1e2f';
-            ctx.fillRect(0, 0, 2400, 2000);
+            ctx.fillStyle = '#161622';
+            ctx.fillRect(0, 0, 2400, 1900);
 
-            // 壁（Skeld風）
-            ctx.fillStyle = '#3a3a5c';
+            // 部屋と通路をつなぐ壁
+            ctx.fillStyle = '#2b2b40';
             walls.forEach(w => ctx.fillRect(w.x, w.y, w.width, w.height));
 
             // 非常ボタン
@@ -345,15 +403,14 @@
 
             ctx.restore();
 
-            // --- スペースキー押下時の全体マッププレビュー（ミニマップ描画） ---
+            // スペースキー押下時の全体マップ（ミニマップ）
             if (keys.space) {
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
                 ctx.fillRect(50, 50, canvas.width - 100, canvas.height - 100);
 
                 ctx.save();
-                // 全体マップを画面中央に収めるためのスケーリング
                 const mapWidth = 2400;
-                const mapHeight = 2000;
+                const mapHeight = 1900;
                 const viewW = canvas.width - 200;
                 const viewH = canvas.height - 200;
                 const scale = Math.min(viewW / mapWidth, viewH / mapHeight);
@@ -364,33 +421,29 @@
                 ctx.translate(offsetX, offsetY);
                 ctx.scale(scale, scale);
 
-                // マップ全体の床と壁を描画
-                ctx.fillStyle = '#1e1e2f';
+                ctx.fillStyle = '#161622';
                 ctx.fillRect(0, 0, mapWidth, mapHeight);
-                ctx.fillStyle = '#4a4a75';
+                ctx.fillStyle = '#3a3a5c';
                 walls.forEach(w => ctx.fillRect(w.x, w.y, w.width, w.height));
 
-                // タスク位置
                 tasks.forEach(t => {
                     ctx.fillStyle = t.completed ? '#2ed573' : '#ffa502';
                     ctx.beginPath(); ctx.arc(t.x, t.y, 25, 0, Math.PI * 2); ctx.fill();
                 });
 
-                // プレイヤー位置
                 for (let id in players) {
                     const p = players[id];
                     if (p.isDead) continue;
                     ctx.fillStyle = p.color;
-                    ctx.beginPath(); ctx.arc(p.x, p.y, 30, 0, Math.PI * 2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(p.x, p.y, 35, 0, Math.PI * 2); ctx.fill();
                 }
 
                 ctx.restore();
 
-                // マップの枠タイトル
                 ctx.fillStyle = 'white';
                 ctx.font = 'bold 22px sans-serif';
                 ctx.textAlign = 'center';
-                ctx.fillText('--- THE SKELD (全体マップ & タスク状況) ---', canvas.width / 2, 90);
+                ctx.fillText('--- SKELD LAYOUT (全体マップ) ---', canvas.width / 2, 90);
                 
                 let completedCount = tasks.filter(t => t.completed).length;
                 ctx.font = '16px sans-serif';
