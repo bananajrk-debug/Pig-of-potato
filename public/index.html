@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>2Dタスク人狼 - 視界制限＆スリルマップ</title>
+    <title>2Dタスク人狼 - 本格ルームマップ</title>
     <style>
         body {
             margin: 0;
@@ -184,7 +184,7 @@
         canvas.addEventListener('click', () => canvas.focus());
 
         const playerSize = 30;
-        let myData = { x: 535, y: 380, speed: 4 };
+        let myData = { x: 535, y: 375, speed: 4 }; // 中央ホールの安全な初期位置
         let players = {};
         let myRole = 'crewmate';
         let isDead = false;
@@ -228,54 +228,68 @@
             keys[e.key.toLowerCase()] = false;
         });
 
-        // --- 人狼が奇襲しやすく、隠れ場所や曲がり角が多いスリル満点マップ ---
+        // ========================================================
+        // 部屋と通路でしっかり構築された本格マップの壁データ
+        // ========================================================
         const walls = [
-            // 外周
+            // --- 外周 ---
             { x: 0, y: 0, w: 1100, h: 20 },
             { x: 0, y: 730, w: 1100, h: 20 },
             { x: 0, y: 0, w: 20, h: 750 },
             { x: 1080, y: 0, w: 20, h: 750 },
 
-            // 中央の緊急会議ルーム（四方に入口の隙間あり）
-            { x: 440, y: 280, w: 90, h: 20 },
-            { x: 570, y: 280, w: 90, h: 20 },
-            { x: 440, y: 450, w: 90, h: 20 },
-            { x: 570, y: 450, w: 90, h: 20 },
-            { x: 440, y: 280, w: 20, h: 60 },
-            { x: 440, y: 390, w: 20, h: 60 },
-            { x: 640, y: 280, w: 20, h: 60 },
-            { x: 640, y: 390, w: 20, h: 60 },
+            // --- 中央ホール（カフェテリア） ---
+            // 上壁（左右に通路用の隙間）
+            { x: 400, y: 260, w: 100, h: 20 },
+            { x: 600, y: 260, w: 100, h: 20 },
+            // 下壁
+            { x: 400, y: 480, w: 100, h: 20 },
+            { x: 600, y: 480, w: 100, h: 20 },
+            // 左壁（上下に通路用の隙間）
+            { x: 400, y: 260, w: 20, h: 80 },
+            { x: 400, y: 400, w: 20, h: 80 },
+            // 右壁
+            { x: 680, y: 260, w: 20, h: 80 },
+            { x: 680, y: 400, w: 20, h: 80 },
 
-            // 迷路風の壁・小部屋（死角や曲がり角を作る）
-            // 左上エリア
-            { x: 120, y: 120, w: 180, h: 30 },
-            { x: 120, y: 120, w: 30, h: 140 },
-            { x: 270, y: 180, w: 80, h: 30 },
-            
-            // 右上エリア
-            { x: 800, y: 120, w: 180, h: 30 },
-            { x: 950, y: 120, w: 30, h: 140 },
-            { x: 750, y: 180, w: 80, h: 30 },
+            // --- 左上の部屋（実験室） ---
+            { x: 100, y: 80, w: 220, h: 160 },
+            // ※左上の部屋の右側に通路へ抜けるドア用の隙間を作るため、壁を分割配置しています
+            // （上記は一塊の箱なので、ドアの隙間を開けた部屋の壁を以下で構成）
+            // 実質的な部屋の壁をきれいに作るため再定義：
+            // [左上ルーム] 
+            { x: 80, y: 60, w: 240, h: 20 },   // 上
+            { x: 80, y: 60, w: 20, h: 180 },   // 左
+            { x: 80, y: 220, w: 160, h: 20 },  // 下（右側に入口の隙間 240~320 を開ける）
+            { x: 300, y: 60, w: 20, h: 100 },  // 右（下側に入口の隙間 160~220 を開ける）
 
-            // 左下エリア
-            { x: 120, y: 580, w: 180, h: 30 },
-            { x: 120, y: 480, w: 30, h: 130 },
-            { x: 270, y: 530, w: 80, h: 30 },
+            // --- 右上の部屋（電気室） ---
+            { x: 780, y: 60, w: 240, h: 20 },  // 上
+            { x: 1000, y: 60, w: 20, h: 180 }, // 右
+            { x: 860, y: 220, w: 160, h: 20 }, // 下（左側に入口の隙間を開ける）
+            { x: 780, y: 60, w: 20, h: 100 },  // 左
 
-            // 右下エリア
-            { x: 800, y: 580, w: 180, h: 30 },
-            { x: 950, y: 480, w: 30, h: 130 },
-            { x: 750, y: 530, w: 80, h: 30 },
+            // --- 左下の部屋（エンジンルーム） ---
+            { x: 80, y: 510, w: 160, h: 20 },  // 上（右側に入口の隙間）
+            { x: 80, y: 510, w: 20, h: 160 },  // 左
+            { x: 80, y: 650, w: 240, h: 20 },  // 下
+            { x: 300, y: 570, w: 20, h: 100 }, // 右
 
-            // 中央通路を分断する柱・障害物
-            { x: 350, y: 180, w: 30, h: 100 },
-            { x: 720, y: 180, w: 30, h: 100 },
-            { x: 350, y: 470, w: 30, h: 100 },
-            { x: 720, y: 470, w: 30, h: 100 },
+            // --- 右下の部屋（セキュリティルーム） ---
+            { x: 860, y: 510, w: 160, h: 20 }, // 上（左側に入口の隙間）
+            { x: 1000, y: 510, w: 20, h: 160 },// 右
+            { x: 780, y: 650, w: 240, h: 20 },// 下
+            { x: 780, y: 570, w: 20, h: 100 },// 左
+
+            // --- 通路を区切る壁（迷路感と死角を生み出す廊下の壁） ---
+            { x: 340, y: 160, w: 20, h: 140 },
+            { x: 740, y: 160, w: 20, h: 140 },
+            { x: 340, y: 450, w: 20, h: 140 },
+            { x: 740, y: 450, w: 20, h: 140 },
         ];
 
         const emergencyButton = { x: 535, y: 355, size: 30 };
-        const taskPoint = { x: 180, y: 355, size: 40 };
+        const taskPoint = { x: 180, y: 130, size: 40 }; // 左上の部屋の中にタスクを配置
 
         function checkCollision(x, y, w, h, walls) {
             for (let wall of walls) {
@@ -323,7 +337,7 @@
                 players[data.targetId].isDead = true;
                 if (data.targetId === socket.id) {
                     isDead = true;
-                    alert('あなたは人狼にキルされてしまいました…！（視野が広がります）');
+                    alert('あなたは人狼にキルされてしまいました…！');
                 }
             }
         });
@@ -354,11 +368,11 @@
             const banner = document.getElementById('roleBanner');
             const killInstruction = document.getElementById('killInstruction');
             if (myRole === 'imposter') {
-                banner.innerText = '役職: 人狼 (インポスター) - 影に隠れて市民を全員倒せ！';
+                banner.innerText = '役職: 人狼 (インポスター) - 通路や部屋の死角を利用して市民を襲え！';
                 banner.style.color = '#ff4444';
                 killInstruction.style.display = 'inline';
             } else {
-                banner.innerText = '役職: 市民 (クルーメイト) - 視界に気を付けてタスクを完了させろ！';
+                banner.innerText = '役職: 市民 (クルーメイト) - 部屋を巡ってタスクを完了させろ！';
                 banner.style.color = '#44ff44';
                 killInstruction.style.display = 'none';
             }
@@ -439,8 +453,16 @@
                 setTimeout(() => {
                     closeTaskMinigame();
                     socket.emit('completeTask');
-                    taskPoint.x = Math.random() * 800 + 150;
-                    taskPoint.y = Math.random() * 500 + 100;
+                    // タスク位置を別の部屋にランダム移動
+                    const roomPositions = [
+                        {x: 180, y: 130}, // 左上
+                        {x: 880, y: 130}, // 右上
+                        {x: 180, y: 580}, // 左下
+                        {x: 880, y: 580}  // 右下
+                    ];
+                    const nextRoom = roomPositions[Math.floor(Math.random() * roomPositions.length)];
+                    taskPoint.x = nextRoom.x;
+                    taskPoint.y = nextRoom.y;
                 }, 500);
             } else {
                 document.getElementById('taskMessage').style.color = '#ff3333';
@@ -508,13 +530,13 @@
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // 1. マップ・壁・オブジェクトの描画
+            // 1. マップ・壁・部屋の描画
             ctx.fillStyle = '#444';
             for (let wall of walls) {
                 ctx.fillRect(wall.x, wall.y, wall.w, wall.h);
             }
 
-            // 緊急会議ボタン
+            // 中央ホールの床や目印、緊急会議ボタン
             ctx.fillStyle = '#ff2222';
             ctx.beginPath();
             ctx.arc(emergencyButton.x + emergencyButton.size/2, emergencyButton.y + emergencyButton.size/2, emergencyButton.size/2, 0, Math.PI * 2);
@@ -551,20 +573,16 @@
             }
 
             // 2. 【視野制限（ビュー暗転）のマスク処理】
-            // 生存している場合のみ、自分の周囲以外を真っ暗にする
             if (!isDead) {
                 ctx.save();
-                // 画面全体を黒で覆う
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.92)';
                 ctx.beginPath();
                 ctx.rect(0, 0, canvas.width, canvas.height);
 
-                // 自分の中心座標を計算
                 const centerX = myData.x + playerSize / 2;
                 const centerY = myData.y + playerSize / 2;
-                const visionRadius = 180; // 視界の広さ（お好みで調整可能）
+                const visionRadius = 170; // 視界の広さ
 
-                // 自分の周囲だけを丸くくり抜く（切り抜いた部分は明るく見える）
                 ctx.arc(centerX, centerY, visionRadius, 0, Math.PI * 2, true);
                 ctx.fill('evenodd');
                 ctx.restore();
