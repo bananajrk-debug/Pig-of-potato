@@ -10,128 +10,158 @@ app.use(express.static('public'));
 
 let gameState = 'PLAYING';
 let players = {};
-let bodies = {};
+let bodies = []; // 安全な配列形式で死体を管理
 let meetingTimer = null;
 let votes = {};
 
-// 非常招集ボタン（大部屋：カフェテリア中央）
-const emergencyButton = { x: 2000, y: 1300 };
+// ご提示いただいた非常招集ボタンの座標
+const emergencyButton = { x: 2000, y: 1500 };
 
-// 【11部屋と、正確につながる90度通路の壁データ】 (マップサイズ: 4000 x 3000)
-// すべての部屋のドア位置と廊下の端がぴったり一致するように設計しています。
+// ご提示いただいた完璧な11部屋・90度回廊マップの壁データ
 const walls = [
-    // --- 【外周の壁】 ---
-    { x: 200, y: 200, width: 3600, height: 30 }, // 上
-    { x: 200, y: 2800, width: 3600, height: 30 }, // 下
-    { x: 200, y: 200, width: 30, height: 2630 }, // 左
-    { x: 3800, y: 200, width: 30, height: 2630 }, // 右
+    // 外周の壁
+    { x: 200, y: 200, width: 3600, height: 30 },
+    { x: 200, y: 2800, width: 3600, height: 30 },
+    { x: 200, y: 200, width: 30, height: 2630 },
+    { x: 3800, y: 200, width: 30, height: 2630 },
 
-    // ==========================================
-    // 1. 【大部屋】 カフェテリア (中央: x1700〜2300, y1100〜1500)
-    // ==========================================
-    { x: 1700, y: 1100, width: 280, height: 25 }, // 上壁左
-    { x: 2120, y: 1100, width: 180, height: 25 }, // 上壁右 (上通路へ接続)
-    { x: 1700, y: 1500, width: 280, height: 25 }, // 下壁左
-    { x: 2120, y: 1500, width: 180, height: 25 }, // 下壁右 (下通路へ接続)
-    { x: 1700, y: 1100, width: 25, height: 160 },  // 左壁上
-    { x: 1700, y: 1340, width: 25, height: 160 },  // 左壁下 (左通路へ接続)
-    { x: 2275, y: 1100, width: 25, height: 160 },  // 右壁上
-    { x: 2275, y: 1340, width: 25, height: 160 },  // 右壁下 (右通路へ接続)
+    // ===== 1. カフェテリア (1450,1150)-(2550,1850) 大部屋 =====
+    { x: 1450, y: 1150, width: 500, height: 30 },
+    { x: 2030, y: 1150, width: 520, height: 30 },
+    { x: 1450, y: 1820, width: 350, height: 30 },
+    { x: 1880, y: 1820, width: 670, height: 30 },
+    { x: 1450, y: 1150, width: 30, height: 250 },
+    { x: 1450, y: 1480, width: 30, height: 370 },
+    { x: 2520, y: 1150, width: 30, height: 50 },
+    { x: 2520, y: 1280, width: 30, height: 570 },
 
-    // ==========================================
-    // 2. 【中部屋】 ストレージ (下部中央: x1750〜2250, y1950〜2350)
-    // ==========================================
-    { x: 1750, y: 1950, width: 170, height: 25 }, // 上壁左
-    { x: 2080, y: 1950, width: 170, height: 25 }, // 上壁右 (上通路へ接続)
-    { x: 1750, y: 2350, width: 500, height: 25 }, // 下壁
-    { x: 1750, y: 1950, width: 25, height: 415 },  // 左壁
-    { x: 2225, y: 1950, width: 25, height: 415 },  // 右壁
+    // ===== 2. ストレージ (1550,2200)-(2250,2650) 中部屋 =====
+    { x: 1550, y: 2200, width: 250, height: 30 },
+    { x: 1880, y: 2200, width: 370, height: 30 },
+    { x: 1550, y: 2620, width: 700, height: 30 },
+    { x: 1550, y: 2200, width: 30, height: 80 },
+    { x: 1550, y: 2360, width: 30, height: 290 },
+    { x: 2220, y: 2200, width: 30, height: 80 },
+    { x: 2220, y: 2360, width: 30, height: 290 },
 
-    // ==========================================
-    // 3. 【小部屋 9個】
-    // ==========================================
-    // ① コックピット (左上)
-    { x: 450, y: 400, width: 300, height: 25 }, { x: 450, y: 750, width: 300, height: 25 },
-    { x: 450, y: 400, width: 25, height: 350 }, { x: 725, y: 400, width: 25, height: 140 }, { x: 725, y: 610, width: 25, height: 140 }, // 右側に出入り口
+    // ===== 3. ナビゲーション (1700,300)-(2300,700) =====
+    { x: 1700, y: 300, width: 600, height: 30 },
+    { x: 1700, y: 670, width: 250, height: 30 },
+    { x: 2030, y: 670, width: 270, height: 30 },
+    { x: 1700, y: 300, width: 30, height: 220 },
+    { x: 1700, y: 600, width: 30, height: 100 },
+    { x: 2270, y: 300, width: 30, height: 220 },
+    { x: 2270, y: 600, width: 30, height: 100 },
 
-    // ② アッパーエンジン (左中)
-    { x: 400, y: 1000, width: 300, height: 25 }, { x: 400, y: 1350, width: 300, height: 25 },
-    { x: 400, y: 1000, width: 25, height: 350 }, { x: 675, y: 1000, width: 25, height: 140 }, { x: 675, y: 1210, width: 25, height: 140 }, // 右側に出入り口
+    // ===== 4. メッドベイ (900,450)-(1300,900) =====
+    { x: 900, y: 450, width: 400, height: 30 },
+    { x: 900, y: 870, width: 400, height: 30 },
+    { x: 900, y: 450, width: 30, height: 150 },
+    { x: 900, y: 680, width: 30, height: 220 },
+    { x: 1270, y: 450, width: 30, height: 70 },
+    { x: 1270, y: 600, width: 30, height: 300 },
 
-    // ③ ロワーエンジン (左下)
-    { x: 500, y: 1800, width: 300, height: 25 }, { x: 500, y: 2150, width: 300, height: 25 },
-    { x: 500, y: 1800, width: 25, height: 350 }, { x: 775, y: 1800, width: 25, height: 140 }, { x: 775, y: 2010, width: 25, height: 140 }, // 右側に出入り口
+    // ===== 5. エンジン (300,400)-(650,900) =====
+    { x: 300, y: 400, width: 350, height: 30 },
+    { x: 300, y: 870, width: 220, height: 30 },
+    { x: 600, y: 870, width: 50, height: 30 },
+    { x: 300, y: 400, width: 30, height: 500 },
+    { x: 620, y: 400, width: 30, height: 200 },
+    { x: 620, y: 680, width: 30, height: 220 },
 
-    // ④ メッドベイ (中左上)
-    { x: 1050, y: 500, width: 300, height: 25 }, { x: 1050, y: 850, width: 300, height: 25 },
-    { x: 1050, y: 500, width: 25, height: 140 }, { x: 1050, y: 710, width: 25, height: 140 }, { x: 1325, y: 500, width: 25, height: 350 }, // 左側に出入り口
+    // ===== 6. セキュリティ (400,1250)-(800,1650) =====
+    { x: 400, y: 1250, width: 120, height: 30 },
+    { x: 600, y: 1250, width: 200, height: 30 },
+    { x: 400, y: 1620, width: 200, height: 30 },
+    { x: 680, y: 1620, width: 120, height: 30 },
+    { x: 400, y: 1250, width: 30, height: 400 },
+    { x: 770, y: 1250, width: 30, height: 150 },
+    { x: 770, y: 1480, width: 30, height: 170 },
 
-    // ⑤ セキュリティ (中左下)
-    { x: 1050, y: 1650, width: 300, height: 25 }, { x: 1050, y: 2000, width: 300, height: 25 },
-    { x: 1050, y: 1650, width: 25, height: 140 }, { x: 1050, y: 1860, width: 25, height: 140 }, { x: 1325, y: 1650, width: 25, height: 350 }, // 左側に出入り口
+    // ===== 7. エレクトリカル (500,2000)-(1100,2450) =====
+    { x: 500, y: 2000, width: 100, height: 30 },
+    { x: 680, y: 2000, width: 420, height: 30 },
+    { x: 500, y: 2420, width: 600, height: 30 },
+    { x: 500, y: 2000, width: 30, height: 450 },
+    { x: 1070, y: 2000, width: 30, height: 280 },
+    { x: 1070, y: 2360, width: 30, height: 90 },
 
-    // ⑥ エレクトリカル (中央左)
-    { x: 1200, y: 1100, width: 250, height: 25 }, { x: 1200, y: 1450, width: 250, height: 25 },
-    { x: 1200, y: 1100, width: 25, height: 130 }, { x: 1200, y: 1295, width: 25, height: 130 }, { x: 1425, y: 1100, width: 25, height: 350 }, // 左側に出入り口
+    // ===== 8. ウェポン (2800,350)-(3450,750) =====
+    { x: 2800, y: 350, width: 650, height: 30 },
+    { x: 2800, y: 720, width: 540, height: 30 },
+    { x: 2800, y: 350, width: 30, height: 170 },
+    { x: 2800, y: 600, width: 30, height: 150 },
+    { x: 3420, y: 350, width: 30, height: 400 },
 
-    // ⑦ ウェポン (右上)
-    { x: 2800, y: 400, width: 300, height: 25 }, { x: 2800, y: 750, width: 300, height: 25 },
-    { x: 2800, y: 400, width: 25, height: 140 }, { x: 2800, y: 610, width: 25, height: 140 }, { x: 3075, y: 400, width: 25, height: 350 }, // 右側に出入り口
+    // ===== 9. コックピット (3300,1000)-(3700,1400) =====
+    { x: 3300, y: 1000, width: 40, height: 30 },
+    { x: 3420, y: 1000, width: 280, height: 30 },
+    { x: 3300, y: 1370, width: 80, height: 30 },
+    { x: 3460, y: 1370, width: 240, height: 30 },
+    { x: 3300, y: 1000, width: 30, height: 200 },
+    { x: 3300, y: 1280, width: 30, height: 120 },
+    { x: 3670, y: 1000, width: 30, height: 400 },
 
-    // ⑧ ナビゲーション (右中)
-    { x: 3050, y: 1050, width: 300, height: 25 }, { x: 3050, y: 1400, width: 300, height: 25 },
-    { x: 3050, y: 1050, width: 25, height: 140 }, { x: 3050, y: 1260, width: 25, height: 140 }, { x: 3325, y: 1050, width: 25, height: 350 }, // 右側に出入り口
+    // ===== 10. リアクター (3200,1600)-(3700,1900) =====
+    { x: 3200, y: 1600, width: 180, height: 30 },
+    { x: 3460, y: 1600, width: 240, height: 30 },
+    { x: 3200, y: 1870, width: 180, height: 30 },
+    { x: 3460, y: 1870, width: 240, height: 30 },
+    { x: 3200, y: 1600, width: 30, height: 300 },
+    { x: 3670, y: 1600, width: 30, height: 300 },
 
-    // ⑨ シールド (右下)
-    { x: 2750, y: 1900, width: 300, height: 25 }, { x: 2750, y: 2250, width: 300, height: 25 },
-    { x: 2750, y: 1900, width: 25, height: 140 }, { x: 2750, y: 2110, width: 25, height: 140 }, { x: 3025, y: 1900, width: 25, height: 350 }, // 右側に出入り口
+    // ===== 11. シールド (2900,2100)-(3500,2500) =====
+    { x: 2900, y: 2100, width: 480, height: 30 },
+    { x: 3460, y: 2100, width: 40, height: 30 },
+    { x: 2900, y: 2470, width: 600, height: 30 },
+    { x: 2900, y: 2100, width: 30, height: 180 },
+    { x: 2900, y: 2360, width: 30, height: 140 },
+    { x: 3470, y: 2100, width: 30, height: 400 },
 
-    // ==========================================
-    // 4. 【完全に接続された90度直角の廊下ネットワーク】
-    // ==========================================
-    // カフェテリア左 ⇔ エレクトリカル (水平通路)
-    { x: 1425, y: 1240, width: 295, height: 25 }, { x: 1425, y: 1360, width: 295, height: 25 },
-
-    // カフェテリア右 ⇔ ナビゲーション (水平通路)
-    { x: 2275, y: 1240, width: 795, height: 25 }, { x: 2275, y: 1360, width: 795, height: 25 },
-
-    // カフェテリア上 ⇔ メッドベイ (L字通路)
-    { x: 2000, y: 720, width: 25, height: 405 }, { x: 2120, y: 720, width: 25, height: 405 },
-    { x: 1325, y: 720, width: 695, height: 25 }, { x: 1325, y: 840, width: 695, height: 25 },
-
-    // カフェテリア下 ⇔ ストレージ (垂直通路)
-    { x: 2000, y: 1500, width: 25, height: 460 }, { x: 2120, y: 1500, width: 25, height: 460 },
-
-    // コックピット ⇔ メッドベイ (水平通路)
-    { x: 725, y: 590, width: 325, height: 25 }, { x: 725, y: 710, width: 325, height: 25 },
-
-    // アッパーエンジン ⇔ エレクトリカル (水平通路)
-    { x: 675, y: 1200, width: 525, height: 25 }, { x: 675, y: 1320, width: 525, height: 25 },
-
-    // ロワーエンジン ⇔ セキュリティ (L字通路)
-    { x: 775, y: 1990, width: 275, height: 25 }, { x: 775, y: 2110, width: 275, height: 25 },
-    { x: 1050, y: 1360, width: 25, height: 655 }, { x: 1170, y: 1360, width: 25, height: 655 },
-
-    // ストレージ ⇔ シールド (水平通路)
-    { x: 2225, y: 2010, width: 525, height: 25 }, { x: 2225, y: 2130, width: 525, height: 25 },
-
-    // ウェポン ⇔ ナビゲーション (垂直通路)
-    { x: 3075, y: 750, width: 25, height: 320 }, { x: 3195, y: 750, width: 25, height: 320 },
+    // ===== 通路（平行2本壁・直角のみ）=====
+    { x: 650, y: 570, width: 250, height: 30 },
+    { x: 650, y: 680, width: 250, height: 30 },
+    { x: 1300, y: 490, width: 400, height: 30 },
+    { x: 1300, y: 600, width: 400, height: 30 },
+    { x: 2300, y: 490, width: 500, height: 30 },
+    { x: 2300, y: 600, width: 500, height: 30 },
+    { x: 1920, y: 700, width: 30, height: 450 },
+    { x: 2030, y: 700, width: 30, height: 450 },
+    { x: 3310, y: 750, width: 30, height: 250 },
+    { x: 3420, y: 750, width: 30, height: 250 },
+    { x: 2550, y: 1170, width: 750, height: 30 },
+    { x: 2550, y: 1280, width: 750, height: 30 },
+    { x: 3350, y: 1400, width: 30, height: 200 },
+    { x: 3460, y: 1400, width: 30, height: 200 },
+    { x: 3350, y: 1900, width: 30, height: 200 },
+    { x: 3460, y: 1900, width: 30, height: 200 },
+    { x: 2250, y: 2250, width: 650, height: 30 },
+    { x: 2250, y: 2360, width: 650, height: 30 },
+    { x: 1770, y: 1850, width: 30, height: 350 },
+    { x: 1880, y: 1850, width: 30, height: 350 },
+    { x: 800, y: 1370, width: 650, height: 30 },
+    { x: 800, y: 1480, width: 650, height: 30 },
+    { x: 490, y: 900, width: 30, height: 350 },
+    { x: 600, y: 900, width: 30, height: 350 },
+    { x: 570, y: 1650, width: 30, height: 350 },
+    { x: 680, y: 1650, width: 30, height: 350 },
+    { x: 1100, y: 2250, width: 450, height: 30 },
+    { x: 1100, y: 2360, width: 450, height: 30 }
 ];
 
-// タスク位置 (11個)
+// ご提示いただいた11個のタスクデータ
 let tasks = [
-    { id: 1, x: 575, y: 575, name: 'コックピット調整', completed: false },
-    { id: 2, x: 550, y: 1175, name: 'アッパーエンジン点検', completed: false },
-    { id: 3, x: 650, y: 1975, name: 'ロワーエンジン点検', completed: false },
-    { id: 4, x: 1200, y: 675, name: 'メッドベイ診断', completed: false },
-    { id: 5, x: 1200, y: 1825, name: 'セキュリティ確認', completed: false },
-    { id: 6, x: 1325, y: 1275, name: 'エレクトリカル修理', completed: false },
-    { id: 7, x: 2000, y: 1300, name: 'カフェテリア配線', completed: false },
-    { id: 8, x: 2000, y: 2150, name: 'ストレージ燃料補給', completed: false },
-    { id: 9, x: 2950, y: 575, name: 'ウェポンシステム確認', completed: false },
-    { id: 10, x: 3200, y: 1225, name: 'ナビゲーション設定', completed: false },
-    { id: 11, x: 2900, y: 2075, name: 'シールド充填', completed: false }
+    { id: 1,  x: 2250, y: 1650, name: 'カフェテリア：ゴミ捨て',           completed: false },
+    { id: 2,  x: 1900, y: 2500, name: 'ストレージ：燃料補給',             completed: false },
+    { id: 3,  x: 2000, y: 450,  name: 'ナビゲーション：航路入力',         completed: false },
+    { id: 4,  x: 1100, y: 700,  name: 'メッドベイ：スキャン',             completed: false },
+    { id: 5,  x: 475,  y: 650,  name: 'エンジン：出力調整',               completed: false },
+    { id: 6,  x: 600,  y: 1450, name: 'セキュリティ：カメラ確認',         completed: false },
+    { id: 7,  x: 800,  y: 2250, name: 'エレクトリカル：配線修理',         completed: false },
+    { id: 8,  x: 3100, y: 550,  name: 'ウェポン：砲台キャリブレーション', completed: false },
+    { id: 9,  x: 3500, y: 1200, name: 'コックピット：操縦ログ提出',       completed: false },
+    { id: 10, x: 3560, y: 1750, name: 'リアクター：炉心冷却',             completed: false },
+    { id: 11, x: 3200, y: 2300, name: 'シールド：バリア起動',             completed: false }
 ];
 
 io.on('connection', (socket) => {
@@ -140,10 +170,11 @@ io.on('connection', (socket) => {
     const colors = ['#e74c3c', '#3498db', '#2ecc71', '#f1c40f', '#9b59b6', '#e67e22', '#1abc9c', '#ff6b81'];
     const randomColor = colors[Math.floor(Math.random() * colors.length)];
     
+    // カフェテリア内（非常招集ボタン周辺）に安全にスポーン
     players[socket.id] = {
         id: socket.id,
-        x: 2000 + Math.random() * 30,
-        y: 1300 + Math.random() * 30,
+        x: emergencyButton.x + (Math.random() * 40 - 20),
+        y: emergencyButton.y + (Math.random() * 40 - 20),
         role: Object.keys(players).length === 1 ? 'wolf' : 'crew',
         isDead: false,
         color: randomColor,
@@ -187,7 +218,7 @@ io.on('connection', (socket) => {
 
         if (Math.hypot(killer.x - target.x, killer.y - target.y) < 80) {
             target.isDead = true;
-            bodies[socket.id] = { x: target.x, y: target.y, name: target.name, color: target.color };
+            bodies.push({ x: target.x, y: target.y, name: target.name, color: target.color });
             io.emit('updateGameState', { players, bodies });
             checkWinCondition();
         }
@@ -197,7 +228,7 @@ io.on('connection', (socket) => {
         if (gameState !== 'PLAYING') return;
         const player = players[socket.id];
         if (!player || player.isDead) return;
-        if (Object.keys(bodies).length > 0) startMeeting('body', player.name);
+        if (bodies.length > 0) startMeeting('body', player.name);
     });
 
     socket.on('emergencyMeeting', () => {
@@ -230,6 +261,7 @@ io.on('connection', (socket) => {
     });
 
     socket.on('disconnect', () => {
+        console.log(`プレイヤー切断: ${socket.id}`);
         delete players[socket.id];
         delete votes[socket.id];
         io.emit('updateGameState', { players, bodies });
@@ -265,7 +297,7 @@ function endMeeting() {
 
     gameState = 'PLAYING';
     votes = {};
-    bodies = {};
+    bodies = [];
     io.emit('endMeeting', { exiledName, players });
     checkWinCondition();
 }
