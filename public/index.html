@@ -2,85 +2,31 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Airplane Werewolf</title>
+    <title>2D人狼ゲーム (Among Us風)</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #0b0b12; font-family: sans-serif; color: white; user-select: none; }
-        #titleScreen {
-            position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
-            background: radial-gradient(circle, #1a1a3a 0%, #0d0d15 100%);
-            display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10;
-        }
-        #titleScreen h1 { font-size: 52px; color: #ff4757; margin-bottom: 10px; }
-        #titleScreen button {
-            padding: 15px 35px; font-size: 20px; background: #ff4757; color: white;
-            border: none; border-radius: 8px; cursor: pointer; font-weight: bold;
-        }
-        #titleScreen button:hover { background: #ff6b81; }
-
-        #taskModal {
-            display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            background: rgba(0,0,0,0.75); z-index: 80; justify-content: center; align-items: center;
-        }
-        .task-box {
-            background: #222233; border: 2px solid #555; padding: 30px; border-radius: 12px;
-            width: 420px; text-align: center; box-shadow: 0 0 20px rgba(0,0,0,0.9);
-        }
-
-        #meetingScreen {
-            display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            background: rgba(0,0,0,0.85); z-index: 100; justify-content: center; align-items: center;
-        }
-        .meeting-container {
-            background: #1f1f2e; padding: 25px; border-radius: 12px; width: 850px; height: 520px;
-            display: flex; gap: 20px; box-shadow: 0 0 20px rgba(0,0,0,0.8);
-        }
+        body { margin: 0; overflow: hidden; background: #111; font-family: sans-serif; color: #fff; }
+        canvas { display: block; }
+        #ui-layer { position: absolute; top: 10px; left: 10px; pointer-events: none; }
+        .hud-box { background: rgba(0,0,0,0.6); padding: 10px; border-radius: 8px; margin-bottom: 5px; pointer-events: auto; }
+        #meeting-modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 600px; background: rgba(20,20,30,0.95); border: 2px solid #555; border-radius: 12px; padding: 20px; z-index: 100; text-align: center; }
+        button { background: #333; color: white; border: 1px solid #777; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin: 4px; }
+        button:hover { background: #555; }
     </style>
 </head>
 <body>
-
-    <div id="titleScreen">
-        <h1>Airplane Werewolf</h1>
-        <p>Among Us風 本格宇宙船サバイバル</p>
-        <button onclick="startGame()">ゲームスタート</button>
+    <div id="ui-layer">
+        <div class="hud-box" id="role-display">ロール: 読み込み中...</div>
+        <div class="hud-box" id="task-display">タスク: 0 / 0</div>
+        <div class="hud-box">操作: [WASD] 移動 | [K] キル / タスク | [R] 死体通報 | [Space] ミニマップ</div>
     </div>
 
-    <canvas id="gameCanvas" style="display:none;"></canvas>
-
-    <div id="taskModal">
-        <div class="task-box">
-            <h2 id="taskTitle">タスク名</h2>
-            <p>緑色の範囲にバーがある時に <span style="color:#f1c40f; font-weight:bold;">K</span> キーを押せ！</p>
-            <p id="taskScoreText" style="font-size: 14px; color: #2ed573; margin-bottom: 5px;">成功回数: 0 / 3</p>
-            
-            <div style="background: #111; border-radius: 6px; height: 35px; width: 100%; margin: 20px 0; position: relative; overflow: hidden; border: 1px solid #444;">
-                <div id="taskTargetZone" style="position: absolute; top: 0; left: 60%; width: 20%; height: 100%; background: rgba(46, 213, 115, 0.4); border-left: 2px dashed #2ed573; border-right: 2px dashed #2ed573;"></div>
-                <div id="taskIndicator" style="position: absolute; top: 0; left: 0%; width: 6px; height: 100%; background: #ff4757;"></div>
-            </div>
-
-            <button onclick="triggerTaskAction()" style="padding: 10px 25px; background: #2ed573; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">合わせる (K)</button>
-            <br><br>
-            <button onclick="closeTaskModal()" style="background: #e74c3c; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">やめる</button>
-        </div>
+    <div id="meeting-modal">
+        <h2 id="meeting-title">緊急会議</h2>
+        <p id="meeting-timer">残り時間: 45秒</p>
+        <div id="player-list-voting"></div>
     </div>
 
-    <div id="meetingScreen">
-        <div class="meeting-container">
-            <div style="flex: 1; border-right: 1px solid #444; padding-right: 15px; display: flex; flex-direction: column;">
-                <h2>会議フェーズ</h2>
-                <p id="meetingReason" style="font-size: 14px; color: #f1c40f;"></p>
-                <div id="playerVoteList" style="flex: 1; overflow-y: auto; margin-top: 10px;"></div>
-                <button onclick="skipVote()" style="margin-top: 10px; padding: 10px; background: #e67e22; color: white; border: none; border-radius: 6px; cursor: pointer;">スキップ</button>
-            </div>
-            <div style="flex: 1; display: flex; flex-direction: column;">
-                <h2>チャット議論</h2>
-                <div id="chatLog" style="flex: 1; background: #111; border: 1px solid #444; border-radius: 6px; padding: 10px; overflow-y: auto; margin-bottom: 10px; font-size: 14px;"></div>
-                <div style="display: flex; gap: 8px;">
-                    <input type="text" id="chatInput" placeholder="メッセージを入力..." style="flex: 1; padding: 10px; border-radius: 6px; border: none; background: #2a2a3e; color: white;" onkeydown="if(event.key==='Enter') sendChat()">
-                    <button onclick="sendChat()" style="padding: 10px 20px; background: #3498db; color: white; border: none; border-radius: 6px; cursor: pointer;">送信</button>
-                </div>
-            </div>
-        </div>
-    </div>
+    <canvas id="gameCanvas"></canvas>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -91,361 +37,260 @@
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
 
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+
         let myId = null;
         let players = {};
-        let walls = [];
         let bodies = [];
+        let emergencyButton = null;
         let tasks = [];
-        let emergencyButton = { x: 2050, y: 1530 };
-        let isMeetingActive = false;
-
-        let activeTask = null;
-        let taskSuccessCount = 0;
-        let barPosition = 0;
-        let barDirection = 1;
-        let taskAnimId = null;
-
-        const keys = { w: false, a: false, s: false, d: false, space: false };
-        let playerPos = { x: 2050, y: 1530 };
-        const speed = 4;
-
-        // カメラズーム倍率
-        const zoom = 1.4;
-        const mapWidth = 4000;
-        const mapHeight = 3000;
-
-        function startGame() {
-            document.getElementById('titleScreen').style.display = 'none';
-            canvas.style.display = 'block';
-            requestAnimationFrame(gameLoop);
-        }
+        let gameState = 'PLAYING';
+        let keys = {};
+        let showMinimap = false;
 
         socket.on('init', (data) => {
             myId = data.id;
             players = data.players;
-            walls = data.walls;
+            bodies = data.bodies;
             emergencyButton = data.emergencyButton;
             tasks = data.tasks;
-            if (players[myId]) {
-                playerPos.x = players[myId].x;
-                playerPos.y = players[myId].y;
-            }
+
+            let myRole = players[myId].role;
+            document.getElementById('role-display').innerText = `ロール: ${myRole === 'wolf' ? '人狼 (Wolf)' : '市民 (Crew)'}`;
+            updateTaskHud();
         });
 
-        socket.on('gameStateUpdate', (data) => {
+        socket.on('game-state', (data) => {
             players = data.players;
             bodies = data.bodies;
         });
 
-        socket.on('updateGameState', (data) => {
+        socket.on('start-meeting', (data) => {
+            gameState = 'MEETING';
             players = data.players;
-            bodies = data.bodies;
+            document.getElementById('meeting-title').innerText = data.reason;
+            document.getElementById('meeting-modal').style.display = 'block';
+            updateVotingUI();
         });
 
-        socket.on('updateTasks', (serverTasks) => {
-            tasks = serverTasks;
+        socket.on('meeting-timer', (sec) => {
+            document.getElementById('meeting-timer').innerText = `残り時間: ${sec}秒`;
         });
 
+        socket.on('end-meeting', (updatedPlayers) => {
+            gameState = 'PLAYING';
+            players = updatedPlayers;
+            document.getElementById('meeting-modal').style.display = 'none';
+        });
+
+        socket.on('notification', (msg) => {
+            console.log(msg);
+        });
+
+        socket.on('game-over', (msg) => {
+            alert(msg);
+            location.reload();
+        });
+
+        // 入力ハンドリング
         window.addEventListener('keydown', (e) => {
-            if (isMeetingActive) return;
-            if (e.key === 'w' || e.key === 'W') keys.w = true;
-            if (e.key === 'a' || e.key === 'A') keys.a = true;
-            if (e.key === 's' || e.key === 'S') keys.s = true;
-            if (e.key === 'd' || e.key === 'D') keys.d = true;
-            if (e.key === ' ') keys.space = true;
-
-            if (e.key.toLowerCase() === 'r') {
-                socket.emit('reportBody');
-            }
+            keys[e.key.toLowerCase()] = true;
+            if (e.code === 'Space') showMinimap = true;
 
             if (e.key.toLowerCase() === 'k') {
-                const me = players[myId];
-                if (!me || me.isDead) return;
-
-                if (activeTask) {
-                    triggerTaskAction();
-                    return;
-                }
-
-                if (Math.hypot(emergencyButton.x - playerPos.x, emergencyButton.y - playerPos.y) < 90) {
-                    socket.emit('emergencyMeeting');
-                    return;
-                }
-
-                const closeTask = tasks.find(t => !t.completed && Math.hypot(t.x - playerPos.x, t.y - playerPos.y) < 80);
-                if (closeTask && me.role === 'crew') {
-                    openTaskModal(closeTask);
-                    return;
-                }
+                // キル または タスク実行
+                let me = players[myId];
+                if (!me || !me.isAlive) return;
 
                 if (me.role === 'wolf') {
-                    for (let id in players) {
-                        if (id !== myId && !players[id].isDead) {
-                            if (Math.hypot(players[id].x - playerPos.x, players[id].y - playerPos.y) < 90) {
-                                socket.emit('killPlayer', id);
-                                break;
-                            }
-                        }
-                    }
+                    // 最寄りのプレイヤーを探してキル
+                    let target = Object.values(players).find(p => p.id !== myId && p.isAlive && Math.hypot(p.x - me.x, p.y - me.y) < 100);
+                    if (target) socket.emit('player-kill', target.id);
+                }
+
+                // タスクチェック
+                let task = tasks.find(t => Math.hypot(t.x - me.x, t.y - me.y) < 80);
+                let myTask = me.tasks.find(t => t.id === task?.id);
+                if (myTask && !myTask.completed) {
+                    socket.emit('complete-task', myTask.id);
+                    myTask.completed = true;
+                    updateTaskHud();
+                }
+            }
+
+            if (e.key.toLowerCase() === 'r') {
+                // 死体通報
+                let me = players[myId];
+                if (!me || !me.isAlive) return;
+                let body = bodies.find(b => Math.hypot(b.x - me.x, b.y - me.y) < 100);
+                if (body) socket.emit('report-body', body.id);
+
+                // 非常ボタンチェック
+                if (emergencyButton && Math.hypot(emergencyButton.x - me.x, emergencyButton.y - me.y) < emergencyButton.radius + 30) {
+                    socket.emit('emergency-meeting');
                 }
             }
         });
 
         window.addEventListener('keyup', (e) => {
-            if (e.key === 'w' || e.key === 'W') keys.w = false;
-            if (e.key === 'a' || e.key === 'A') keys.a = false;
-            if (e.key === 's' || e.key === 'S') keys.s = false;
-            if (e.key === 'd' || e.key === 'D') keys.d = false;
-            if (e.key === ' ') keys.space = false;
+            keys[e.key.toLowerCase()] = false;
+            if (e.code === 'Space') showMinimap = false;
         });
 
-        function openTaskModal(task) {
-            activeTask = task;
-            taskSuccessCount = 0;
-            barPosition = 0;
-            barDirection = 1;
-            document.getElementById('taskTitle').innerText = `タスク: ${task.name}`;
-            document.getElementById('taskScoreText').innerText = `成功回数: ${taskSuccessCount} / 3`;
-            document.getElementById('taskModal').style.display = 'flex';
-
-            const targetLeft = 35 + Math.random() * 30;
-            const zone = document.getElementById('taskTargetZone');
-            zone.style.left = targetLeft + '%';
-
-            startTaskBarAnimation();
+        function updateTaskHud() {
+            let me = players[myId];
+            if (!me) return;
+            let completedCount = me.tasks.filter(t => t.completed).length;
+            document.getElementById('task-display').innerText = `タスク: ${completedCount} / ${me.tasks.length}`;
         }
 
-        function startTaskBarAnimation() {
-            if (taskAnimId) cancelAnimationFrame(taskAnimId);
-
-            function animate() {
-                if (!activeTask) return;
-                barPosition += barDirection * 1.5;
-                if (barPosition >= 100) {
-                    barPosition = 100;
-                    barDirection = -1;
-                } else if (barPosition <= 0) {
-                    barPosition = 0;
-                    barDirection = 1;
+        function updateVotingUI() {
+            let container = document.getElementById('player-list-voting');
+            container.innerHTML = '<h3>投票先を選んでください</h3>';
+            Object.values(players).forEach(p => {
+                if (p.isAlive) {
+                    let btn = document.createElement('button');
+                    btn.innerText = `${p.id.substr(4,4)} (${p.role === 'wolf' && players[myId].role === 'wolf' ? '人狼' : 'プレイヤー'})`;
+                    btn.onclick = () => {
+                        socket.emit('cast-vote', p.id);
+                        container.innerHTML = '<p>投票完了しました。結果を待っています...</p>';
+                    };
+                    container.appendChild(btn);
                 }
-
-                document.getElementById('taskIndicator').style.left = barPosition + '%';
-                taskAnimId = requestAnimationFrame(animate);
-            }
-            taskAnimId = requestAnimationFrame(animate);
+            });
+            let skipBtn = document.createElement('button');
+            skipBtn.innerText = 'スキップ';
+            skipBtn.onclick = () => {
+                socket.emit('cast-vote', null);
+                container.innerHTML = '<p>スキップに投票しました。</p>';
+            };
+            container.appendChild(skipBtn);
         }
 
-        function closeTaskModal() {
-            activeTask = null;
-            if (taskAnimId) cancelAnimationFrame(taskAnimId);
-            document.getElementById('taskModal').style.display = 'none';
-        }
-
-        function triggerTaskAction() {
-            if (!activeTask) return;
-            const zone = document.getElementById('taskTargetZone');
-            const targetLeft = parseFloat(zone.style.left);
-            const targetWidth = 20;
-
-            if (barPosition >= targetLeft && barPosition <= (targetLeft + targetWidth)) {
-                taskSuccessCount++;
-                document.getElementById('taskScoreText').innerText = `成功回数: ${taskSuccessCount} / 3`;
-
-                if (taskSuccessCount >= 3) {
-                    socket.emit('completeTask', activeTask.id);
-                    closeTaskModal();
-                } else {
-                    const newTarget = 20 + Math.random() * 60;
-                    zone.style.left = newTarget + '%';
-                }
-            } else {
-                alert('タイミングが外れました！');
-                taskSuccessCount = 0;
-                document.getElementById('taskScoreText').innerText = `成功回数: ${taskSuccessCount} / 3`;
-            }
-        }
-
-        socket.on('startMeeting', (data) => {
-            isMeetingActive = true;
-            closeTaskModal();
-            document.getElementById('meetingScreen').style.display = 'flex';
-            document.getElementById('meetingReason').innerText = data.reason === 'body' ? '死体が発見され、会議が始まります。' : '非常招集ボタンが押されました。';
-            document.getElementById('chatLog').innerHTML = '';
-
-            const voteListDiv = document.getElementById('playerVoteList');
-            voteListDiv.innerHTML = '';
-            for (let id in players) {
-                const p = players[id];
-                if (!p.isDead) {
-                    const btn = document.createElement('button');
-                    btn.innerText = `${p.name} に投票`;
-                    btn.style.cssText = "display: block; width: 100%; margin-bottom: 8px; padding: 8px; background: #333; color: white; border: none; border-radius: 4px; cursor: pointer;";
-                    btn.onclick = () => votePlayer(id);
-                    voteListDiv.appendChild(btn);
-                }
-            }
-        });
-
-        socket.on('chatMessage', (data) => {
-            const chatLog = document.getElementById('chatLog');
-            const div = document.createElement('div');
-            div.style.marginBottom = '6px';
-            div.innerHTML = `<strong>${data.name}</strong>: ${data.text}`;
-            chatLog.appendChild(div);
-            chatLog.scrollTop = chatLog.scrollHeight;
-        });
-
-        socket.on('endMeeting', (data) => {
-            isMeetingActive = false;
-            document.getElementById('meetingScreen').style.display = 'none';
-            players = data.players;
-            if (data.exiledName) alert(`${data.exiledName} は追放されました。`);
-            else alert('誰も追放されませんでした。');
-        });
-
-        socket.on('gameOver', (data) => {
-            alert(data.message);
-            location.reload();
-        });
-
-        function sendChat() {
-            const input = document.getElementById('chatInput');
-            if (input.value.trim() === '') return;
-            socket.emit('chatMessage', input.value);
-            input.value = '';
-        }
-
-        function votePlayer(targetId) { socket.emit('vote', targetId); alert('投票しました'); }
-        function skipVote() { socket.emit('vote', 'skip'); alert('スキップしました'); }
-
-        function checkCollision(nx, ny) {
-            const radius = 20;
-            for (let w of walls) {
-                if (nx + radius > w.x && nx - radius < w.x + w.width &&
-                    ny + radius > w.y && ny - radius < w.y + w.height) return true;
-            }
-            return false;
-        }
-
+        // メインループ・描画
         function gameLoop() {
-            if (!isMeetingActive && players[myId]) {
-                const me = players[myId];
-                if (!me.isDead && !activeTask) {
-                    let dx = 0, dy = 0;
-                    if (keys.w) dy -= 1;
-                    if (keys.s) dy += 1;
-                    if (keys.a) dx -= 1;
-                    if (keys.d) dx += 1;
-                    if (dx !== 0 && dy !== 0) { dx *= 0.7071; dy *= 0.7071; }
-
-                    const nextX = playerPos.x + dx * speed;
-                    const nextY = playerPos.y + dy * speed;
-                    if (!checkCollision(nextX, playerPos.y)) playerPos.x = nextX;
-                    if (!checkCollision(playerPos.x, nextY)) playerPos.y = nextY;
-
-                    socket.emit('playerMove', { x: playerPos.x, y: playerPos.y });
-                }
-            }
-
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            ctx.save();
-            // --- カメラ追従とズーム ---
-            ctx.translate(canvas.width / 2, canvas.height / 2);
-            ctx.scale(zoom, zoom);
-            ctx.translate(-playerPos.x, -playerPos.y);
+            let me = players[myId];
+            if (me) {
+                // 移動送信
+                let vx = 0, vy = 0;
+                if (keys['w']) vy -= 1;
+                if (keys['s']) vy += 1;
+                if (keys['a']) vx -= 1;
+                if (keys['d']) vx += 1;
+                if (vx !== 0 || vy !== 0) {
+                    let len = Math.hypot(vx, vy);
+                    socket.emit('player-move', { vx: vx / len, vy: vy / len });
+                }
 
-            // 床
-            ctx.fillStyle = '#101018';
-            ctx.fillRect(0, 0, mapWidth, mapHeight);
-
-            // 壁
-            ctx.fillStyle = '#2f2f4e';
-            walls.forEach(w => ctx.fillRect(w.x, w.y, w.width, w.height));
-
-            // 非常ボタン
-            ctx.fillStyle = '#ff4757';
-            ctx.beginPath(); ctx.arc(emergencyButton.x, emergencyButton.y, 24, 0, Math.PI * 2); ctx.fill();
-            ctx.fillStyle = 'white'; ctx.font = '12px sans-serif'; ctx.textAlign = 'center';
-            ctx.fillText('緊急ボタン (K)', emergencyButton.x, emergencyButton.y - 32);
-
-            // タスク
-            tasks.forEach(t => {
-                ctx.fillStyle = t.completed ? '#2ed573' : '#ffa502';
-                ctx.beginPath(); ctx.arc(t.x, t.y, 14, 0, Math.PI * 2); ctx.fill();
-                ctx.fillStyle = 'white'; ctx.font = '11px sans-serif';
-                ctx.fillText(t.name, t.x, t.y - 18);
-            });
-
-            // 死体
-            bodies.forEach(b => {
-                ctx.fillStyle = b.color; ctx.globalAlpha = 0.5;
-                ctx.beginPath(); ctx.ellipse(b.x, b.y, 18, 12, 0, 0, Math.PI * 2); ctx.fill();
-                ctx.globalAlpha = 1.0; ctx.fillStyle = 'white';
-                ctx.fillText(`死体: ${b.name} (Rで通報)`, b.x, b.y - 20);
-            });
-
-            // プレイヤー
-            for (let id in players) {
-                const p = players[id];
-                ctx.fillStyle = p.color; ctx.globalAlpha = p.isDead ? 0.3 : 1.0;
-                ctx.beginPath(); ctx.arc(p.x, p.y, 20, 0, Math.PI * 2); ctx.fill();
-                ctx.fillStyle = '#70a1ff'; ctx.fillRect(p.x - 4, p.y - 8, 12, 7);
-                ctx.fillStyle = 'white'; ctx.font = '12px sans-serif'; ctx.textAlign = 'center';
-                ctx.fillText(p.name + (p.role === 'wolf' && id === myId ? ' (人狼)' : ''), p.x, p.y - 28);
-                ctx.globalAlpha = 1.0;
-            }
-
-            ctx.restore();
-
-            // スペースキー押下時の全体マップ（ミニマップ）
-            if (keys.space) {
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
-                ctx.fillRect(50, 50, canvas.width - 100, canvas.height - 100);
-
+                // カメラ追従 & ズーム (1.4倍)
                 ctx.save();
-                const viewW = canvas.width - 200;
-                const viewH = canvas.height - 200;
-                const scale = Math.min(viewW / mapWidth, viewH / mapHeight);
+                const zoom = 1.4;
+                ctx.translate(canvas.width / 2, canvas.height / 2);
+                ctx.scale(zoom, zoom);
+                ctx.translate(-me.x, -me.y);
 
-                const offsetX = 100 + (viewW - mapWidth * scale) / 2;
-                const offsetY = 100 + (viewH - mapHeight * scale) / 2;
+                // マップ背景・壁の描画
+                ctx.fillStyle = '#1e1e24';
+                ctx.fillRect(0, 0, 4000, 3000);
 
-                ctx.translate(offsetX, offsetY);
-                ctx.scale(scale, scale);
-
-                ctx.fillStyle = '#101018';
-                ctx.fillRect(0, 0, mapWidth, mapHeight);
-                ctx.fillStyle = '#3f3f6e';
-                walls.forEach(w => ctx.fillRect(w.x, w.y, w.width, w.height));
-
-                tasks.forEach(t => {
-                    ctx.fillStyle = t.completed ? '#2ed573' : '#ffa502';
-                    ctx.beginPath(); ctx.arc(t.x, t.y, 24, 0, Math.PI * 2); ctx.fill();
+                // 簡易壁の描画
+                ctx.fillStyle = '#3a3a48';
+                // (サーバー側の walls 配列と同じ内容を描画)
+                const wallList = [
+                    { x: 0, y: 0, w: 4000, h: 40 },
+                    { x: 0, y: 2960, w: 4000, h: 40 },
+                    { x: 0, y: 0, w: 40, h: 3000 },
+                    { x: 3960, y: 0, w: 40, h: 3000 },
+                    { x: 1600, y: 1100, w: 800, h: 40 },
+                    { x: 1600, y: 1860, w: 800, h: 40 },
+                    { x: 1600, y: 1100, w: 40, h: 380 },
+                    { x: 2360, y: 1100, w: 40, h: 380 },
+                    { x: 1600, y: 1520, w: 40, h: 380 },
+                    { x: 2360, y: 1520, w: 40, h: 380 },
+                ];
+                wallList.forEach(w => {
+                    ctx.fillRect(w.x, w.y, w.w, w.h);
                 });
 
-                for (let id in players) {
-                    const p = players[id];
-                    if (p.isDead) continue;
-                    ctx.fillStyle = p.color;
-                    ctx.beginPath(); ctx.arc(p.x, p.y, 35, 0, Math.PI * 2); ctx.fill();
+                // 非常ボタン描画
+                if (emergencyButton) {
+                    ctx.beginPath();
+                    ctx.arc(emergencyButton.x, emergencyButton.y, emergencyButton.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = '#ff2222';
+                    ctx.fill();
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 4;
+                    ctx.stroke();
                 }
+
+                // タスク描画
+                tasks.forEach(t => {
+                    ctx.beginPath();
+                    ctx.arc(t.x, t.y, 15, 0, Math.PI * 2);
+                    ctx.fillStyle = '#ffff00';
+                    ctx.fill();
+                });
+
+                // 死体描画
+                bodies.forEach(b => {
+                    ctx.fillStyle = b.color;
+                    ctx.beginPath();
+                    ctx.arc(b.x, b.y, 15, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#fff';
+                    ctx.font = '12px sans-serif';
+                    ctx.fillText('DEAD', b.x - 18, b.y - 20);
+                });
+
+                // プレイヤー描画
+                Object.values(players).forEach(p => {
+                    if (!p.isAlive) return;
+                    ctx.fillStyle = p.color;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, 20, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = '#fff';
+                    ctx.font = '12px sans-serif';
+                    ctx.fillText(p.id.substr(4, 4), p.x - 15, p.y - 28);
+                });
 
                 ctx.restore();
 
-                ctx.fillStyle = 'white';
-                ctx.font = 'bold 24px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.fillText('--- 宇宙船マップ (全体ビュー) ---', canvas.width / 2, 90);
-                
-                let completedCount = tasks.filter(t => t.completed).length;
-                ctx.font = '18px sans-serif';
-                ctx.fillStyle = '#2ed573';
-                ctx.fillText(`タスク進捗: ${completedCount} / ${tasks.length}`, canvas.width / 2, canvas.height - 70);
+                // スペースキー押下によるミニマップ表示
+                if (showMinimap) {
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+                    ctx.fillRect(canvas.width / 2 - 300, canvas.height / 2 - 225, 600, 450);
+                    ctx.strokeStyle = '#fff';
+                    ctx.strokeRect(canvas.width / 2 - 300, canvas.height / 2 - 225, 600, 450);
+
+                    ctx.save();
+                    ctx.translate(canvas.width / 2 - 300, canvas.height / 2 - 225);
+                    let scaleX = 600 / 4000;
+                    let scaleY = 450 / 3000;
+                    ctx.scale(scaleX, scaleY);
+
+                    // ミニマップ上のプレイヤー描画
+                    Object.values(players).forEach(p => {
+                        if (!p.isAlive) return;
+                        ctx.fillStyle = p.color;
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, 40, 0, Math.PI * 2);
+                        ctx.fill();
+                    });
+                    ctx.restore();
+                }
             }
 
             requestAnimationFrame(gameLoop);
         }
+
+        requestAnimationFrame(gameLoop);
     </script>
 </body>
 </html>
