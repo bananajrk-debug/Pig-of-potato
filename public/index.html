@@ -41,7 +41,7 @@
 
     <div id="titleScreen">
         <h1>Airplane Werewolf</h1>
-        <p>島（部屋）と橋（通路）をつないだ本格マップでのサバイバル</p>
+        <p>複雑に入り組んだ折れ曲がりマップでの宇宙船サバイバル</p>
         <button onclick="startGame()">ゲームスタート</button>
     </div>
 
@@ -99,7 +99,7 @@
         let walls = [];
         let bodies = [];
         let tasks = [];
-        let emergencyButton = { x: 1400, y: 950 };
+        let emergencyButton = { x: 1800, y: 1200 };
         let isMeetingActive = false;
 
         let activeTask = null;
@@ -109,7 +109,7 @@
         let taskAnimId = null;
 
         const keys = { w: false, a: false, s: false, d: false, space: false };
-        let playerPos = { x: 1400, y: 950 };
+        let playerPos = { x: 1800, y: 1200 };
         const speed = 4;
 
         function startGame() {
@@ -354,11 +354,11 @@
             ctx.translate(-cameraX, -cameraY);
 
             // 床
-            ctx.fillStyle = '#111118';
-            ctx.fillRect(0, 0, 3000, 2200);
+            ctx.fillStyle = '#0f0f17';
+            ctx.fillRect(0, 0, 3600, 2600);
 
-            // 島（部屋）と橋（通路）の壁
-            ctx.fillStyle = '#2f2f4f';
+            // 複雑な部屋と折れ曲がり通路の壁
+            ctx.fillStyle = '#2d2d44';
             walls.forEach(w => ctx.fillRect(w.x, w.y, w.width, w.height));
 
             // 非常ボタン
@@ -402,8 +402,8 @@
                 ctx.fillRect(50, 50, canvas.width - 100, canvas.height - 100);
 
                 ctx.save();
-                const mapWidth = 3000;
-                const mapHeight = 2200;
+                const mapWidth = 3600;
+                const mapHeight = 2600;
                 const viewW = canvas.width - 200;
                 const viewH = canvas.height - 200;
                 const scale = Math.min(viewW / mapWidth, viewH / mapHeight);
@@ -414,21 +414,21 @@
                 ctx.translate(offsetX, offsetY);
                 ctx.scale(scale, scale);
 
-                ctx.fillStyle = '#111118';
+                ctx.fillStyle = '#0f0f17';
                 ctx.fillRect(0, 0, mapWidth, mapHeight);
-                ctx.fillStyle = '#3f3f6f';
+                ctx.fillStyle = '#3d3d66';
                 walls.forEach(w => ctx.fillRect(w.x, w.y, w.width, w.height));
 
                 tasks.forEach(t => {
                     ctx.fillStyle = t.completed ? '#2ed573' : '#ffa502';
-                    ctx.beginPath(); ctx.arc(t.x, t.y, 25, 0, Math.PI * 2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(t.x, t.y, 30, 0, Math.PI * 2); ctx.fill();
                 });
 
                 for (let id in players) {
                     const p = players[id];
                     if (p.isDead) continue;
                     ctx.fillStyle = p.color;
-                    ctx.beginPath(); ctx.arc(p.x, p.y, 35, 0, Math.PI * 2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(p.x, p.y, 40, 0, Math.PI * 2); ctx.fill();
                 }
 
                 ctx.restore();
@@ -436,7 +436,7 @@
                 ctx.fillStyle = 'white';
                 ctx.font = 'bold 22px sans-serif';
                 ctx.textAlign = 'center';
-                ctx.fillText('--- 船内マップ (島と橋の構造) ---', canvas.width / 2, 90);
+                ctx.fillText('--- 拡張マップ (クランク通路・多部屋構造) ---', canvas.width / 2, 90);
                 
                 let completedCount = tasks.filter(t => t.completed).length;
                 ctx.font = '16px sans-serif';
