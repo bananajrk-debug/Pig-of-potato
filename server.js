@@ -7,10 +7,8 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// ルートアクセス時に index.html を送信
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
-});
+// public フォルダ内のファイルを静的ファイルとして公開
+app.use(express.static(path.join(__dirname, 'public')));
 
 const PLAYER_SPEED = 3;
 const TANK_SIZE = 30;
@@ -55,7 +53,6 @@ function checkCollision(x, y, size) {
 io.on('connection', (socket) => {
   console.log('プレイヤー接続:', socket.id);
 
-  // 初期スポーン位置
   players[socket.id] = {
     x: 100,
     y: 100,
@@ -64,7 +61,6 @@ io.on('connection', (socket) => {
     hp: 100
   };
 
-  // プレイヤーからの入力処理
   socket.on('input', (data) => {
     const player = players[socket.id];
     if (!player) return;
@@ -77,7 +73,6 @@ io.on('connection', (socket) => {
     if (data.left) newX -= PLAYER_SPEED;
     if (data.right) newX += PLAYER_SPEED;
 
-    // 軸ごとの衝突判定（滑らかに動かすため）
     if (!checkCollision(newX, player.y, TANK_SIZE)) player.x = newX;
     if (!checkCollision(player.x, newY, TANK_SIZE)) player.y = newY;
 
@@ -86,7 +81,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // 弾の発射
   socket.on('shoot', () => {
     const player = players[socket.id];
     if (!player) return;
@@ -112,7 +106,6 @@ io.on('connection', (socket) => {
 
 // ゲームループ（60fps）
 setInterval(() => {
-  // 弾の更新と衝突判定
   for (let i = bullets.length - 1; i >= 0; i--) {
     let b = bullets[i];
     b.x += b.dx;
@@ -120,11 +113,9 @@ setInterval(() => {
 
     let hit = false;
 
-    // マップ外判定
     if (b.x < 0 || b.x > MAP_WIDTH || b.y < 0 || b.y > MAP_HEIGHT) {
       hit = true;
     } else {
-      // 障害物ブロックとの衝突（ここで「射線を切る」ギミックになる）
       for (let obs of obstacles) {
         const obsX = obs.x * TILE_SIZE;
         const obsY = obs.y * TILE_SIZE;
@@ -138,23 +129,22 @@ setInterval(() => {
       }
     }
 
-    // プレイヤー戦車との衝突判定
     if (!hit) {
       for (let id in players) {
-        if (id === b.playerId) continue; // 自分の弾は無視
+        if (id === b.playerId) continue;
         let p = players[id];
         if (
           b.x >= p.x && b.x <= p.x + TANK_SIZE &&
-          b.y >= p.y && b.y <= p.y + TANK_SIZE
+          b.y >= p.y && b.y <= p.y + TILE_SIZE
         ) {
           hit = true;
-          p.hp -= 20; // 被弾ダメージ
+          p.hp -= 20;
           if (p.hp <= 0) {
             p.hp = 100;
             p.x = 80 + Math.random() * 200;
             p.y = 80 + Math.random() * 200;
             if (players[b.playerId]) {
-              players[b.playerId].score += 1; // スコア加算
+              players[b.playerId].score += 1;
             }
           }
           break;
@@ -167,7 +157,6 @@ setInterval(() => {
     }
   }
 
-  // 全クライアントに状態を送信
   io.emit('state', { players, bullets, obstacles });
 }, 1000 / 60);
 
