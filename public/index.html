@@ -17,7 +17,7 @@
       overflow: hidden;
     }
     #ui {
-      margin-bottom: 10px;
+      margin-bottom: 8px;
       font-size: 14px;
       background: #2b2b2b;
       padding: 6px 12px;
@@ -27,7 +27,11 @@
     canvas {
       background: #222;
       border: 3px solid #555;
-      box-shadow: 0 0 25px rgba(0,0,0,0.7);
+      box-shadow: 0 0 20px rgba(0,0,0,0.7);
+      width: 600px;
+      height: 600px;
+      max-width: 90vw;
+      max-height: 75vh;
     }
   </style>
 </head>
@@ -35,10 +39,10 @@
   <div id="ui">
     HP: <span id="hp" style="color: #ff5555; font-weight: bold;">100</span> | 
     スコア: <span id="score" style="color: #55ff55; font-weight: bold;">0</span> 
-    <span style="margin-left: 10px; color: #aaa;">[W/S]前後進 [A/D]旋回 [K]射撃(壁1回バウンド) vs CPU戦車</span>
+    <span style="margin-left: 10px; color: #aaa;">[W/S]前後進 [A/D]旋回 [K]射撃</span>
   </div>
-  <!-- 800 x 800 の正方形キャンバス -->
-  <canvas id="gameCanvas" width="800" height="800"></canvas>
+  <!-- 600 x 600 キャンバス -->
+  <canvas id="gameCanvas" width="600" height="600"></canvas>
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
@@ -47,10 +51,10 @@
     const ctx = canvas.getContext('2d');
 
     const TILE_SIZE = 40;
-    const TANK_SIZE = 30;
-    const BULLET_RADIUS = 8;
-    const MAP_WIDTH = 800;
-    const MAP_HEIGHT = 800;
+    const TANK_SIZE = 28;
+    const BULLET_RADIUS = 7;
+    const MAP_WIDTH = 600;
+    const MAP_HEIGHT = 600;
 
     let keys = {
       forward: false,
@@ -62,11 +66,9 @@
     window.addEventListener('keydown', (e) => {
       if (['w', 'W', 'ArrowUp'].includes(e.key)) keys.forward = true;
       if (['s', 'S', 'ArrowDown'].includes(e.key)) keys.backward = true;
-      if (['a', 'A', 'ArrowLeft'].includes(e.key)) keys.left = true; // あえて誤入力防止のため既存対応
       if (['a', 'A', 'ArrowLeft'].includes(e.key)) keys.turnLeft = true;
       if (['d', 'D', 'ArrowRight'].includes(e.key)) keys.turnRight = true;
 
-      // Kキーで射撃
       if (['k', 'K'].includes(e.key)) {
         if (!e.repeat) {
           socket.emit('shoot');
@@ -100,7 +102,7 @@
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // グリッド線（正方形マップ全体）
+      // グリッド線
       ctx.strokeStyle = '#2c2c2c';
       ctx.lineWidth = 1;
       for (let x = 0; x <= MAP_WIDTH; x += TILE_SIZE) {
@@ -128,13 +130,32 @@
         ctx.fill();
       });
 
-      // 共通の戦車描画関数
-      function drawTank(tank, color, isSelf) {
+      // 戦車と頭上のHPバーを描画する関数
+      function drawTank(tank, color) {
         ctx.save();
         ctx.translate(tank.x + TANK_SIZE / 2, tank.y + TANK_SIZE / 2);
-        ctx.rotate(tank.bodyAngle);
 
-        // ボディ
+        // --- 頭上のHPバー ---
+        ctx.save();
+        ctx.rotate(-tank.bodyAngle); // バーが常に水平を向くように回転を打ち消す
+        const barWidth = 32;
+        const barHeight = 5;
+        const hpRatio = Math.max(0, tank.hp / 100);
+
+        // 背景（赤）
+        ctx.fillStyle = '#ef4444';
+        ctx.fillRect(-barWidth / 2, -TANK_SIZE / 2 - 12, barWidth, barHeight);
+        // 現在値（緑）
+        ctx.fillStyle = '#22c55e';
+        ctx.fillRect(-barWidth / 2, -TANK_SIZE / 2 - 12, barWidth * hpRatio, barHeight);
+        // 枠線
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(-barWidth / 2, -TANK_SIZE / 2 - 12, barWidth, barHeight);
+        ctx.restore();
+
+        // --- 戦車ボディ ---
+        ctx.rotate(tank.bodyAngle);
         ctx.fillStyle = color;
         ctx.fillRect(-TANK_SIZE / 2, -TANK_SIZE / 2, TANK_SIZE, TANK_SIZE);
         ctx.strokeStyle = '#fff';
@@ -142,34 +163,33 @@
         
         // キャタピラ
         ctx.fillStyle = '#111';
-        ctx.fillRect(-TANK_SIZE / 2, -TANK_SIZE / 2, TANK_SIZE, 5);
-        ctx.fillRect(-TANK_SIZE / 2, TANK_SIZE / 2 - 5, TANK_SIZE, 5);
+        ctx.fillRect(-TANK_SIZE / 2, -TANK_SIZE / 2, TANK_SIZE, 4);
+        ctx.fillRect(-TANK_SIZE / 2, TANK_SIZE / 2 - 4, TANK_SIZE, 4);
 
-        // 固定された砲身
+        // 砲身
         ctx.fillStyle = '#cbd5e1';
-        ctx.fillRect(0, -4, 22, 8);
+        ctx.fillRect(0, -3, 20, 6);
 
-        // 正面の矢印（自機のみ、または全員にわかりやすく）
+        // 正面の目印（矢印）
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
-        ctx.moveTo(TANK_SIZE / 2, -6);
-        ctx.lineTo(TANK_SIZE / 2 + 8, 0);
-        ctx.lineTo(TANK_SIZE / 2, 6);
+        ctx.moveTo(TANK_SIZE / 2, -5);
+        ctx.lineTo(TANK_SIZE / 2 + 7, 0);
+        ctx.lineTo(TANK_SIZE / 2, 5);
         ctx.fill();
 
         ctx.restore();
       }
 
-      // CPU（緑色の敵戦車）の描画
+      // CPU（緑色の敵戦車）
       for (let id in currentState.cpus) {
-        drawTank(currentState.cpus[id], '#10b981', false);
+        drawTank(currentState.cpus[id], '#10b981');
       }
 
-      // プレイヤー戦車の描画（自機：青、他のプレイヤー：赤）
+      // プレイヤー戦車（自機：青、他プレイヤー：赤）
       for (let id in currentState.players) {
         const p = currentState.players[id];
-        const isSelf = id === socket.id;
-        drawTank(p, isSelf ? '#3b82f6' : '#ef4444', isSelf);
+        drawTank(p, id === socket.id ? '#3b82f6' : '#ef4444');
       }
     }
   </script>
