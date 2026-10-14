@@ -14,7 +14,7 @@
       align-items: center;
       justify-content: center;
       height: 100vh;
-      overflow: hidden; /* スクロール防止 */
+      overflow: hidden;
     }
     #ui {
       margin-bottom: 10px;
@@ -57,9 +57,7 @@
       turretRight: false
     };
 
-    // キー入力監視
     window.addEventListener('keydown', (e) => {
-      // スペースキーのデフォルト動作（スクロール）を完全に阻止
       if (e.code === 'Space' || e.key === ' ') {
         e.preventDefault();
         if (!e.repeat) {
@@ -95,7 +93,6 @@
         document.getElementById('hp').innerText = p.hp;
         document.getElementById('score').innerText = p.score;
 
-        // キー入力をサーバーに送信
         socket.emit('input', keys);
       }
 
@@ -141,22 +138,32 @@
         ctx.save();
         ctx.translate(p.x + TANK_SIZE / 2, p.y + TANK_SIZE / 2);
 
-        // 1. 戦車ボディ（車体の向きに回転）
+        // 1. 戦車ボディ（車体の向き）
         ctx.save();
         ctx.rotate(p.bodyAngle);
         ctx.fillStyle = isSelf ? '#3b82f6' : '#ef4444'; // 自機：青、敵：赤
         ctx.fillRect(-TANK_SIZE / 2, -TANK_SIZE / 2, TANK_SIZE, TANK_SIZE);
         ctx.strokeStyle = '#fff';
         ctx.strokeRect(-TANK_SIZE / 2, -TANK_SIZE / 2, TANK_SIZE, TANK_SIZE);
-        // キャタピラっぽいたたずまい
+        
+        // キャタピラ
         ctx.fillStyle = '#111';
         ctx.fillRect(-TANK_SIZE / 2, -TANK_SIZE / 2, TANK_SIZE, 5);
         ctx.fillRect(-TANK_SIZE / 2, TANK_SIZE / 2 - 5, TANK_SIZE, 5);
+
+        // ★ 正面がひと目でわかる目印（前方に飛び出る白い矢印）
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.moveTo(TANK_SIZE / 2, -6);
+        ctx.lineTo(TANK_SIZE / 2 + 8, 0);
+        ctx.lineTo(TANK_SIZE / 2, 6);
+        ctx.fill();
+
         ctx.restore();
 
-        // 2. 砲身（砲身専用の無段階角度に回転）
+        // 2. 砲身（車体角度 + 相対角度 で回転。K/Oを押していなければ車体と一緒に回る）
         ctx.save();
-        ctx.rotate(p.turretAngle);
+        ctx.rotate(p.bodyAngle + p.turretOffset);
         ctx.fillStyle = '#cbd5e1';
         ctx.fillRect(0, -4, 22, 8);
         ctx.restore();
