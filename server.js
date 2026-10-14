@@ -7,17 +7,17 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// public フォルダ内のファイルを静的ファイルとして公開
 app.use(express.static(path.join(__dirname, 'public')));
 
-const PLAYER_SPEED = 3;
+const TANK_SPEED = 2.5;
+const BODY_ROTATE_SPEED = 0.04;
+const TURRET_ROTATE_SPEED = 0.04;
 const TANK_SIZE = 30;
 const BULLET_SPEED = 7;
 const MAP_WIDTH = 800;
 const MAP_HEIGHT = 600;
 const TILE_SIZE = 40;
 
-// 格子状のマップにおける障害物（ブロック）の配置グリッド座標
 const obstacles = [
   { x: 4, y: 3 }, { x: 4, y: 4 }, { x: 4, y: 5 },
   { x: 10, y: 2 }, { x: 10, y: 3 }, { x: 10, y: 4 },
@@ -30,7 +30,6 @@ const obstacles = [
 let players = {};
 let bullets = [];
 
-// 衝突判定（壁・障害物）
 function checkCollision(x, y, size) {
   if (x < 0 || x + size > MAP_WIDTH || y < 0 || y + size > MAP_HEIGHT) {
     return true;
@@ -56,7 +55,8 @@ io.on('connection', (socket) => {
   players[socket.id] = {
     x: 100,
     y: 100,
-    turretAngle: 0,
+    bodyAngle: 0,   // 車体の向き
+    turretAngle: 0, // 砲身の向き
     score: 0,
     hp: 100
   };
@@ -65,19 +65,25 @@ io.on('connection', (socket) => {
     const player = players[socket.id];
     if (!player) return;
 
-    let newX = player.x;
-    let newY = player.y;
+    // A / D で車体を左右に旋回
+    if (data.turnLeft) player.bodyAngle -= BODY_ROTATE_SPEED;
+    if (data.turnRight) player.bodyAngle += BODY_ROTATE_SPEED;
 
-    if (data.up) newY -= PLAYER_SPEED;
-    if (data.down) newY += PLAYER_SPEED;
-    if (data.left) newX -= PLAYER_SPEED;
-    if (data.right) newX += PLAYER_SPEED;
+    // K / O で砲身を左右にゆっくり回転
+    if (data.turretLeft) player.turretAngle -= TURRET_ROTATE_SPEED;
+    if (data.turretRight) player.turretAngle += TURRET_ROTATE_SPEED;
 
-    if (!checkCollision(newX, player.y, TANK_SIZE)) player.x = newX;
-    if (!checkCollision(player.x, newY, TANK_SIZE)) player.y = newY;
+    // W / S で車体の向いている方向に前進・後退
+    let moveStep = 0;
+    if (data.forward) moveStep = TANK_SPEED;
+    if (data.backward) moveStep = -TANK_SPEED;
 
-    if (data.turretAngle !== undefined) {
-      player.turretAngle = data.turretAngle;
+    if (moveStep !== 0) {
+      let newX = player.x + Math.cos(player.bodyAngle) * moveStep;
+      let newY = player.y + Math.sin(player.bodyAngle) * moveStep;
+
+      if (!checkCollision(newX, player.y, TANK_SIZE)) player.x = newX;
+      if (!checkCollision(player.x, newY, TANK_SIZE)) player.y = newY;
     }
   });
 
@@ -85,6 +91,7 @@ io.on('connection', (socket) => {
     const player = players[socket.id];
     if (!player) return;
 
+    // 砲身の向きに弾を発射
     const bx = player.x + TANK_SIZE / 2 + Math.cos(player.turretAngle) * 25;
     const by = player.y + TANK_SIZE / 2 + Math.sin(player.turretAngle) * 25;
 
@@ -104,7 +111,6 @@ io.on('connection', (socket) => {
   });
 });
 
-// ゲームループ（60fps）
 setInterval(() => {
   for (let i = bullets.length - 1; i >= 0; i--) {
     let b = bullets[i];
@@ -135,7 +141,7 @@ setInterval(() => {
         let p = players[id];
         if (
           b.x >= p.x && b.x <= p.x + TANK_SIZE &&
-          b.y >= p.y && b.y <= p.y + TILE_SIZE
+          b.y >= p.y && b.y <= p.y + TANK_SIZE
         ) {
           hit = true;
           p.hp -= 20;
