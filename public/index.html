@@ -35,9 +35,10 @@
   <div id="ui">
     HP: <span id="hp" style="color: #ff5555; font-weight: bold;">100</span> | 
     スコア: <span id="score" style="color: #55ff55; font-weight: bold;">0</span> 
-    <span style="margin-left: 10px; color: #aaa;">[W/S]前後進 [A/D]旋回 [K]射撃(壁1回バウンド)</span>
+    <span style="margin-left: 10px; color: #aaa;">[W/S]前後進 [A/D]旋回 [K]射撃(壁1回バウンド) vs CPU戦車</span>
   </div>
-  <canvas id="gameCanvas" width="480" height="720"></canvas>
+  <!-- 800 x 800 の正方形キャンバス -->
+  <canvas id="gameCanvas" width="800" height="800"></canvas>
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
@@ -48,10 +49,8 @@
     const TILE_SIZE = 40;
     const TANK_SIZE = 30;
     const BULLET_RADIUS = 8;
-    const ZOOM = 1.8; // 画面ズーム倍率
-
-    const MAP_WIDTH = 480;
-    const MAP_HEIGHT = 720;
+    const MAP_WIDTH = 800;
+    const MAP_HEIGHT = 800;
 
     let keys = {
       forward: false,
@@ -63,6 +62,7 @@
     window.addEventListener('keydown', (e) => {
       if (['w', 'W', 'ArrowUp'].includes(e.key)) keys.forward = true;
       if (['s', 'S', 'ArrowDown'].includes(e.key)) keys.backward = true;
+      if (['a', 'A', 'ArrowLeft'].includes(e.key)) keys.left = true; // あえて誤入力防止のため既存対応
       if (['a', 'A', 'ArrowLeft'].includes(e.key)) keys.turnLeft = true;
       if (['d', 'D', 'ArrowRight'].includes(e.key)) keys.turnRight = true;
 
@@ -81,7 +81,7 @@
       if (['d', 'D', 'ArrowRight'].includes(e.key)) keys.turnRight = false;
     });
 
-    let currentState = { players: {}, bullets: [], obstacles: [] };
+    let currentState = { players: {}, cpus: {}, bullets: [], obstacles: [] };
 
     socket.on('state', (state) => {
       currentState = state;
@@ -100,30 +100,7 @@
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      ctx.save();
-
-      // --- カメラ追従＆ズーム処理 ---
-      const self = currentState.players[socket.id];
-      if (self) {
-        // 自機の中心位置
-        const selfCenterX = self.x + TANK_SIZE / 2;
-        const selfCenterY = self.y + TANK_SIZE / 2;
-
-        // 画面中央に自機を合わせるためのオフセット計算（マップ端でのはみ出し防止クランプ付き）
-        let camX = canvas.width / 2 - selfCenterX * ZOOM;
-        let camY = canvas.height / 2 - selfCenterY * ZOOM;
-
-        const minX = canvas.width - MAP_WIDTH * ZOOM;
-        const minY = canvas.height - MAP_HEIGHT * ZOOM;
-        camX = Math.min(0, Math.max(minX, camX));
-        camY = Math.min(0, Math.max(minY, camY));
-
-        ctx.translate(camX, camY);
-        ctx.scale(ZOOM, ZOOM);
-      }
-      // ----------------------------
-
-      // グリッド線
+      // グリッド線（正方形マップ全体）
       ctx.strokeStyle = '#2c2c2c';
       ctx.lineWidth = 1;
       for (let x = 0; x <= MAP_WIDTH; x += TILE_SIZE) {
@@ -151,17 +128,14 @@
         ctx.fill();
       });
 
-      // プレイヤー（戦車）
-      for (let id in currentState.players) {
-        const p = currentState.players[id];
-        const isSelf = id === socket.id;
-
+      // 共通の戦車描画関数
+      function drawTank(tank, color, isSelf) {
         ctx.save();
-        ctx.translate(p.x + TANK_SIZE / 2, p.y + TANK_SIZE / 2);
-        ctx.rotate(p.bodyAngle);
+        ctx.translate(tank.x + TANK_SIZE / 2, tank.y + TANK_SIZE / 2);
+        ctx.rotate(tank.bodyAngle);
 
-        // 戦車ボディ
-        ctx.fillStyle = isSelf ? '#3b82f6' : '#ef4444'; // 自機：青、敵：赤
+        // ボディ
+        ctx.fillStyle = color;
         ctx.fillRect(-TANK_SIZE / 2, -TANK_SIZE / 2, TANK_SIZE, TANK_SIZE);
         ctx.strokeStyle = '#fff';
         ctx.strokeRect(-TANK_SIZE / 2, -TANK_SIZE / 2, TANK_SIZE, TANK_SIZE);
@@ -171,10 +145,11 @@
         ctx.fillRect(-TANK_SIZE / 2, -TANK_SIZE / 2, TANK_SIZE, 5);
         ctx.fillRect(-TANK_SIZE / 2, TANK_SIZE / 2 - 5, TANK_SIZE, 5);
 
-        // 正面の目印（矢印）＆一体化した砲身
+        // 固定された砲身
         ctx.fillStyle = '#cbd5e1';
-        ctx.fillRect(0, -4, 22, 8); // 砲身
+        ctx.fillRect(0, -4, 22, 8);
 
+        // 正面の矢印（自機のみ、または全員にわかりやすく）
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
         ctx.moveTo(TANK_SIZE / 2, -6);
@@ -185,7 +160,17 @@
         ctx.restore();
       }
 
-      ctx.restore();
+      // CPU（緑色の敵戦車）の描画
+      for (let id in currentState.cpus) {
+        drawTank(currentState.cpus[id], '#10b981', false);
+      }
+
+      // プレイヤー戦車の描画（自機：青、他のプレイヤー：赤）
+      for (let id in currentState.players) {
+        const p = currentState.players[id];
+        const isSelf = id === socket.id;
+        drawTank(p, isSelf ? '#3b82f6' : '#ef4444', isSelf);
+      }
     }
   </script>
 </body>
