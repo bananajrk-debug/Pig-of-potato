@@ -9,25 +9,24 @@ const io = new Server(server);
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-const TANK_SPEED = 2.0;
-const BODY_ROTATE_SPEED = 0.03;
-const TANK_SIZE = 30;
+const TANK_SPEED = 2.2;
+const BODY_ROTATE_SPEED = 0.035;
+const TANK_SIZE = 28;
 const BULLET_SPEED = 6;
-const BULLET_RADIUS = 8;
+const BULLET_RADIUS = 7;
 
-// 800 x 800 の広めの正方形マップ
-const MAP_WIDTH = 800;
-const MAP_HEIGHT = 800;
+// 600 x 600 の画面に収まりやすい正方形マップ
+const MAP_WIDTH = 600;
+const MAP_HEIGHT = 600;
 const TILE_SIZE = 40;
 
-// マップ全体に配置された障害物ブロック
+// マップ全体にバランスよく配置した障害物ブロック（15x15グリッド）
 const obstacles = [
-  { x: 4, y: 4 }, { x: 4, y: 5 }, { x: 5, y: 4 },
-  { x: 15, y: 4 }, { x: 15, y: 5 }, { x: 16, y: 4 },
-  { x: 4, y: 15 }, { x: 4, y: 16 }, { x: 5, y: 15 },
-  { x: 15, y: 15 }, { x: 15, y: 16 }, { x: 16, y: 15 },
-  { x: 9, y: 8 }, { x: 10, y: 8 }, { x: 9, y: 11 }, { x: 10, y: 11 },
-  { x: 2, y: 9 }, { x: 17, y: 9 }, { x: 9, y: 2 }, { x: 9, y: 17 }
+  { x: 3, y: 3 }, { x: 3, y: 4 },
+  { x: 11, y: 3 }, { x: 11, y: 4 },
+  { x: 7, y: 7 }, { x: 7, y: 8 },
+  { x: 3, y: 11 }, { x: 3, y: 12 },
+  { x: 11, y: 11 }, { x: 11, y: 12 }
 ];
 
 let players = {};
@@ -36,8 +35,8 @@ let bullets = [];
 // CPU（敵戦車）の初期化
 let cpus = {
   'cpu_1': {
-    x: 150,
-    y: 150,
+    x: 100,
+    y: 100,
     bodyAngle: 0,
     score: 0,
     hp: 100,
@@ -45,8 +44,8 @@ let cpus = {
     targetAngle: 0
   },
   'cpu_2': {
-    x: 650,
-    y: 650,
+    x: 500,
+    y: 500,
     bodyAngle: Math.PI,
     score: 0,
     hp: 100,
@@ -74,10 +73,9 @@ function checkCollision(x, y, size) {
   return false;
 }
 
-// 弾を発射する共通関数
 function shootBullet(shooterId, x, y, angle) {
-  const bx = x + TANK_SIZE / 2 + Math.cos(angle) * 25;
-  const by = y + TANK_SIZE / 2 + Math.sin(angle) * 25;
+  const bx = x + TANK_SIZE / 2 + Math.cos(angle) * 22;
+  const by = y + TANK_SIZE / 2 + Math.sin(angle) * 22;
 
   bullets.push({
     id: Math.random().toString(),
@@ -94,8 +92,8 @@ io.on('connection', (socket) => {
   console.log('プレイヤー接続:', socket.id);
 
   players[socket.id] = {
-    x: 400,
-    y: 700,
+    x: 300,
+    y: 520,
     bodyAngle: -Math.PI / 2,
     score: 0,
     hp: 100
@@ -140,10 +138,8 @@ setInterval(() => {
     let cpu = cpus[id];
     cpu.actionTimer++;
 
-    // 一定間隔で思考（プレイヤーの方向を向く、またはランダム移動）
-    if (cpu.actionTimer % 70 === 0) {
-      let targetX = 400, targetY = 400;
-      // 最も近いプレイヤーを探す
+    if (cpu.actionTimer % 60 === 0) {
+      let targetX = 300, targetY = 300;
       let minDst = Infinity;
       for (let pId in players) {
         let p = players[pId];
@@ -157,19 +153,16 @@ setInterval(() => {
 
       cpu.targetAngle = Math.atan2(targetY - cpu.y, targetX - cpu.x);
 
-      // 確率で射撃
-      if (Math.random() < 0.8) {
+      if (Math.random() < 0.7) {
         shootBullet(id, cpu.x, cpu.y, cpu.bodyAngle);
       }
     }
 
-    // 角度をスムーズに目標へ向ける
     let angleDiff = cpu.targetAngle - cpu.bodyAngle;
     angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
-    if (Math.abs(angleDiff) > 0.03) {
+    if (Math.abs(angleDiff) > 0.04) {
       cpu.bodyAngle += Math.sign(angleDiff) * BODY_ROTATE_SPEED;
     } else {
-      // 前進
       let newX = cpu.x + Math.cos(cpu.bodyAngle) * TANK_SPEED;
       let newY = cpu.y + Math.sin(cpu.bodyAngle) * TANK_SPEED;
       if (!checkCollision(newX, cpu.y, TANK_SIZE)) cpu.x = newX;
@@ -246,8 +239,8 @@ setInterval(() => {
           p.hp -= 20;
           if (p.hp <= 0) {
             p.hp = 100;
-            p.x = 100 + Math.random() * 600;
-            p.y = 100 + Math.random() * 600;
+            p.x = 80 + Math.random() * 440;
+            p.y = 80 + Math.random() * 440;
             if (players[b.playerId]) {
               players[b.playerId].score += 1;
             }
@@ -270,10 +263,10 @@ setInterval(() => {
           c.hp -= 20;
           if (c.hp <= 0) {
             c.hp = 100;
-            c.x = 100 + Math.random() * 600;
-            c.y = 100 + Math.random() * 600;
+            c.x = 80 + Math.random() * 440;
+            c.y = 80 + Math.random() * 440;
             if (players[b.playerId]) {
-              players[b.playerId].score += 1; // プレイヤーが倒したらスコア加算
+              players[b.playerId].score += 1;
             }
           }
           break;
@@ -286,7 +279,6 @@ setInterval(() => {
     }
   }
 
-  // 全クライアントに状態送信（cpusも含める）
   io.emit('state', { players, cpus, bullets, obstacles });
 }, 1000 / 60);
 
