@@ -20,9 +20,18 @@
       margin-bottom: 8px;
       font-size: 14px;
       background: #2b2b2b;
-      padding: 6px 12px;
+      padding: 6px 14px;
       border-radius: 4px;
       border: 1px solid #444;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    progress {
+      accent-color: #22c55e;
+      height: 14px;
+      width: 120px;
+      border-radius: 3px;
     }
     canvas {
       background: #222;
@@ -37,11 +46,10 @@
 </head>
 <body>
   <div id="ui">
-    HP: <span id="hp" style="color: #ff5555; font-weight: bold;">100</span> | 
-    スコア: <span id="score" style="color: #55ff55; font-weight: bold;">0</span> 
-    <span style="margin-left: 10px; color: #aaa;">[W/S]前後進 [A/D]旋回 [K]射撃</span>
+    <div>HP: <progress id="hpBar" value="100" max="100"></progress> <span id="hp" style="color: #ff5555; font-weight: bold;">100</span></div>
+    <div>スコア: <span id="score" style="color: #55ff55; font-weight: bold;">0</span></div>
+    <div style="color: #aaa; font-size: 13px;">[W/S]前後進 [A/D]旋回 [K]うんこ発射(クールタイム1秒)</div>
   </div>
-  <!-- 600 x 600 キャンバス -->
   <canvas id="gameCanvas" width="600" height="600"></canvas>
 
   <script src="/socket.io/socket.io.js"></script>
@@ -52,7 +60,6 @@
 
     const TILE_SIZE = 40;
     const TANK_SIZE = 28;
-    const BULLET_RADIUS = 7;
     const MAP_WIDTH = 600;
     const MAP_HEIGHT = 600;
 
@@ -91,6 +98,7 @@
       if (state.players[socket.id]) {
         const p = state.players[socket.id];
         document.getElementById('hp').innerText = p.hp;
+        document.getElementById('hpBar').value = p.hp;
         document.getElementById('score').innerText = p.score;
 
         socket.emit('input', keys);
@@ -122,40 +130,20 @@
         ctx.strokeRect(ox, oy, TILE_SIZE, TILE_SIZE);
       });
 
-      // 弾
-      ctx.fillStyle = '#ffcc00';
+      // 弾の代わりに「うんこ（💩）」を描画
+      ctx.font = '24px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
       currentState.bullets.forEach(b => {
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, BULLET_RADIUS, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.fillText('💩', b.x, b.y);
       });
 
-      // 戦車と頭上のHPバーを描画する関数
+      // 戦車を描画する関数
       function drawTank(tank, color) {
         ctx.save();
         ctx.translate(tank.x + TANK_SIZE / 2, tank.y + TANK_SIZE / 2);
-
-        // --- 頭上のHPバー ---
-        ctx.save();
-        ctx.rotate(-tank.bodyAngle); // バーが常に水平を向くように回転を打ち消す
-        const barWidth = 32;
-        const barHeight = 5;
-        const hpRatio = Math.max(0, tank.hp / 100);
-
-        // 背景（赤）
-        ctx.fillStyle = '#ef4444';
-        ctx.fillRect(-barWidth / 2, -TANK_SIZE / 2 - 12, barWidth, barHeight);
-        // 現在値（緑）
-        ctx.fillStyle = '#22c55e';
-        ctx.fillRect(-barWidth / 2, -TANK_SIZE / 2 - 12, barWidth * hpRatio, barHeight);
-        // 枠線
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(-barWidth / 2, -TANK_SIZE / 2 - 12, barWidth, barHeight);
-        ctx.restore();
-
-        // --- 戦車ボディ ---
         ctx.rotate(tank.bodyAngle);
+
         ctx.fillStyle = color;
         ctx.fillRect(-TANK_SIZE / 2, -TANK_SIZE / 2, TANK_SIZE, TANK_SIZE);
         ctx.strokeStyle = '#fff';
