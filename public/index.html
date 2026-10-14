@@ -17,7 +17,7 @@
     }
     #ui {
       margin-bottom: 10px;
-      font-size: 16px;
+      font-size: 15px;
       background: #2b2b2b;
       padding: 8px 16px;
       border-radius: 4px;
@@ -34,7 +34,7 @@
   <div id="ui">
     HP: <span id="hp" style="color: #ff5555; font-weight: bold;">100</span> | 
     スコア: <span id="score" style="color: #55ff55; font-weight: bold;">0</span> 
-    <span style="margin-left: 20px; color: #aaa;">[操作] WASD: 移動 | マウス: 砲身照準 | クリック: 弾の発射</span>
+    <span style="margin-left: 15px; color: #aaa;">[操作] WASD: 移動 | K / O: 砲身回転 | スペース: 射撃</span>
   </div>
   <canvas id="gameCanvas" width="800" height="600"></canvas>
 
@@ -46,9 +46,10 @@
 
     const TILE_SIZE = 40;
     const TANK_SIZE = 30;
+    const ROTATE_SPEED = 0.04; // 砲身が回る速度（無段階）
 
-    let keys = { up: false, down: false, left: false, right: false };
-    let mouseX = 0, mouseY = 0;
+    let keys = { up: false, down: false, left: false, right: false, rotateLeft: false, rotateRight: false };
+    let myTurretAngle = 0;
 
     // キー入力監視
     window.addEventListener('keydown', (e) => {
@@ -56,6 +57,14 @@
       if (['s', 'S', 'ArrowDown'].includes(e.key)) keys.down = true;
       if (['a', 'A', 'ArrowLeft'].includes(e.key)) keys.left = true;
       if (['d', 'D', 'ArrowRight'].includes(e.key)) keys.right = true;
+      if (['k', 'K'].includes(e.key)) keys.rotateLeft = true;
+      if (['o', 'O'].includes(e.key)) keys.rotateRight = true;
+
+      // スペースキーで弾の発射（押しっぱなしでの連射を防ぎたい場合は e.repeat をチェックすることも可能）
+      if (e.key === ' ') {
+        e.preventDefault(); // ページのスクロールを防止
+        socket.emit('shoot');
+      }
     });
 
     window.addEventListener('keyup', (e) => {
@@ -63,23 +72,13 @@
       if (['s', 'S', 'ArrowDown'].includes(e.key)) keys.down = false;
       if (['a', 'A', 'ArrowLeft'].includes(e.key)) keys.left = false;
       if (['d', 'D', 'ArrowRight'].includes(e.key)) keys.right = false;
-    });
-
-    // マウス位置追跡
-    canvas.addEventListener('mousemove', (e) => {
-      const rect = canvas.getBoundingClientRect();
-      mouseX = e.clientX - rect.left;
-      mouseY = e.clientY - rect.top;
-    });
-
-    // クリックで弾発射
-    canvas.addEventListener('click', () => {
-      socket.emit('shoot');
+      if (['k', 'K'].includes(e.key)) keys.rotateLeft = false;
+      if (['o', 'O'].includes(e.key)) keys.rotateRight = false;
     });
 
     let currentState = { players: {}, bullets: [], obstacles: [] };
 
-    // サーバーからの状態を受信して定期送信＆描画
+    // サーバーからの状態を受信して更新・描画
     socket.on('state', (state) => {
       currentState = state;
 
@@ -88,13 +87,18 @@
         document.getElementById('hp').innerText = p.hp;
         document.getElementById('score').innerText = p.score;
 
-        // 自機の中心からマウス位置への角度を計算
-        const cx = p.x + TANK_SIZE / 2;
-        const cy = p.y + TANK_SIZE / 2;
-        const angle = Math.atan2(mouseY - cy, mouseX - cx);
+        // KキーとOキーで砲身の角度を無段階に変化させる
+        if (keys.rotateLeft) myTurretAngle -= ROTATE_SPEED;
+        if (keys.rotateRight) myTurretAngle += ROTATE_SPEED;
 
         // サーバーに入力を送信
-        socket.emit('input', { ...keys, turretAngle: angle });
+        socket.emit('input', { 
+          up: keys.up, 
+          down: keys.down, 
+          left: keys.left, 
+          right: keys.right, 
+          turretAngle: myTurretAngle 
+        });
       }
 
       draw();
@@ -113,7 +117,7 @@
         ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
       }
 
-      // 障害物（ブロック）の描画（これを盾にして射線を切る）
+      // 障害物（ブロック）の描画
       ctx.fillStyle = '#555';
       ctx.strokeStyle = '#777';
       currentState.obstacles.forEach(obs => {
@@ -145,7 +149,7 @@
         ctx.strokeStyle = '#fff';
         ctx.strokeRect(-TANK_SIZE / 2, -TANK_SIZE / 2, TANK_SIZE, TANK_SIZE);
 
-        // 砲身（マウス方向に向く）
+        // 砲身
         ctx.rotate(p.turretAngle);
         ctx.fillStyle = '#cbd5e1';
         ctx.fillRect(0, -4, 22, 8);
