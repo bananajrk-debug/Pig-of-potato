@@ -1,115 +1,177 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-app.use(express.static('public'));
+// ルートアクセス時に index.html を送信
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
 
-const players = {};
+const PLAYER_SPEED = 3;
+const TANK_SIZE = 30;
+const BULLET_SPEED = 7;
+const MAP_WIDTH = 800;
+const MAP_HEIGHT = 600;
+const TILE_SIZE = 40;
 
-function updatePlayerSpawnPositions() {
-  const ids = Object.keys(players);
-  const total = ids.length;
-  if (total === 0) return;
+// 格子状のマップにおける障害物（ブロック）の配置グリッド座標
+const obstacles = [
+  { x: 4, y: 3 }, { x: 4, y: 4 }, { x: 4, y: 5 },
+  { x: 10, y: 2 }, { x: 10, y: 3 }, { x: 10, y: 4 },
+  { x: 12, y: 9 }, { x: 13, y: 9 }, { x: 14, y: 9 },
+  { x: 4, y: 10 }, { x: 5, y: 10 },
+  { x: 15, y: 3 }, { x: 15, y: 4 },
+  { x: 2, y: 12 }, { x: 17, y: 11 }
+];
 
-  // 横長マップの中央上部にある「カフェテリア（大部屋）」の中心座標
-  const centerX = 640; 
-  const centerY = 240;  
-  const radius = 60;         
+let players = {};
+let bullets = [];
 
-  ids.forEach((id, index) => {
-    const angle = (index / total) * Math.PI * 2;
-    players[id].x = centerX + Math.cos(angle) * radius;
-    players[id].y = centerY + Math.sin(angle) * radius;
-  });
-}
-
-function assignRoles() {
-  const ids = Object.keys(players);
-  if (ids.length === 0) return;
-
-  for (let id of ids) {
-    if (!players[id].role) {
-      players[id].role = 'crewmate';
+// 衝突判定（壁・障害物）
+function checkCollision(x, y, size) {
+  if (x < 0 || x + size > MAP_WIDTH || y < 0 || y + size > MAP_HEIGHT) {
+    return true;
+  }
+  for (let obs of obstacles) {
+    const obsX = obs.x * TILE_SIZE;
+    const obsY = obs.y * TILE_SIZE;
+    if (
+      x < obsX + TILE_SIZE &&
+      x + size > obsX &&
+      y < obsY + TILE_SIZE &&
+      y + size > obsY
+    ) {
+      return true;
     }
   }
-
-  const hasImposter = Object.values(players).some(p => p.role === 'imposter');
-  if (!hasImposter) {
-    const imposterIndex = Math.floor(Math.random() * ids.length);
-    players[ids[imposterIndex]].role = 'imposter';
-  }
-
-  updatePlayerSpawnPositions();
-  io.emit('currentPlayers', players);
+  return false;
 }
 
 io.on('connection', (socket) => {
-  console.log(`ユーザーが接続しました: ${socket.id}`);
+  console.log('プレイヤー接続:', socket.id);
 
+  // 初期スポーン位置
   players[socket.id] = {
-    x: 0,
-    y: 0,
-    color: '#' + Math.floor(Math.random() * 16777215).toString(16),
-    tasksCompleted: 0,
-    role: null,
-    isDead: false
+    x: 100,
+    y: 100,
+    turretAngle: 0,
+    score: 0,
+    hp: 100
   };
 
-  assignRoles();
+  // プレイヤーからの入力処理
+  socket.on('input', (data) => {
+    const player = players[socket.id];
+    if (!player) return;
 
-  socket.on('playerMovement', (movementData) => {
-    if (players[socket.id] && !players[socket.id].isDead) {
-      players[socket.id].x = movementData.x;
-      players[socket.id].y = movementData.y;
-      socket.broadcast.emit('playerMoved', {
-        id: socket.id,
-        x: players[socket.id].x,
-        y: players[socket.id].y
-      });
+    let newX = player.x;
+    let newY = player.y;
+
+    if (data.up) newY -= PLAYER_SPEED;
+    if (data.down) newY += PLAYER_SPEED;
+    if (data.left) newX -= PLAYER_SPEED;
+    if (data.right) newX += PLAYER_SPEED;
+
+    // 軸ごとの衝突判定（滑らかに動かすため）
+    if (!checkCollision(newX, player.y, TANK_SIZE)) player.x = newX;
+    if (!checkCollision(player.x, newY, TANK_SIZE)) player.y = newY;
+
+    if (data.turretAngle !== undefined) {
+      player.turretAngle = data.turretAngle;
     }
   });
 
-  socket.on('completeTask', () => {
-    if (players[socket.id] && !players[socket.id].isDead) {
-      players[socket.id].tasksCompleted += 1;
-      io.emit('taskUpdate', { id: socket.id, tasksCompleted: players[socket.id].tasksCompleted });
-    }
-  });
+  // 弾の発射
+  socket.on('shoot', () => {
+    const player = players[socket.id];
+    if (!player) return;
 
-  socket.on('killPlayer', (targetId) => {
-    const killer = players[socket.id];
-    const target = players[targetId];
+    const bx = player.x + TANK_SIZE / 2 + Math.cos(player.turretAngle) * 25;
+    const by = player.y + TANK_SIZE / 2 + Math.sin(player.turretAngle) * 25;
 
-    if (killer && killer.role === 'imposter' && !killer.isDead && target && !target.isDead) {
-      target.isDead = true;
-      io.emit('playerKilled', { targetId: targetId });
-    }
-  });
-
-  socket.on('startMeeting', (data) => {
-    io.emit('startMeeting', { reporterId: data.reporterId, reason: data.reason });
-  });
-
-  socket.on('chatMessage', (data) => {
-    io.emit('chatMessage', {
-      id: socket.id,
-      name: socket.id.substring(0, 4),
-      message: data.message
+    bullets.push({
+      id: Math.random().toString(),
+      playerId: socket.id,
+      x: bx,
+      y: by,
+      dx: Math.cos(player.turretAngle) * BULLET_SPEED,
+      dy: Math.sin(player.turretAngle) * BULLET_SPEED
     });
   });
 
   socket.on('disconnect', () => {
-    console.log(`ユーザーが切断しました: ${socket.id}`);
+    console.log('プレイヤー切断:', socket.id);
     delete players[socket.id];
-    io.emit('disconnectPlayer', socket.id);
   });
 });
 
+// ゲームループ（60fps）
+setInterval(() => {
+  // 弾の更新と衝突判定
+  for (let i = bullets.length - 1; i >= 0; i--) {
+    let b = bullets[i];
+    b.x += b.dx;
+    b.y += b.dy;
+
+    let hit = false;
+
+    // マップ外判定
+    if (b.x < 0 || b.x > MAP_WIDTH || b.y < 0 || b.y > MAP_HEIGHT) {
+      hit = true;
+    } else {
+      // 障害物ブロックとの衝突（ここで「射線を切る」ギミックになる）
+      for (let obs of obstacles) {
+        const obsX = obs.x * TILE_SIZE;
+        const obsY = obs.y * TILE_SIZE;
+        if (
+          b.x >= obsX && b.x <= obsX + TILE_SIZE &&
+          b.y >= obsY && b.y <= obsY + TILE_SIZE
+        ) {
+          hit = true;
+          break;
+        }
+      }
+    }
+
+    // プレイヤー戦車との衝突判定
+    if (!hit) {
+      for (let id in players) {
+        if (id === b.playerId) continue; // 自分の弾は無視
+        let p = players[id];
+        if (
+          b.x >= p.x && b.x <= p.x + TANK_SIZE &&
+          b.y >= p.y && b.y <= p.y + TANK_SIZE
+        ) {
+          hit = true;
+          p.hp -= 20; // 被弾ダメージ
+          if (p.hp <= 0) {
+            p.hp = 100;
+            p.x = 80 + Math.random() * 200;
+            p.y = 80 + Math.random() * 200;
+            if (players[b.playerId]) {
+              players[b.playerId].score += 1; // スコア加算
+            }
+          }
+          break;
+        }
+      }
+    }
+
+    if (hit) {
+      bullets.splice(i, 1);
+    }
+  }
+
+  // 全クライアントに状態を送信
+  io.emit('state', { players, bullets, obstacles });
+}, 1000 / 60);
+
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`サーバーが起動しました: http://localhost:${PORT}`);
+  console.log(`サーバー起動中: http://localhost:${PORT}`);
 });
