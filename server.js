@@ -55,8 +55,8 @@ io.on('connection', (socket) => {
   players[socket.id] = {
     x: 100,
     y: 100,
-    bodyAngle: 0,   // 車体の向き
-    turretAngle: 0, // 砲身の向き
+    bodyAngle: 0,    // 車体の向き
+    turretOffset: 0, // 車体から見た砲身の相対角度
     score: 0,
     hp: 100
   };
@@ -69,9 +69,9 @@ io.on('connection', (socket) => {
     if (data.turnLeft) player.bodyAngle -= BODY_ROTATE_SPEED;
     if (data.turnRight) player.bodyAngle += BODY_ROTATE_SPEED;
 
-    // K / O で砲身を左右にゆっくり回転
-    if (data.turretLeft) player.turretAngle -= TURRET_ROTATE_SPEED;
-    if (data.turretRight) player.turretAngle += TURRET_ROTATE_SPEED;
+    // K / O で砲身を車体に対して独立回転
+    if (data.turretLeft) player.turretOffset -= TURRET_ROTATE_SPEED;
+    if (data.turretRight) player.turretOffset += TURRET_ROTATE_SPEED;
 
     // W / S で車体の向いている方向に前進・後退
     let moveStep = 0;
@@ -91,17 +91,19 @@ io.on('connection', (socket) => {
     const player = players[socket.id];
     if (!player) return;
 
-    // 砲身の向きに弾を発射
-    const bx = player.x + TANK_SIZE / 2 + Math.cos(player.turretAngle) * 25;
-    const by = player.y + TANK_SIZE / 2 + Math.sin(player.turretAngle) * 25;
+    // 実際の砲身の向き（車体角度 + 相対角度）
+    const currentTurretAngle = player.bodyAngle + player.turretOffset;
+
+    const bx = player.x + TANK_SIZE / 2 + Math.cos(currentTurretAngle) * 25;
+    const by = player.y + TANK_SIZE / 2 + Math.sin(currentTurretAngle) * 25;
 
     bullets.push({
       id: Math.random().toString(),
       playerId: socket.id,
       x: bx,
       y: by,
-      dx: Math.cos(player.turretAngle) * BULLET_SPEED,
-      dy: Math.sin(player.turretAngle) * BULLET_SPEED
+      dx: Math.cos(currentTurretAngle) * BULLET_SPEED,
+      dy: Math.sin(currentTurretAngle) * BULLET_SPEED
     });
   });
 
