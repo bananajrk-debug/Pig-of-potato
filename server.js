@@ -13,14 +13,12 @@ const TANK_SPEED = 2.2;
 const BODY_ROTATE_SPEED = 0.035;
 const TANK_SIZE = 28;
 const BULLET_SPEED = 6;
-const BULLET_RADIUS = 7;
+const BULLET_RADIUS = 12; // うんこが当たりやすくなるよう当たり判定サイズを調整
 
-// 600 x 600 の画面に収まりやすい正方形マップ
 const MAP_WIDTH = 600;
 const MAP_HEIGHT = 600;
 const TILE_SIZE = 40;
 
-// マップ全体にバランスよく配置した障害物ブロック（15x15グリッド）
 const obstacles = [
   { x: 3, y: 3 }, { x: 3, y: 4 },
   { x: 11, y: 3 }, { x: 11, y: 4 },
@@ -32,7 +30,6 @@ const obstacles = [
 let players = {};
 let bullets = [];
 
-// CPU（敵戦車）の初期化
 let cpus = {
   'cpu_1': {
     x: 100,
@@ -41,7 +38,8 @@ let cpus = {
     score: 0,
     hp: 100,
     actionTimer: 0,
-    targetAngle: 0
+    targetAngle: 0,
+    lastShootTime: 0
   },
   'cpu_2': {
     x: 500,
@@ -50,7 +48,8 @@ let cpus = {
     score: 0,
     hp: 100,
     actionTimer: 0,
-    targetAngle: Math.PI
+    targetAngle: Math.PI,
+    lastShootTime: 0
   }
 };
 
@@ -73,18 +72,23 @@ function checkCollision(x, y, size) {
   return false;
 }
 
-function shootBullet(shooterId, x, y, angle) {
-  const bx = x + TANK_SIZE / 2 + Math.cos(angle) * 22;
-  const by = y + TANK_SIZE / 2 + Math.sin(angle) * 22;
+// 1秒のクールタイム付きの共通発射関数
+function tryShoot(shooter, shooterId) {
+  const now = Date.now();
+  if (now - shooter.lastShootTime < 1000) return; // 1000ms = 1秒
+  shooter.lastShootTime = now;
+
+  const bx = shooter.x + TANK_SIZE / 2 + Math.cos(shooter.bodyAngle) * 22;
+  const by = shooter.y + TANK_SIZE / 2 + Math.sin(shooter.bodyAngle) * 22;
 
   bullets.push({
     id: Math.random().toString(),
     playerId: shooterId,
     x: bx,
     y: by,
-    dx: Math.cos(angle) * BULLET_SPEED,
-    dy: Math.sin(angle) * BULLET_SPEED,
-    bouncesLeft: 1 // 壁1回バウンド
+    dx: Math.cos(shooter.bodyAngle) * BULLET_SPEED,
+    dy: Math.sin(shooter.bodyAngle) * BULLET_SPEED,
+    bouncesLeft: 1
   });
 }
 
@@ -96,7 +100,8 @@ io.on('connection', (socket) => {
     y: 520,
     bodyAngle: -Math.PI / 2,
     score: 0,
-    hp: 100
+    hp: 100,
+    lastShootTime: 0
   };
 
   socket.on('input', (data) => {
@@ -122,7 +127,7 @@ io.on('connection', (socket) => {
   socket.on('shoot', () => {
     const player = players[socket.id];
     if (!player) return;
-    shootBullet(socket.id, player.x, player.y, player.bodyAngle);
+    tryShoot(player, socket.id);
   });
 
   socket.on('disconnect', () => {
@@ -131,9 +136,8 @@ io.on('connection', (socket) => {
   });
 });
 
-// ゲームループ（60fps）
 setInterval(() => {
-  // --- CPUのAI処理 ---
+  // CPUのAI処理
   for (let id in cpus) {
     let cpu = cpus[id];
     cpu.actionTimer++;
@@ -154,7 +158,7 @@ setInterval(() => {
       cpu.targetAngle = Math.atan2(targetY - cpu.y, targetX - cpu.x);
 
       if (Math.random() < 0.7) {
-        shootBullet(id, cpu.x, cpu.y, cpu.bodyAngle);
+        tryShoot(cpu, id);
       }
     }
 
@@ -170,7 +174,7 @@ setInterval(() => {
     }
   }
 
-  // --- 弾の移動と衝突判定 ---
+  // 弾の更新・衝突判定
   for (let i = bullets.length - 1; i >= 0; i--) {
     let b = bullets[i];
     let prevX = b.x;
@@ -181,7 +185,6 @@ setInterval(() => {
 
     let destroyed = false;
 
-    // 壁バウンド
     if (b.x - BULLET_RADIUS < 0) {
       b.x = BULLET_RADIUS;
       if (b.bouncesLeft > 0) { b.dx = -b.dx; b.bouncesLeft--; } else { destroyed = true; }
@@ -197,7 +200,6 @@ setInterval(() => {
       if (b.bouncesLeft > 0) { b.dy = -b.dy; b.bouncesLeft--; } else { destroyed = true; }
     }
 
-    // 障害物ブロックとのバウンド
     if (!destroyed) {
       for (let obs of obstacles) {
         const obsX = obs.x * TILE_SIZE;
@@ -226,7 +228,6 @@ setInterval(() => {
       }
     }
 
-    // プレイヤーへのダメージ判定
     if (!destroyed) {
       for (let id in players) {
         if (id === b.playerId) continue;
@@ -250,7 +251,6 @@ setInterval(() => {
       }
     }
 
-    // CPUへのダメージ判定
     if (!destroyed) {
       for (let id in cpus) {
         if (id === b.playerId) continue;
