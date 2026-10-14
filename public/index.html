@@ -18,9 +18,9 @@
     }
     #ui {
       margin-bottom: 10px;
-      font-size: 15px;
+      font-size: 14px;
       background: #2b2b2b;
-      padding: 8px 16px;
+      padding: 6px 12px;
       border-radius: 4px;
       border: 1px solid #444;
     }
@@ -35,9 +35,10 @@
   <div id="ui">
     HP: <span id="hp" style="color: #ff5555; font-weight: bold;">100</span> | 
     スコア: <span id="score" style="color: #55ff55; font-weight: bold;">0</span> 
-    <span style="margin-left: 15px; color: #aaa;">[操作] W/S: 前後進 | A/D: 車体旋回 | K/O: 砲身回転 | スペース: 射撃</span>
+    <span style="margin-left: 10px; color: #aaa;">[W/S]前後進 [A/D]旋回 [K/O]砲身 [スペース]射撃(壁1回バウンド)</span>
   </div>
-  <canvas id="gameCanvas" width="800" height="600"></canvas>
+  <!-- 4:6 の縦長キャンバスに変更 (480 x 720) -->
+  <canvas id="gameCanvas" width="480" height="720"></canvas>
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
@@ -47,6 +48,7 @@
 
     const TILE_SIZE = 40;
     const TANK_SIZE = 30;
+    const BULLET_RADIUS = 8;
 
     let keys = {
       forward: false,
@@ -122,11 +124,11 @@
         ctx.strokeRect(ox, oy, TILE_SIZE, TILE_SIZE);
       });
 
-      // 弾
+      // 大きくなった弾の描画
       ctx.fillStyle = '#ffcc00';
       currentState.bullets.forEach(b => {
         ctx.beginPath();
-        ctx.arc(b.x, b.y, 4, 0, Math.PI * 2);
+        ctx.arc(b.x, b.y, BULLET_RADIUS, 0, Math.PI * 2);
         ctx.fill();
       });
 
@@ -138,7 +140,7 @@
         ctx.save();
         ctx.translate(p.x + TANK_SIZE / 2, p.y + TANK_SIZE / 2);
 
-        // 1. 戦車ボディ（車体の向き）
+        // 1. 戦車ボディ
         ctx.save();
         ctx.rotate(p.bodyAngle);
         ctx.fillStyle = isSelf ? '#3b82f6' : '#ef4444'; // 自機：青、敵：赤
@@ -151,7 +153,7 @@
         ctx.fillRect(-TANK_SIZE / 2, -TANK_SIZE / 2, TANK_SIZE, 5);
         ctx.fillRect(-TANK_SIZE / 2, TANK_SIZE / 2 - 5, TANK_SIZE, 5);
 
-        // ★ 正面がひと目でわかる目印（前方に飛び出る白い矢印）
+        // 正面の目印（白い矢印）
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
         ctx.moveTo(TANK_SIZE / 2, -6);
@@ -161,7 +163,7 @@
 
         ctx.restore();
 
-        // 2. 砲身（車体角度 + 相対角度 で回転。K/Oを押していなければ車体と一緒に回る）
+        // 2. 砲身
         ctx.save();
         ctx.rotate(p.bodyAngle + p.turretOffset);
         ctx.fillStyle = '#cbd5e1';
