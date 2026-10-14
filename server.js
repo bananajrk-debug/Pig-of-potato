@@ -11,17 +11,14 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const TANK_SPEED = 2.5;
 const BODY_ROTATE_SPEED = 0.04;
-const TURRET_ROTATE_SPEED = 0.04;
 const TANK_SIZE = 30;
 const BULLET_SPEED = 6;
-const BULLET_RADIUS = 8; // 弾の大きさを拡大
+const BULLET_RADIUS = 8;
 
-// 4:6 の縦長マップサイズ (480 x 720)
 const MAP_WIDTH = 480;
 const MAP_HEIGHT = 720;
 const TILE_SIZE = 40;
 
-// 縦長マップに合わせた障害物ブロックの配置
 const obstacles = [
   { x: 3, y: 3 }, { x: 3, y: 4 },
   { x: 8, y: 3 }, { x: 8, y: 4 },
@@ -58,8 +55,7 @@ io.on('connection', (socket) => {
   players[socket.id] = {
     x: 220,
     y: 600,
-    bodyAngle: -Math.PI / 2, // 初期状態で上を向く
-    turretOffset: 0,
+    bodyAngle: -Math.PI / 2, // 初期は上向き
     score: 0,
     hp: 100
   };
@@ -70,9 +66,6 @@ io.on('connection', (socket) => {
 
     if (data.turnLeft) player.bodyAngle -= BODY_ROTATE_SPEED;
     if (data.turnRight) player.bodyAngle += BODY_ROTATE_SPEED;
-
-    if (data.turretLeft) player.turretOffset -= TURRET_ROTATE_SPEED;
-    if (data.turretRight) player.turretOffset += TURRET_ROTATE_SPEED;
 
     let moveStep = 0;
     if (data.forward) moveStep = TANK_SPEED;
@@ -91,19 +84,18 @@ io.on('connection', (socket) => {
     const player = players[socket.id];
     if (!player) return;
 
-    const currentTurretAngle = player.bodyAngle + player.turretOffset;
-
-    const bx = player.x + TANK_SIZE / 2 + Math.cos(currentTurretAngle) * 25;
-    const by = player.y + TANK_SIZE / 2 + Math.sin(currentTurretAngle) * 25;
+    // 車体の向き（正面）から弾を発射
+    const bx = player.x + TANK_SIZE / 2 + Math.cos(player.bodyAngle) * 25;
+    const by = player.y + TANK_SIZE / 2 + Math.sin(player.bodyAngle) * 25;
 
     bullets.push({
       id: Math.random().toString(),
       playerId: socket.id,
       x: bx,
       y: by,
-      dx: Math.cos(currentTurretAngle) * BULLET_SPEED,
-      dy: Math.sin(currentTurretAngle) * BULLET_SPEED,
-      bouncesLeft: 1 // バウンド回数（1回まで）
+      dx: Math.cos(player.bodyAngle) * BULLET_SPEED,
+      dy: Math.sin(player.bodyAngle) * BULLET_SPEED,
+      bouncesLeft: 1 // 1回までバウンド
     });
   });
 
@@ -116,8 +108,6 @@ io.on('connection', (socket) => {
 setInterval(() => {
   for (let i = bullets.length - 1; i >= 0; i--) {
     let b = bullets[i];
-    
-    // 直前の位置を保存（バウンド時の反射判定用）
     let prevX = b.x;
     let prevY = b.y;
 
@@ -126,7 +116,7 @@ setInterval(() => {
 
     let destroyed = false;
 
-    // 1. 外周の壁とのバウンド判定
+    // 壁とのバウンド
     if (b.x - BULLET_RADIUS < 0) {
       b.x = BULLET_RADIUS;
       if (b.bouncesLeft > 0) { b.dx = -b.dx; b.bouncesLeft--; } else { destroyed = true; }
@@ -142,7 +132,7 @@ setInterval(() => {
       if (b.bouncesLeft > 0) { b.dy = -b.dy; b.bouncesLeft--; } else { destroyed = true; }
     }
 
-    // 2. 障害物ブロックとのバウンド判定
+    // 障害物ブロックとのバウンド
     if (!destroyed) {
       for (let obs of obstacles) {
         const obsX = obs.x * TILE_SIZE;
@@ -156,13 +146,12 @@ setInterval(() => {
         ) {
           if (b.bouncesLeft > 0) {
             b.bouncesLeft--;
-            // どの面から当たったかを判定して反射
             if (prevX + BULLET_RADIUS <= obsX || prevX - BULLET_RADIUS >= obsX + TILE_SIZE) {
               b.dx = -b.dx;
-              b.x = prevX; // めり込み防止
+              b.x = prevX;
             } else {
               b.dy = -b.dy;
-              b.y = prevY; // めり込み防止
+              b.y = prevY;
             }
           } else {
             destroyed = true;
@@ -172,7 +161,7 @@ setInterval(() => {
       }
     }
 
-    // 3. プレイヤー戦車との衝突判定（こちらはバウンドせず直撃でダメージ）
+    // プレイヤーへの衝突
     if (!destroyed) {
       for (let id in players) {
         if (id === b.playerId) continue;
