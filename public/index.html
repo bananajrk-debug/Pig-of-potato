@@ -14,6 +14,7 @@
       align-items: center;
       justify-content: center;
       height: 100vh;
+      overflow: hidden; /* スクロール防止 */
     }
     #ui {
       margin-bottom: 10px;
@@ -34,7 +35,7 @@
   <div id="ui">
     HP: <span id="hp" style="color: #ff5555; font-weight: bold;">100</span> | 
     スコア: <span id="score" style="color: #55ff55; font-weight: bold;">0</span> 
-    <span style="margin-left: 15px; color: #aaa;">[操作] WASD: 移動 | K / O: 砲身回転 | スペース: 射撃</span>
+    <span style="margin-left: 15px; color: #aaa;">[操作] W/S: 前後進 | A/D: 車体旋回 | K/O: 砲身回転 | スペース: 射撃</span>
   </div>
   <canvas id="gameCanvas" width="800" height="600"></canvas>
 
@@ -46,39 +47,46 @@
 
     const TILE_SIZE = 40;
     const TANK_SIZE = 30;
-    const ROTATE_SPEED = 0.04; // 砲身が回る速度（無段階）
 
-    let keys = { up: false, down: false, left: false, right: false, rotateLeft: false, rotateRight: false };
-    let myTurretAngle = 0;
+    let keys = {
+      forward: false,
+      backward: false,
+      turnLeft: false,
+      turnRight: false,
+      turretLeft: false,
+      turretRight: false
+    };
 
     // キー入力監視
     window.addEventListener('keydown', (e) => {
-      if (['w', 'W', 'ArrowUp'].includes(e.key)) keys.up = true;
-      if (['s', 'S', 'ArrowDown'].includes(e.key)) keys.down = true;
-      if (['a', 'A', 'ArrowLeft'].includes(e.key)) keys.left = true;
-      if (['d', 'D', 'ArrowRight'].includes(e.key)) keys.right = true;
-      if (['k', 'K'].includes(e.key)) keys.rotateLeft = true;
-      if (['o', 'O'].includes(e.key)) keys.rotateRight = true;
-
-      // スペースキーで弾の発射（押しっぱなしでの連射を防ぎたい場合は e.repeat をチェックすることも可能）
-      if (e.key === ' ') {
-        e.preventDefault(); // ページのスクロールを防止
-        socket.emit('shoot');
+      // スペースキーのデフォルト動作（スクロール）を完全に阻止
+      if (e.code === 'Space' || e.key === ' ') {
+        e.preventDefault();
+        if (!e.repeat) {
+          socket.emit('shoot');
+        }
+        return;
       }
+
+      if (['w', 'W', 'ArrowUp'].includes(e.key)) keys.forward = true;
+      if (['s', 'S', 'ArrowDown'].includes(e.key)) keys.backward = true;
+      if (['a', 'A', 'ArrowLeft'].includes(e.key)) keys.turnLeft = true;
+      if (['d', 'D', 'ArrowRight'].includes(e.key)) keys.turnRight = true;
+      if (['k', 'K'].includes(e.key)) keys.turretLeft = true;
+      if (['o', 'O'].includes(e.key)) keys.turretRight = true;
     });
 
     window.addEventListener('keyup', (e) => {
-      if (['w', 'W', 'ArrowUp'].includes(e.key)) keys.up = false;
-      if (['s', 'S', 'ArrowDown'].includes(e.key)) keys.down = false;
-      if (['a', 'A', 'ArrowLeft'].includes(e.key)) keys.left = false;
-      if (['d', 'D', 'ArrowRight'].includes(e.key)) keys.right = false;
-      if (['k', 'K'].includes(e.key)) keys.rotateLeft = false;
-      if (['o', 'O'].includes(e.key)) keys.rotateRight = false;
+      if (['w', 'W', 'ArrowUp'].includes(e.key)) keys.forward = false;
+      if (['s', 'S', 'ArrowDown'].includes(e.key)) keys.backward = false;
+      if (['a', 'A', 'ArrowLeft'].includes(e.key)) keys.turnLeft = false;
+      if (['d', 'D', 'ArrowRight'].includes(e.key)) keys.turnRight = false;
+      if (['k', 'K'].includes(e.key)) keys.turretLeft = false;
+      if (['o', 'O'].includes(e.key)) keys.turretRight = false;
     });
 
     let currentState = { players: {}, bullets: [], obstacles: [] };
 
-    // サーバーからの状態を受信して更新・描画
     socket.on('state', (state) => {
       currentState = state;
 
@@ -87,18 +95,8 @@
         document.getElementById('hp').innerText = p.hp;
         document.getElementById('score').innerText = p.score;
 
-        // KキーとOキーで砲身の角度を無段階に変化させる
-        if (keys.rotateLeft) myTurretAngle -= ROTATE_SPEED;
-        if (keys.rotateRight) myTurretAngle += ROTATE_SPEED;
-
-        // サーバーに入力を送信
-        socket.emit('input', { 
-          up: keys.up, 
-          down: keys.down, 
-          left: keys.left, 
-          right: keys.right, 
-          turretAngle: myTurretAngle 
-        });
+        // キー入力をサーバーに送信
+        socket.emit('input', keys);
       }
 
       draw();
@@ -107,7 +105,7 @@
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // 格子マップのグリッド線描画
+      // グリッド線
       ctx.strokeStyle = '#2c2c2c';
       ctx.lineWidth = 1;
       for (let x = 0; x <= canvas.width; x += TILE_SIZE) {
@@ -117,7 +115,7 @@
         ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
       }
 
-      // 障害物（ブロック）の描画
+      // 障害物（ブロック）
       ctx.fillStyle = '#555';
       ctx.strokeStyle = '#777';
       currentState.obstacles.forEach(obs => {
@@ -127,7 +125,7 @@
         ctx.strokeRect(ox, oy, TILE_SIZE, TILE_SIZE);
       });
 
-      // 弾の描画
+      // 弾
       ctx.fillStyle = '#ffcc00';
       currentState.bullets.forEach(b => {
         ctx.beginPath();
@@ -135,7 +133,7 @@
         ctx.fill();
       });
 
-      // プレイヤー（戦車）の描画
+      // プレイヤー（戦車）
       for (let id in currentState.players) {
         const p = currentState.players[id];
         const isSelf = id === socket.id;
@@ -143,16 +141,25 @@
         ctx.save();
         ctx.translate(p.x + TANK_SIZE / 2, p.y + TANK_SIZE / 2);
 
-        // 戦車ボディ
-        ctx.fillStyle = isSelf ? '#3b82f6' : '#ef4444'; // 自機は青、敵は赤
+        // 1. 戦車ボディ（車体の向きに回転）
+        ctx.save();
+        ctx.rotate(p.bodyAngle);
+        ctx.fillStyle = isSelf ? '#3b82f6' : '#ef4444'; // 自機：青、敵：赤
         ctx.fillRect(-TANK_SIZE / 2, -TANK_SIZE / 2, TANK_SIZE, TANK_SIZE);
         ctx.strokeStyle = '#fff';
         ctx.strokeRect(-TANK_SIZE / 2, -TANK_SIZE / 2, TANK_SIZE, TANK_SIZE);
+        // キャタピラっぽいたたずまい
+        ctx.fillStyle = '#111';
+        ctx.fillRect(-TANK_SIZE / 2, -TANK_SIZE / 2, TANK_SIZE, 5);
+        ctx.fillRect(-TANK_SIZE / 2, TANK_SIZE / 2 - 5, TANK_SIZE, 5);
+        ctx.restore();
 
-        // 砲身
+        // 2. 砲身（砲身専用の無段階角度に回転）
+        ctx.save();
         ctx.rotate(p.turretAngle);
         ctx.fillStyle = '#cbd5e1';
         ctx.fillRect(0, -4, 22, 8);
+        ctx.restore();
 
         ctx.restore();
       }
