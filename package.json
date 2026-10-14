@@ -1,7 +1,7 @@
 {
-  "name": "2d-mafia-game",
+  "name": "tank-battle-game",
   "version": "1.0.0",
-  "description": "2D task-based social deduction game",
+  "description": "2D Top-down Multiplayer Tank Game with Cover Mechanics",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
