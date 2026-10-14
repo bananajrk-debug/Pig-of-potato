@@ -35,9 +35,8 @@
   <div id="ui">
     HP: <span id="hp" style="color: #ff5555; font-weight: bold;">100</span> | 
     スコア: <span id="score" style="color: #55ff55; font-weight: bold;">0</span> 
-    <span style="margin-left: 10px; color: #aaa;">[W/S]前後進 [A/D]旋回 [K/O]砲身 [スペース]射撃(壁1回バウンド)</span>
+    <span style="margin-left: 10px; color: #aaa;">[W/S]前後進 [A/D]旋回 [K]射撃(壁1回バウンド)</span>
   </div>
-  <!-- 4:6 の縦長キャンバスに変更 (480 x 720) -->
   <canvas id="gameCanvas" width="480" height="720"></canvas>
 
   <script src="/socket.io/socket.io.js"></script>
@@ -49,31 +48,30 @@
     const TILE_SIZE = 40;
     const TANK_SIZE = 30;
     const BULLET_RADIUS = 8;
+    const ZOOM = 1.8; // 画面ズーム倍率
+
+    const MAP_WIDTH = 480;
+    const MAP_HEIGHT = 720;
 
     let keys = {
       forward: false,
       backward: false,
       turnLeft: false,
-      turnRight: false,
-      turretLeft: false,
-      turretRight: false
+      turnRight: false
     };
 
     window.addEventListener('keydown', (e) => {
-      if (e.code === 'Space' || e.key === ' ') {
-        e.preventDefault();
-        if (!e.repeat) {
-          socket.emit('shoot');
-        }
-        return;
-      }
-
       if (['w', 'W', 'ArrowUp'].includes(e.key)) keys.forward = true;
       if (['s', 'S', 'ArrowDown'].includes(e.key)) keys.backward = true;
       if (['a', 'A', 'ArrowLeft'].includes(e.key)) keys.turnLeft = true;
       if (['d', 'D', 'ArrowRight'].includes(e.key)) keys.turnRight = true;
-      if (['k', 'K'].includes(e.key)) keys.turretLeft = true;
-      if (['o', 'O'].includes(e.key)) keys.turretRight = true;
+
+      // Kキーで射撃
+      if (['k', 'K'].includes(e.key)) {
+        if (!e.repeat) {
+          socket.emit('shoot');
+        }
+      }
     });
 
     window.addEventListener('keyup', (e) => {
@@ -81,8 +79,6 @@
       if (['s', 'S', 'ArrowDown'].includes(e.key)) keys.backward = false;
       if (['a', 'A', 'ArrowLeft'].includes(e.key)) keys.turnLeft = false;
       if (['d', 'D', 'ArrowRight'].includes(e.key)) keys.turnRight = false;
-      if (['k', 'K'].includes(e.key)) keys.turretLeft = false;
-      if (['o', 'O'].includes(e.key)) keys.turretRight = false;
     });
 
     let currentState = { players: {}, bullets: [], obstacles: [] };
@@ -104,14 +100,37 @@
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+      ctx.save();
+
+      // --- カメラ追従＆ズーム処理 ---
+      const self = currentState.players[socket.id];
+      if (self) {
+        // 自機の中心位置
+        const selfCenterX = self.x + TANK_SIZE / 2;
+        const selfCenterY = self.y + TANK_SIZE / 2;
+
+        // 画面中央に自機を合わせるためのオフセット計算（マップ端でのはみ出し防止クランプ付き）
+        let camX = canvas.width / 2 - selfCenterX * ZOOM;
+        let camY = canvas.height / 2 - selfCenterY * ZOOM;
+
+        const minX = canvas.width - MAP_WIDTH * ZOOM;
+        const minY = canvas.height - MAP_HEIGHT * ZOOM;
+        camX = Math.min(0, Math.max(minX, camX));
+        camY = Math.min(0, Math.max(minY, camY));
+
+        ctx.translate(camX, camY);
+        ctx.scale(ZOOM, ZOOM);
+      }
+      // ----------------------------
+
       // グリッド線
       ctx.strokeStyle = '#2c2c2c';
       ctx.lineWidth = 1;
-      for (let x = 0; x <= canvas.width; x += TILE_SIZE) {
-        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+      for (let x = 0; x <= MAP_WIDTH; x += TILE_SIZE) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, MAP_HEIGHT); ctx.stroke();
       }
-      for (let y = 0; y <= canvas.height; y += TILE_SIZE) {
-        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+      for (let y = 0; y <= MAP_HEIGHT; y += TILE_SIZE) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(MAP_WIDTH, y); ctx.stroke();
       }
 
       // 障害物（ブロック）
@@ -124,7 +143,7 @@
         ctx.strokeRect(ox, oy, TILE_SIZE, TILE_SIZE);
       });
 
-      // 大きくなった弾の描画
+      // 弾
       ctx.fillStyle = '#ffcc00';
       currentState.bullets.forEach(b => {
         ctx.beginPath();
@@ -139,10 +158,9 @@
 
         ctx.save();
         ctx.translate(p.x + TANK_SIZE / 2, p.y + TANK_SIZE / 2);
-
-        // 1. 戦車ボディ
-        ctx.save();
         ctx.rotate(p.bodyAngle);
+
+        // 戦車ボディ
         ctx.fillStyle = isSelf ? '#3b82f6' : '#ef4444'; // 自機：青、敵：赤
         ctx.fillRect(-TANK_SIZE / 2, -TANK_SIZE / 2, TANK_SIZE, TANK_SIZE);
         ctx.strokeStyle = '#fff';
@@ -153,7 +171,10 @@
         ctx.fillRect(-TANK_SIZE / 2, -TANK_SIZE / 2, TANK_SIZE, 5);
         ctx.fillRect(-TANK_SIZE / 2, TANK_SIZE / 2 - 5, TANK_SIZE, 5);
 
-        // 正面の目印（白い矢印）
+        // 正面の目印（矢印）＆一体化した砲身
+        ctx.fillStyle = '#cbd5e1';
+        ctx.fillRect(0, -4, 22, 8); // 砲身
+
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
         ctx.moveTo(TANK_SIZE / 2, -6);
@@ -162,16 +183,9 @@
         ctx.fill();
 
         ctx.restore();
-
-        // 2. 砲身
-        ctx.save();
-        ctx.rotate(p.bodyAngle + p.turretOffset);
-        ctx.fillStyle = '#cbd5e1';
-        ctx.fillRect(0, -4, 22, 8);
-        ctx.restore();
-
-        ctx.restore();
       }
+
+      ctx.restore();
     }
   </script>
 </body>
