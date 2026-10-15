@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pig of Potato - Lobby & Ready System</title>
+    <title>Pig of Potato - Lobby Fix</title>
     <style>
         body {
             margin: 0;
@@ -14,7 +14,6 @@
             overflow: hidden;
             user-select: none;
         }
-        /* 共通画面スタイル */
         .screen {
             position: absolute;
             top: 0;
@@ -135,7 +134,6 @@
     </style>
 </head>
 <body>
-    <!-- 1. コード入力画面 -->
     <div id="title-screen" class="screen">
         <h1>🐷 Pig of Potato 🥔</h1>
         <div class="menu-box">
@@ -149,7 +147,6 @@
         </div>
     </div>
 
-    <!-- 2. ブロスタ風・フォートナイト風 待機ロビー画面 -->
     <div id="lobby-screen" class="screen">
         <h1>🎮 待機ロビー (コード: <span id="display-room-code">----</span>)</h1>
         <div class="menu-box" style="width: 400px;">
@@ -160,7 +157,6 @@
         </div>
     </div>
 
-    <!-- 3. ゲームプレイ画面 -->
     <div id="game-ui">
         <div id="ui">
             <h2>🐷 Pig of Potato 🥔</h2>
@@ -226,7 +222,6 @@
         const keys = { w: false, s: false, a: false, d: false, e: false };
         let lastSendTime = 0;
 
-        // 1. ロビーに参加
         btnJoin.addEventListener('click', () => {
             const playerName = inputName.value.trim() || '名無しの豚';
             const roomCode = inputRoom.value.trim();
@@ -243,12 +238,18 @@
             socket.emit('joinRoom', { roomCode, playerName });
         });
 
-        // 2. 準備OKボタンのクリック
         btnReady.addEventListener('click', () => {
+            isReady = !isReady;
+            if (isReady) {
+                btnReady.classList.add('is-ready');
+                btnReady.innerText = '準備完了！ (READY)';
+            } else {
+                btnReady.classList.remove('is-ready');
+                btnReady.innerText = '準備OK！ (READY)';
+            }
             socket.emit('toggleReady');
         });
 
-        // サーバーからのロビー情報更新（メンバー一覧表示）
         socket.on('lobbyUpdate', (data) => {
             players = data.players;
             let html = '';
@@ -261,13 +262,18 @@
             lobbyPlayerList.innerHTML = html;
         });
 
-        // 3. 全員準備完了でゲームスタート！
         socket.on('gameStart', (data) => {
+            myId = socket.id;
             players = data.players;
             ships = data.ships;
             islands = data.islands;
             potatoes = data.potatoes;
-            myTeam = players[socket.id].team;
+            if (players[myId]) {
+                myTeam = players[myId].team;
+            } else {
+                // 万が一キーが一致しない場合のフォールバック
+                myTeam = Object.values(players).find(p => p.id === myId)?.team || Object.values(players)[0].team;
+            }
 
             lobbyScreen.style.display = 'none';
             gameUi.style.display = 'block';
@@ -341,16 +347,6 @@
             const names = { 1: '1: 通常弾', 2: '2: 爆発弾', 3: '3: 特製弾' };
             document.getElementById('current-ammo-type').innerText = names[selectedAmmo];
         }
-
-        socket.on('init', (data) => {
-            myId = data.id;
-            players = data.players;
-            ships = data.ships;
-            islands = data.islands;
-            potatoes = data.potatoes;
-            cannonBalls = data.cannonBalls || [];
-            myTeam = players[myId].team;
-        });
 
         socket.on('newPlayer', (p) => { players[p.id] = p; });
         socket.on('playerMoved', (p) => {
@@ -478,7 +474,7 @@
 
         socket.on('gameOver', (msg) => {
             alert(msg);
-            location.reload(); // ゲーム終了時はリロードしてロビーに戻る
+            location.reload();
         });
 
         function update() {
