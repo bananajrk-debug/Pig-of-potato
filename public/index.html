@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pig of Potato - Fixed Start & Robustness</title>
+    <title>Pig of Potato - Ready Flow Fixed</title>
     <style>
         body {
             margin: 0;
@@ -93,10 +93,12 @@
             box-shadow: 0 4px 0 #1e8449;
         }
 
+        /* 出航ボタン（初期状態は非表示、準備完了後に表示） */
         .btn-start {
             background: #f39c12;
             color: #fff;
             box-shadow: 0 4px 0 #d35400;
+            display: none; 
             margin-top: 5px;
         }
         .btn-start:hover { background: #e67e22; }
@@ -272,7 +274,10 @@
                 <label>乗組員メンバー:</label>
                 <div class="player-list" id="lobby-player-list">読み込み中...</div>
                 
+                <!-- 準備ボタン -->
                 <button class="btn btn-ready" id="btn-ready">準備OK！ (クリックで完了)</button>
+                
+                <!-- 出航ボタン（準備完了後に出現） -->
                 <button class="btn btn-start" id="btn-start">🚀 ゲームに出航する！</button>
             </div>
         </div>
@@ -303,7 +308,7 @@
             <b>操作方法:</b><br>
             - <b>移動:</b> W / A / S / D （船の上または島の上）<br>
             - <b>舵・大砲・見張り台:</b> 近くで <b>[ Eキー ]</b><br>
-            - <b>大砲発射:</b> 操舵中でも自由行動中でも <b>[Kキー]で左大砲</b>、<b>[Oキー]で右大砲</b> （個別クールタイム）<br>
+            - <b>大砲発射:</b> <b>[Kキー]で左大砲</b>、<b>[Oキー]で右大砲</b> （個別クールタイム）<br>
             - <b>島での採取:</b> <b>[Eキー長押し (3秒)]</b> で木や特殊弾をゲット！<br>
             - <b>修理:</b> <b>[Rキー]</b>で木材2つ消費して船を修理！
         </div>
@@ -482,14 +487,17 @@
             socket.emit('joinRoom', { roomCode, playerName, bodyColor: myBodyColor, isCpu });
         }
 
+        // 準備ボタン（トグル式：準備OK ⇄ 解除 ＋ 出航ボタンの表示/非表示切り替え）
         btnReady.addEventListener('click', () => {
             isReady = !isReady;
             if (isReady) {
                 btnReady.classList.add('is-ready');
                 btnReady.innerText = '✅ 準備完了 (クリックで解除)';
+                btnStart.style.display = 'block'; // 準備完了したら出航ボタンが出現！
             } else {
                 btnReady.classList.remove('is-ready');
                 btnReady.innerText = '準備OK！ (クリックで完了)';
+                btnStart.style.display = 'none'; // 解除したら出航ボタンも非同期に隠す
             }
             socket.emit('toggleReady');
         });
@@ -610,14 +618,6 @@
             players = data.players;
             ships = data.ships;
             if (players && players[myId]) {
-                const role = players[myId].role;
-                let roleTxt = '自由行動';
-                if(role === 'helmsman') roleTxt = '舵手 (操舵中 - K/Oで大砲発射可能！)';
-                if(role === 'cannon') roleTxt = '砲手 (大砲操作中)';
-                if(role === 'watcher') roleTxt = '見張り台 (索敵中)';
-                if(document.getElementById('role-name')) {
-                    document.getElementById('role-name').innerText = roleTxt;
-                }
                 updateUIValues();
             }
         });
