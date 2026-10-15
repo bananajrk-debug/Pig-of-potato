@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pig of Potato 2v2 - iPad & Smooth Optimized</title>
+    <title>Pig of Potato - Title & Rooms</title>
     <style>
         body {
             margin: 0;
@@ -13,6 +13,66 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             overflow: hidden;
             user-select: none;
+        }
+        #title-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(135deg, #1b4f72, #78281f);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+        #title-screen h1 {
+            font-size: 48px;
+            color: #f39c12;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 8px rgba(0,0,0,0.7);
+        }
+        .menu-box {
+            background: rgba(0, 0, 0, 0.8);
+            padding: 30px 40px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 320px;
+            border: 2px solid #f39c12;
+        }
+        .menu-box label {
+            font-size: 14px;
+            color: #f1c40f;
+        }
+        .menu-box input {
+            padding: 10px;
+            font-size: 16px;
+            border-radius: 6px;
+            border: none;
+            outline: none;
+            background: #2c3e50;
+            color: #fff;
+        }
+        .menu-box button {
+            padding: 12px;
+            font-size: 18px;
+            font-weight: bold;
+            background: #f39c12;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .menu-box button:hover {
+            background: #d68910;
+        }
+        #game-ui {
+            display: none;
         }
         #ui {
             position: absolute;
@@ -25,7 +85,7 @@
             z-index: 10;
             box-shadow: 0 4px 12px rgba(0,0,0,0.6);
         }
-        h1 { margin: 0 0 5px 0; font-size: 20px; color: #f39c12; }
+        h2 { margin: 0 0 5px 0; font-size: 20px; color: #f39c12; }
         p { margin: 4px 0; font-size: 14px; }
         #prompt {
             position: absolute;
@@ -56,29 +116,53 @@
     </style>
 </head>
 <body>
-    <div id="ui">
-        <h1>🐷 Pig of Potato 🥔 [iPad Edition]</h1>
-        <p>チーム: <span id="team-name">-</span> | 役割: <span id="role-name">自由行動</span></p>
-        <p>赤チームHP: <span id="red-hp">100</span> | 青チームHP: <span id="blue-hp">100</span></p>
-        <p>チーム大砲弾薬: <span id="team-ammo">15</span>発</p>
+    <!-- タイトル画面＆ルーム作成画面 -->
+    <div id="title-screen">
+        <h1>🐷 Pig of Potato 🥔</h1>
+        <div class="menu-box">
+            <label>船長名（プレイヤー名）:</label>
+            <input type="text" id="input-name" value="ポテト海賊団" placeholder="名前を入力">
+            
+            <label>ルーム名（部屋コード）:</label>
+            <input type="text" id="input-room" value="room1" placeholder="ルーム名を入力">
+            
+            <button id="btn-join">出航する！（ルーム作成/参加）</button>
+        </div>
     </div>
 
-    <div id="prompt">【Eキー】インタラクト</div>
+    <!-- ゲームUI -->
+    <div id="game-ui">
+        <div id="ui">
+            <h2>🐷 Pig of Potato 🥔</h2>
+            <p>チーム: <span id="team-name">-</span> | 役割: <span id="role-name">自由行動</span></p>
+            <p>赤チームHP: <span id="red-hp">100</span> | 青チームHP: <span id="blue-hp">100</span></p>
+            <p>大砲弾薬: <span id="team-ammo">15</span>発 | リロード: <span id="reload-status" style="color:#2ecc71;">READY</span></p>
+        </div>
 
-    <div id="instructions">
-        <b>操作方法:</b><br>
-        - <b>移動:</b> W / A / S / D （なめらか＆即停止）<br>
-        - <b>舵(一番後ろ)・大砲・見張り台:</b> 近くで <b>[ Eキー ]</b><br>
-        - <b>操舵中:</b> Wで前進、Sで後退、A/Dで旋回 (カクつきなし)<br>
-        - <b>大砲操作中:</b> <b>[ Kキー ]</b> または <b>[ Oキー ]</b> でジャガイモ弾発射！<br>
-        - <b>ポテト接触:</b> 浮かんでいるジャガイモに近づくと弾薬を獲得！
+        <div id="prompt">【Eキー】インタラクト</div>
+
+        <div id="instructions">
+            <b>操作方法:</b><br>
+            - <b>移動:</b> W / A / S / D （甲板の上を移動）<br>
+            - <b>舵(一番後ろ)・大砲・見張り台:</b> 近くで <b>[ Eキー ]</b><br>
+            - <b>操舵中:</b> Wで前進、Sで後退、A/Dで旋回<br>
+            - <b>大砲操作中:</b> <b>[ Kキー ]</b> または <b>[ Oキー ]</b> でジャガイモ弾発射！（2秒リロード）<br>
+            - <b>ポテト接触:</b> 浮かんでいるジャガイモに近づくと弾薬獲得！
+        </div>
+
+        <canvas id="gameCanvas"></canvas>
     </div>
-
-    <canvas id="gameCanvas"></canvas>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
+
+        const titleScreen = document.getElementById('title-screen');
+        const gameUi = document.getElementById('game-ui');
+        const inputName = document.getElementById('input-name');
+        const inputRoom = document.getElementById('input-room');
+        const btnJoin = document.getElementById('btn-join');
+
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
@@ -96,9 +180,21 @@
         let potatoes = [];
         let cannonBalls = [];
         let interactTarget = null;
+        let canFire = true;
 
         const keys = { w: false, s: false, a: false, d: false };
         let lastSendTime = 0;
+
+        btnJoin.addEventListener('click', () => {
+            const playerName = inputName.value.trim() || '名無しの豚';
+            const roomName = inputRoom.value.trim() || 'room1';
+
+            titleScreen.style.display = 'none';
+            gameUi.style.display = 'block';
+            resize();
+
+            socket.emit('joinRoom', { roomName, playerName });
+        });
 
         window.addEventListener('keydown', (e) => {
             if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') keys.w = true;
@@ -114,6 +210,7 @@
 
             if (e.key === 'k' || e.key === 'K' || e.key === 'o' || e.key === 'O') {
                 if (myId && players[myId] && players[myId].role === 'cannon') {
+                    if (!canFire) return; // 2秒リロード中
                     const ship = ships[myTeam];
                     const cannon = ship.cannons.find(c => c.id === players[myId].activeCannonId);
                     if (cannon) {
@@ -169,7 +266,6 @@
             for (let id in data.ships) {
                 if (ships[id]) {
                     const s = ships[id];
-                    // 自分が舵を取っていない船のみサーバーから同期
                     if (s.helmsman !== myId) {
                         s.x = data.ships[id].x;
                         s.y = data.ships[id].y;
@@ -202,6 +298,28 @@
             }
         });
 
+        // 2秒リロードの処理とUI表示
+        socket.on('reloadStarted', (duration) => {
+            canFire = false;
+            const statusEl = document.getElementById('reload-status');
+            statusEl.style.color = '#e74c3c';
+            statusEl.innerText = 'RELOADING...';
+
+            let startTime = Date.now();
+            let interval = setInterval(() => {
+                let elapsed = Date.now() - startTime;
+                let left = Math.max(0, ((duration - elapsed) / 1000).toFixed(1));
+                if (left > 0) {
+                    statusEl.innerText = `RELOADING (${left}s)`;
+                } else {
+                    canFire = true;
+                    statusEl.style.color = '#2ecc71';
+                    statusEl.innerText = 'READY';
+                    clearInterval(interval);
+                }
+            }, 100);
+        });
+
         socket.on('potatoCollected', (data) => {
             const p = potatoes.find(pt => pt.id === data.potatoId);
             if(p) p.collected = true;
@@ -227,6 +345,7 @@
         function update() {
             if (!myId || !players[myId]) return;
             const p = players[myId];
+            if (!ships[p.team]) return;
             const ship = ships[p.team];
 
             if (p.role === 'free') {
@@ -299,7 +418,6 @@
                     }
                 }
 
-                // ポテト回収判定（船ごと、またはプレイヤー位置で判定して即獲得）
                 potatoes.forEach(pot => {
                     if (!pot.collected && Math.hypot(ship.x - pot.x, ship.y - pot.y) < 140) {
                         socket.emit('collectPotato', pot.id);
@@ -318,7 +436,6 @@
                     if (keys.a) ship.angle -= rotSpeed;
                     if (keys.d) ship.angle += rotSpeed;
                     
-                    // Wで前進、Sで後退（方向を正しく修正）
                     if (keys.w) currentSpeed = ship.maxSpeed;
                     if (keys.s) currentSpeed = -3.0;
 
@@ -330,7 +447,6 @@
                         ship.y = Math.max(200, Math.min(4500 - 200, ship.y));
                     }
 
-                    // 操舵中の自分の動きをサーバーに即時送信して一瞬の停止（カクつき）を完全に排除
                     socket.emit('shipControl', { x: ship.x, y: ship.y, angle: ship.angle, speed: ship.speed });
 
                 } else if (p.role === 'cannon') {
@@ -341,7 +457,6 @@
                     interactTarget = { type: 'watcher' };
                 }
 
-                // 操舵中もポテトにぶつかれば獲得
                 potatoes.forEach(pot => {
                     if (!pot.collected && Math.hypot(ship.x - pot.x, ship.y - pot.y) < 140) {
                         socket.emit('collectPotato', pot.id);
@@ -352,7 +467,7 @@
 
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            if (!myId || !players[myId]) return;
+            if (!myId || !players[myId] || !ships[myTeam]) return;
 
             const me = players[myId];
             const myShip = ships[myTeam];
@@ -362,7 +477,6 @@
 
             ctx.save();
             ctx.translate(canvas.width / 2, canvas.height / 2);
-            // iPadの画面にしっかり収まるようにズーム倍率を 0.5 に縮小（見張り時は 0.3）
             let zoom = me.role === 'watcher' ? 0.3 : 0.5;
             ctx.scale(zoom, zoom);
             ctx.translate(-targetX, -targetY);
@@ -401,14 +515,12 @@
                 ctx.translate(s.x, s.y);
                 ctx.rotate(s.angle);
 
-                // 船体ベース
                 ctx.fillStyle = sId === 'red' ? '#78281f' : '#154360';
                 ctx.fillRect(-130, -65, 260, 130);
                 ctx.lineWidth = 4;
                 ctx.strokeStyle = '#273746';
                 ctx.strokeRect(-130, -65, 260, 130);
 
-                // 船首
                 ctx.beginPath();
                 ctx.moveTo(130, -65);
                 ctx.lineTo(180, 0);
@@ -418,12 +530,10 @@
                 ctx.fill();
                 ctx.stroke();
 
-                // 甲板
                 ctx.fillStyle = '#d4ac0d';
                 ctx.fillRect(-90, -45, 180, 90);
                 ctx.strokeRect(-90, -45, 180, 90);
 
-                // マスト
                 ctx.fillStyle = '#5d4037';
                 ctx.fillRect(-15, -15, 30, 30);
                 ctx.beginPath();
@@ -432,7 +542,6 @@
                 ctx.fill();
                 ctx.stroke();
 
-                // 大砲
                 s.cannons.forEach(c => {
                     ctx.fillStyle = '#2c3e50';
                     ctx.fillRect(c.offsetRelX - 12, c.offsetRelY - 10, 24, 20);
@@ -440,7 +549,6 @@
                     ctx.strokeRect(c.offsetRelX - 12, c.offsetRelY - 10, 24, 20);
                 });
 
-                // 舵（一番後ろ）
                 ctx.fillStyle = '#e67e22';
                 ctx.fillRect(-145, -15, 15, 30);
                 ctx.strokeStyle = '#d35400';
@@ -466,7 +574,7 @@
 
             for (let id in players) {
                 let p = players[id];
-                if (p.role === 'free') {
+                if (p.role === 'free' && ships[p.team]) {
                     ctx.save();
                     ctx.translate(p.x, p.y);
                     ctx.fillStyle = p.team === 'red' ? '#f1948a' : '#85c1e9';
