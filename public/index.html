@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pig of Potato - Ready Toggle & Start</title>
+    <title>Pig of Potato - Fixed Start & Robustness</title>
     <style>
         body {
             margin: 0;
@@ -83,7 +83,6 @@
         }
         .btn-cpu:hover { background: #2ecc71; }
 
-        /* 準備ボタン（未準備＝赤、準備完了＝緑で切り替え） */
         .btn-ready {
             background: #e74c3c;
             color: #fff;
@@ -94,7 +93,6 @@
             box-shadow: 0 4px 0 #1e8449;
         }
 
-        /* 出航ボタン */
         .btn-start {
             background: #f39c12;
             color: #fff;
@@ -274,10 +272,7 @@
                 <label>乗組員メンバー:</label>
                 <div class="player-list" id="lobby-player-list">読み込み中...</div>
                 
-                <!-- 準備完了 / 解除の切り替えボタン -->
                 <button class="btn btn-ready" id="btn-ready">準備OK！ (クリックで完了)</button>
-                
-                <!-- 確実にゲームを開始できる出航ボタン -->
                 <button class="btn btn-start" id="btn-start">🚀 ゲームに出航する！</button>
             </div>
         </div>
@@ -487,7 +482,6 @@
             socket.emit('joinRoom', { roomCode, playerName, bodyColor: myBodyColor, isCpu });
         }
 
-        // 準備ボタン（トグル式：準備OK ⇄ 準備解除）
         btnReady.addEventListener('click', () => {
             isReady = !isReady;
             if (isReady) {
@@ -500,7 +494,6 @@
             socket.emit('toggleReady');
         });
 
-        // 出航ボタン（確実にゲームスタート）
         btnStart.addEventListener('click', () => {
             socket.emit('startGame');
         });
@@ -616,20 +609,23 @@
         socket.on('gameStateUpdate', (data) => {
             players = data.players;
             ships = data.ships;
-            if(players[myId]) {
+            if (players && players[myId]) {
                 const role = players[myId].role;
                 let roleTxt = '自由行動';
                 if(role === 'helmsman') roleTxt = '舵手 (操舵中 - K/Oで大砲発射可能！)';
                 if(role === 'cannon') roleTxt = '砲手 (大砲操作中)';
                 if(role === 'watcher') roleTxt = '見張り台 (索敵中)';
-                document.getElementById('role-name').innerText = roleTxt;
+                if(document.getElementById('role-name')) {
+                    document.getElementById('role-name').innerText = roleTxt;
+                }
                 updateUIValues();
             }
         });
 
         socket.on('serverTick', (data) => {
+            if (!data || !data.ships) return;
             for (let id in data.ships) {
-                if (ships[id]) {
+                if (ships && ships[id]) {
                     const s = ships[id];
                     if (s.helmsman !== myId) {
                         s.x = data.ships[id].x;
@@ -642,22 +638,22 @@
                     s.ammo = data.ships[id].ammo;
                 }
             }
-            cannonBalls = data.cannonBalls;
+            cannonBalls = data.cannonBalls || [];
             updateUIValues();
         });
 
         function updateUIValues() {
-            if (!myTeam || !ships[myTeam]) return;
+            if (!myTeam || !ships || !ships[myTeam]) return;
             const ship = ships[myTeam];
-            document.getElementById('team-hp').innerText = ship.hp;
-            document.getElementById('team-wood').innerText = ship.wood;
-            document.getElementById('ammo-1').innerText = ship.ammo[1] || 0;
-            document.getElementById('ammo-2').innerText = ship.ammo[2] || 0;
-            document.getElementById('ammo-3').innerText = ship.ammo[3] || 0;
+            if (document.getElementById('team-hp')) document.getElementById('team-hp').innerText = ship.hp;
+            if (document.getElementById('team-wood')) document.getElementById('team-wood').innerText = ship.wood;
+            if (document.getElementById('ammo-1')) document.getElementById('ammo-1').innerText = ship.ammo[1] || 0;
+            if (document.getElementById('ammo-2')) document.getElementById('ammo-2').innerText = ship.ammo[2] || 0;
+            if (document.getElementById('ammo-3')) document.getElementById('ammo-3').innerText = ship.ammo[3] || 0;
         }
 
         socket.on('shipMoved', (updatedShip) => {
-            if (ships[updatedShip.id] && ships[updatedShip.id].helmsman !== myId) {
+            if (ships && ships[updatedShip.id] && ships[updatedShip.id].helmsman !== myId) {
                 ships[updatedShip.id].x = updatedShip.x;
                 ships[updatedShip.id].y = updatedShip.y;
                 ships[updatedShip.id].angle = updatedShip.angle;
@@ -665,13 +661,14 @@
         });
 
         socket.on('cannonFired', (ball) => {
-            if (!cannonBalls.some(b => b.id === ball.id)) {
+            if (cannonBalls && !cannonBalls.some(b => b.id === ball.id)) {
                 cannonBalls.push(ball);
             }
         });
 
         socket.on('sideCooldownStarted', ({ side, duration }) => {
             let el = document.getElementById(side === 'left' ? 'left-cooldown' : 'right-cooldown');
+            if (!el) return;
             if (side === 'left') leftReady = false;
             if (side === 'right') rightReady = false;
 
@@ -721,11 +718,11 @@
         });
 
         socket.on('shipHit', (data) => {
-            if(ships[data.shipId]) ships[data.shipId].hp = data.hp;
+            if(ships && ships[data.shipId]) ships[data.shipId].hp = data.hp;
         });
 
         socket.on('shipRepaired', (data) => {
-            if(ships[data.team]) {
+            if(ships && ships[data.team]) {
                 ships[data.team].hp = data.hp;
                 ships[data.team].wood = data.wood;
             }
@@ -738,9 +735,9 @@
 
         function update() {
             if (gameUi.style.display !== 'block') return;
-            if (!myId || !players[myId]) return;
+            if (!myId || !players || !players[myId]) return;
             const p = players[myId];
-            if (!ships[p.team]) return;
+            if (!ships || !ships[p.team]) return;
             const ship = ships[p.team];
 
             if (p.role === 'free') {
@@ -791,53 +788,55 @@
                 }
 
                 const promptEl = document.getElementById('prompt');
-                if (gatheringIslandId !== null) {
-                    let elapsed = Date.now() - gatherStartTime;
-                    let percent = Math.min(100, Math.floor((elapsed / gatheringDuration) * 100));
-                    promptEl.innerText = `🌲 木を採集中... [ ${percent}% ] (Eキー長押し)`;
-                    promptEl.style.display = 'block';
+                if (promptEl) {
+                    if (gatheringIslandId !== null) {
+                        let elapsed = Date.now() - gatherStartTime;
+                        let percent = Math.min(100, Math.floor((elapsed / gatheringDuration) * 100));
+                        promptEl.innerText = `🌲 木を採集中... [ ${percent}% ] (Eキー長押し)`;
+                        promptEl.style.display = 'block';
 
-                    if (elapsed >= gatheringDuration) {
-                        socket.emit('gatherIsland', gatheringIslandId);
-                        gatheringIslandId = null;
-                    }
-                } else {
-                    interactTarget = null;
-                    const helmX = ship.x - Math.cos(ship.angle) * 140;
-                    const helmY = ship.y - Math.sin(ship.angle) * 140;
-
-                    let nearIsland = false;
-                    islands.forEach(isl => {
-                        if (Math.hypot(p.x - isl.x, p.y - isl.y) < isl.radius + 20) {
-                            promptEl.innerText = '【Eキー長押し】島で木や効果付き砲弾を採集';
-                            promptEl.style.display = 'block';
-                            nearIsland = true;
+                        if (elapsed >= gatheringDuration) {
+                            socket.emit('gatherIsland', gatheringIslandId);
+                            gatheringIslandId = null;
                         }
-                    });
+                    } else {
+                        interactTarget = null;
+                        const helmX = ship.x - Math.cos(ship.angle) * 140;
+                        const helmY = ship.y - Math.sin(ship.angle) * 140;
 
-                    if (!nearIsland) {
-                        if (Math.hypot(p.x - helmX, p.y - helmY) < 55 && !ship.helmsman) {
-                            interactTarget = { type: 'helm' };
-                            promptEl.innerText = '【Eキー】舵を取る | 【K:左大砲 / O:右大砲】';
-                            promptEl.style.display = 'block';
-                        } else if (ship.watcher === null && Math.hypot(p.x - ship.x, p.y - ship.y) < 50) {
-                            interactTarget = { type: 'watcher' };
-                            promptEl.innerText = '【Eキー】見張り台に登る';
-                            promptEl.style.display = 'block';
-                        } else {
-                            let nearCannon = false;
-                            ship.cannons.forEach(c => {
-                                const cx = ship.x + Math.cos(ship.angle) * c.offsetRelX - Math.sin(ship.angle) * c.offsetRelY;
-                                const cy = ship.y + Math.sin(ship.angle) * c.offsetRelX + Math.cos(ship.angle) * c.offsetRelY;
-                                if (Math.hypot(p.x - cx, p.y - cy) < 50 && !c.gunner) {
-                                    interactTarget = { type: 'cannon', cannonId: c.id };
-                                    promptEl.innerText = '【Eキー】大砲に乗り込む';
-                                    promptEl.style.display = 'block';
-                                    nearCannon = true;
+                        let nearIsland = false;
+                        islands.forEach(isl => {
+                            if (Math.hypot(p.x - isl.x, p.y - isl.y) < isl.radius + 20) {
+                                promptEl.innerText = '【Eキー長押し】島で木や効果付き砲弾を採集';
+                                promptEl.style.display = 'block';
+                                nearIsland = true;
+                            }
+                        });
+
+                        if (!nearIsland) {
+                            if (Math.hypot(p.x - helmX, p.y - helmY) < 55 && !ship.helmsman) {
+                                interactTarget = { type: 'helm' };
+                                promptEl.innerText = '【Eキー】舵を取る | 【K:左大砲 / O:右大砲】';
+                                promptEl.style.display = 'block';
+                            } else if (ship.watcher === null && Math.hypot(p.x - ship.x, p.y - ship.y) < 50) {
+                                interactTarget = { type: 'watcher' };
+                                promptEl.innerText = '【Eキー】見張り台に登る';
+                                promptEl.style.display = 'block';
+                            } else {
+                                let nearCannon = false;
+                                ship.cannons.forEach(c => {
+                                    const cx = ship.x + Math.cos(ship.angle) * c.offsetRelX - Math.sin(ship.angle) * c.offsetRelY;
+                                    const cy = ship.y + Math.sin(ship.angle) * c.offsetRelX + Math.cos(ship.angle) * c.offsetRelY;
+                                    if (Math.hypot(p.x - cx, p.y - cy) < 50 && !c.gunner) {
+                                        interactTarget = { type: 'cannon', cannonId: c.id };
+                                        promptEl.innerText = '【Eキー】大砲に乗り込む';
+                                        promptEl.style.display = 'block';
+                                        nearCannon = true;
+                                    }
+                                });
+                                if (!nearCannon && !interactTarget) {
+                                    promptEl.style.display = 'none';
                                 }
-                            });
-                            if (!nearCannon && !interactTarget) {
-                                promptEl.style.display = 'none';
                             }
                         }
                     }
@@ -851,35 +850,37 @@
 
             } else {
                 const promptEl = document.getElementById('prompt');
-                promptEl.style.display = 'block';
-                if (p.role === 'helmsman') {
-                    promptEl.innerText = '【Eキー】舵から離れる | 【R】船修理 | 【K】左大砲 | 【O】右大砲';
-                    interactTarget = { type: 'helm' };
+                if (promptEl) {
+                    promptEl.style.display = 'block';
+                    if (p.role === 'helmsman') {
+                        promptEl.innerText = '【Eキー】舵から離れる | 【R】船修理 | 【K】左大砲 | 【O】右大砲';
+                        interactTarget = { type: 'helm' };
 
-                    let rotSpeed = 0.05;
-                    let currentSpeed = 0;
-                    if (keys.a) ship.angle -= rotSpeed;
-                    if (keys.d) ship.angle += rotSpeed;
-                    
-                    if (keys.w) currentSpeed = ship.maxSpeed;
-                    if (keys.s) currentSpeed = -3.0;
+                        let rotSpeed = 0.05;
+                        let currentSpeed = 0;
+                        if (keys.a) ship.angle -= rotSpeed;
+                        if (keys.d) ship.angle += rotSpeed;
+                        
+                        if (keys.w) currentSpeed = ship.maxSpeed;
+                        if (keys.s) currentSpeed = -3.0;
 
-                    ship.speed = currentSpeed;
-                    if (ship.speed !== 0) {
-                        ship.x += Math.cos(ship.angle) * ship.speed;
-                        ship.y += Math.sin(ship.angle) * ship.speed;
-                        ship.x = Math.max(200, Math.min(6000 - 200, ship.x));
-                        ship.y = Math.max(200, Math.min(4500 - 200, ship.y));
+                        ship.speed = currentSpeed;
+                        if (ship.speed !== 0) {
+                            ship.x += Math.cos(ship.angle) * ship.speed;
+                            ship.y += Math.sin(ship.angle) * ship.speed;
+                            ship.x = Math.max(200, Math.min(6000 - 200, ship.x));
+                            ship.y = Math.max(200, Math.min(4500 - 200, ship.y));
+                        }
+
+                        socket.emit('shipControl', { x: ship.x, y: ship.y, angle: ship.angle, speed: ship.speed });
+
+                    } else if (p.role === 'cannon') {
+                        promptEl.innerText = '【Eキー】大砲から離れる | 【1,2,3】弾種変更 | 【K/O】発射';
+                        interactTarget = { type: 'cannon', cannonId: p.activeCannonId };
+                    } else if (p.role === 'watcher') {
+                        promptEl.innerText = '【Eキー】見張り台から降りる';
+                        interactTarget = { type: 'watcher' };
                     }
-
-                    socket.emit('shipControl', { x: ship.x, y: ship.y, angle: ship.angle, speed: ship.speed });
-
-                } else if (p.role === 'cannon') {
-                    promptEl.innerText = '【Eキー】大砲から離れる | 【1,2,3】弾種変更 | 【K/O】発射';
-                    interactTarget = { type: 'cannon', cannonId: p.activeCannonId };
-                } else if (p.role === 'watcher') {
-                    promptEl.innerText = '【Eキー】見張り台から降りる';
-                    interactTarget = { type: 'watcher' };
                 }
 
                 potatoes.forEach(pot => {
@@ -893,7 +894,7 @@
         function draw() {
             if (gameUi.style.display !== 'block') return;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            if (!myId || !players[myId] || !ships[myTeam]) return;
+            if (!myId || !players || !players[myId] || !ships || !ships[myTeam]) return;
 
             const me = players[myId];
             const myShip = ships[myTeam];
