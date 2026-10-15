@@ -14,14 +14,13 @@ const WORLD_HEIGHT = 11250;
 
 const rooms = {};
 
-// 船の正確な当たり判定（3つの円で先端から後方までカバー）
 function getShipCircles(ship) {
   const cos = Math.cos(ship.angle);
   const sin = Math.sin(ship.angle);
   return [
-    { x: ship.x, y: ship.y, r: 65 },                    // 中央
-    { x: ship.x + cos * 80, y: ship.y + sin * 80, r: 55 }, // 前方
-    { x: ship.x - cos * 80, y: ship.y - sin * 80, r: 55 }  // 後方
+    { x: ship.x, y: ship.y, r: 65 },
+    { x: ship.x + cos * 80, y: ship.y + sin * 80, r: 55 },
+    { x: ship.x - cos * 80, y: ship.y - sin * 80, r: 55 }
   ];
 }
 
@@ -51,12 +50,13 @@ function checkShipShipCollision(shipA, shipB) {
 }
 
 function createInitialRoomState(isCpuMode = false) {
+  // 島（コジマ）のサイズを小さめのサイズに戻す
   const islands = [
-    { id: 1, x: 3500, y: 3000, radius: 900, wood: 8, hasSpecialAmmo: true, ammoType: 2 },
-    { id: 2, x: 11500, y: 3000, radius: 900, wood: 8, hasSpecialAmmo: true, ammoType: 3 },
-    { id: 3, x: 7500, y: 8000, radius: 1100, wood: 12, hasSpecialAmmo: true, ammoType: 2 },
-    { id: 4, x: 3000, y: 8500, radius: 800, wood: 6, hasSpecialAmmo: false },
-    { id: 5, x: 12000, y: 8500, radius: 800, wood: 6, hasSpecialAmmo: false }
+    { id: 1, x: 3500, y: 3000, radius: 600, wood: 6, hasSpecialAmmo: true, ammoType: 2 },
+    { id: 2, x: 11500, y: 3000, radius: 600, wood: 6, hasSpecialAmmo: true, ammoType: 3 },
+    { id: 3, x: 7500, y: 8000, radius: 750, wood: 8, hasSpecialAmmo: true, ammoType: 2 },
+    { id: 4, x: 3000, y: 8500, radius: 550, wood: 5, hasSpecialAmmo: false },
+    { id: 5, x: 12000, y: 8500, radius: 550, wood: 5, hasSpecialAmmo: false }
   ];
 
   return {
@@ -132,6 +132,10 @@ io.on('connection', (socket) => {
 
     if (!rooms[roomCode]) {
       rooms[roomCode] = createInitialRoomState(isCpu);
+    } else {
+      if (isCpu) {
+        rooms[roomCode].isCpuMode = true;
+      }
     }
     const room = rooms[roomCode];
 
@@ -263,6 +267,7 @@ io.on('connection', (socket) => {
     if (!room || room.status !== 'playing') return;
     const p = room.players[socket.id];
     const ship = room.ships[p.team];
+    // 木材が0の時は修理できないようにする条件を確実にチェック
     if (ship.wood >= 2 && ship.hp < ship.maxHp) {
       ship.wood -= 2;
       ship.hp = Math.min(ship.maxHp, ship.hp + 25);
@@ -280,12 +285,10 @@ io.on('connection', (socket) => {
       let testShip = { ...s, x: controlData.x, y: controlData.y, angle: controlData.angle };
       let collided = false;
 
-      // 島との衝突判定（正確なマルチサークル）
       if (checkShipIslandCollision(testShip, room.islands)) {
         collided = true;
       }
 
-      // 敵船との衝突防止
       for (let otherId in room.ships) {
         if (otherId !== s.id) {
           if (checkShipShipCollision(testShip, room.ships[otherId])) {
@@ -425,7 +428,7 @@ io.on('connection', (socket) => {
   });
 });
 
-// CPUのAI挙動（横幅の4倍＝約520の距離を保ち、横向きになって大砲を撃つ）
+// CPUAI挙動：船の横幅の4倍（距離約520）を保ち、側面を向いて大砲を撃つ
 setInterval(() => {
   for (let roomCode in rooms) {
     const room = rooms[roomCode];
@@ -439,19 +442,14 @@ setInterval(() => {
       let dy = redShip.y - blueShip.y;
       let dist = Math.hypot(dx, dy);
 
-      // 船の横幅（約130）の4倍 ＝ 520の距離を維持
       let targetDist = 520;
       let toPlayerAngle = Math.atan2(dy, dx);
-
-      // プレイヤーに対して横向き（側面を向く）になるための目標角度
-      // プレイヤーとの位置関係に応じて、左または右の側面を向く
       let targetAngle = toPlayerAngle + Math.PI / 2;
       let angleDiff = targetAngle - blueShip.angle;
       while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
       while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
       blueShip.angle += angleDiff * 0.04;
 
-      // 距離に応じて前進・後退を調整して520の距離を保つ
       let distDiff = dist - targetDist;
       blueShip.speed = Math.max(-3.0, Math.min(blueShip.maxSpeed, distDiff * 0.02));
 
@@ -472,7 +470,6 @@ setInterval(() => {
       blueShip.x = Math.max(300, Math.min(WORLD_WIDTH - 300, blueShip.x));
       blueShip.y = Math.max(300, Math.min(WORLD_HEIGHT - 300, blueShip.y));
 
-      // 距離が十分近く、側面を向いている時に大砲を発射
       const now = Date.now();
       if (dist < 1800 && blueShip.ammo[1] > 0 && blueShip.leftCooldown < now) {
         blueShip.leftCooldown = now + 1800;
@@ -490,7 +487,6 @@ setInterval(() => {
       }
     }
 
-    // 砲弾の移動とヒット判定
     for (let i = room.cannonBalls.length - 1; i >= 0; i--) {
       let ball = room.cannonBalls[i];
       ball.x += ball.vx;
@@ -529,5 +525,5 @@ setInterval(() => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`✨ Pig of Potato v21 サーバー起動: http://localhost:${PORT}`);
+  console.log(`✨ Pig of Potato v22 サーバー起動: http://localhost:${PORT}`);
 });
