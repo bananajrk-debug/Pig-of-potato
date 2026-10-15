@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pig of Potato - Ready Flow Fixed</title>
+    <title>Pig of Potato - Fixed Start Event</title>
     <style>
         body {
             margin: 0;
@@ -93,7 +93,6 @@
             box-shadow: 0 4px 0 #1e8449;
         }
 
-        /* 出航ボタン（初期状態は非表示、準備完了後に表示） */
         .btn-start {
             background: #f39c12;
             color: #fff;
@@ -274,10 +273,7 @@
                 <label>乗組員メンバー:</label>
                 <div class="player-list" id="lobby-player-list">読み込み中...</div>
                 
-                <!-- 準備ボタン -->
                 <button class="btn btn-ready" id="btn-ready">準備OK！ (クリックで完了)</button>
-                
-                <!-- 出航ボタン（準備完了後に出現） -->
                 <button class="btn btn-start" id="btn-start">🚀 ゲームに出航する！</button>
             </div>
         </div>
@@ -487,23 +483,23 @@
             socket.emit('joinRoom', { roomCode, playerName, bodyColor: myBodyColor, isCpu });
         }
 
-        // 準備ボタン（トグル式：準備OK ⇄ 解除 ＋ 出航ボタンの表示/非表示切り替え）
         btnReady.addEventListener('click', () => {
             isReady = !isReady;
             if (isReady) {
                 btnReady.classList.add('is-ready');
                 btnReady.innerText = '✅ 準備完了 (クリックで解除)';
-                btnStart.style.display = 'block'; // 準備完了したら出航ボタンが出現！
+                btnStart.style.display = 'block';
             } else {
                 btnReady.classList.remove('is-ready');
                 btnReady.innerText = '準備OK！ (クリックで完了)';
-                btnStart.style.display = 'none'; // 解除したら出航ボタンも非同期に隠す
+                btnStart.style.display = 'none';
             }
             socket.emit('toggleReady');
         });
 
+        // 出航ボタン：currentRoomCodeを確実に含めて送信
         btnStart.addEventListener('click', () => {
-            socket.emit('startGame');
+            socket.emit('startGame', { roomCode: currentRoomCode });
         });
 
         socket.on('lobbyUpdate', (data) => {
