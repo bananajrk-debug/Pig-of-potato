@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pig of Potato - Repair Red Dot & Anti-Stuck</title>
+    <title>Pig of Potato - Ultimate Naval Battle</title>
     <style>
         body {
             margin: 0;
@@ -30,6 +30,7 @@
         .screen.hidden {
             display: none !important;
         }
+
         h1 {
             font-size: 52px;
             color: #f1c40f;
@@ -376,7 +377,7 @@
             - <b>舵・大砲・見張り台:</b> 近くで <b>[ Eキー ]</b><br>
             - <b>大砲発射:</b> <b>[Kキー]で左大砲</b>、<b>[Oキー]で右大砲</b> （個別クールタイム）<br>
             - <b>島での採取:</b> <b>[Eキー長押し (3秒)]</b> で木や特殊弾をゲット！<br>
-            - <b>船の修理:</b> 赤い点の近くで <b>[Rキー長押し (2.5秒)]</b> （木材2つ消費）
+            - <b>修理:</b> 船の<b>赤い修理スポット付近で[Rキー長押し (2秒)]</b>して木材2つ消費して修理！
         </div>
 
         <div id="minimap-container">
@@ -446,7 +447,7 @@
 
         let repairing = false;
         let repairStartTime = 0;
-        let repairDuration = 2500;
+        let repairDuration = 2000;
 
         const keys = { w: false, s: false, a: false, d: false, e: false, r: false };
         let lastSendTime = 0;
@@ -714,11 +715,12 @@
                     if (!keys.r) {
                         keys.r = true;
                         const me = players[myId];
-                        if (me && me.role === 'free' && ships[myTeam]) {
-                            const ship = ships[myTeam];
-                            const repairX = ship.x + Math.cos(ship.angle) * 30 - Math.sin(ship.angle) * 0;
-                            const repairY = ship.y + Math.sin(ship.angle) * 30 + Math.cos(ship.angle) * 0;
-                            if (Math.hypot(me.x - repairX, me.y - repairY) < 45) {
+                        const ship = ships[myTeam];
+                        if (me && ship && me.role === 'free') {
+                            // 赤い修理スポットの位置 (ローカル x = -50, y = 0)
+                            const rx = ship.x + Math.cos(ship.angle) * (-50);
+                            const ry = ship.y + Math.sin(ship.angle) * (-50);
+                            if (Math.hypot(me.x - rx, me.y - ry) < 45) {
                                 repairing = true;
                                 repairStartTime = Date.now();
                             }
@@ -765,14 +767,14 @@
             if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') keys.a = false;
             if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') keys.d = false;
 
-            if (e.key === 'r' || e.key === 'R') {
-                keys.r = false;
-                repairing = false;
-            }
-
             if (e.key === 'e' || e.key === 'E') {
                 keys.e = false;
                 gatheringIslandId = null;
+            }
+
+            if (e.key === 'r' || e.key === 'R') {
+                keys.r = false;
+                repairing = false;
             }
         });
 
@@ -990,9 +992,8 @@
                         interactTarget = null;
                         const helmX = ship.x - Math.cos(ship.angle) * 140;
                         const helmY = ship.y - Math.sin(ship.angle) * 140;
-
-                        const repairX = ship.x + Math.cos(ship.angle) * 30;
-                        const repairY = ship.y + Math.sin(ship.angle) * 30;
+                        const rx = ship.x + Math.cos(ship.angle) * (-50);
+                        const ry = ship.y + Math.sin(ship.angle) * (-50);
 
                         let nearIsland = false;
                         islands.forEach(isl => {
@@ -1004,8 +1005,8 @@
                         });
 
                         if (!nearIsland) {
-                            if (Math.hypot(p.x - repairX, p.y - repairY) < 45) {
-                                promptEl.innerText = '【Rキー長押し】赤点の上で船を修理 (木材2つ消費)';
+                            if (Math.hypot(p.x - rx, p.y - ry) < 45) {
+                                promptEl.innerText = '【Rキー長押し】赤い修理ポイントで船を修理 (木材2個)';
                                 promptEl.style.display = 'block';
                             } else if (Math.hypot(p.x - helmX, p.y - helmY) < 55 && !ship.helmsman) {
                                 interactTarget = { type: 'helm' };
@@ -1027,7 +1028,7 @@
                                         nearCannon = true;
                                     }
                                 });
-                                if (!nearCannon && !interactTarget) {
+                                if (!nearCannon && !interactTarget && Math.hypot(p.x - rx, p.y - ry) >= 45) {
                                     promptEl.style.display = 'none';
                                 }
                             }
@@ -1046,7 +1047,7 @@
                 if (promptEl) {
                     promptEl.style.display = 'block';
                     if (p.role === 'helmsman') {
-                        promptEl.innerText = '【Eキー】舵から離れる | 【R長押し】赤点で船修理 | 【K】左大砲 | 【O】右大砲';
+                        promptEl.innerText = '【Eキー】舵から離れる | 【R長押し(赤い点)】船修理 | 【K】左大砲 | 【O】右大砲';
                         interactTarget = { type: 'helm' };
 
                         let rotSpeed = 0.05;
@@ -1063,9 +1064,10 @@
                             let nextX = ship.x + Math.cos(ship.angle) * ship.speed;
                             let nextY = ship.y + Math.sin(ship.angle) * ship.speed;
 
+                            let testShip = { ...ship, x: nextX, y: nextY };
                             let collided = false;
                             islands.forEach(isl => {
-                                if (Math.hypot(nextX - isl.x, nextY - isl.y) < isl.radius + 140) {
+                                if (Math.hypot(nextX - isl.x, nextY - isl.y) < isl.radius + 130) {
                                     collided = true;
                                     ship.speed = 0;
                                 }
@@ -1074,20 +1076,19 @@
                             for (let otherId in ships) {
                                 if (otherId !== ship.id) {
                                     let otherShip = ships[otherId];
-                                    if (Math.hypot(nextX - otherShip.x, nextY - otherShip.y) < 300) {
+                                    if (Math.hypot(nextX - otherShip.x, nextY - otherShip.y) < 320) {
                                         collided = true;
-                                        let pushAngle = Math.atan2(nextY - otherShip.y, nextX - otherShip.x);
-                                        nextX = otherShip.x + Math.cos(pushAngle) * 300;
-                                        nextY = otherShip.y + Math.sin(pushAngle) * 300;
                                         ship.speed = 0;
                                     }
                                 }
                             }
 
-                            ship.x = nextX;
-                            ship.y = nextY;
-                            ship.x = Math.max(300, Math.min(15000 - 300, ship.x));
-                            ship.y = Math.max(300, Math.min(11250 - 300, ship.y));
+                            if (!collided) {
+                                ship.x = nextX;
+                                ship.y = nextY;
+                                ship.x = Math.max(300, Math.min(15000 - 300, ship.x));
+                                ship.y = Math.max(300, Math.min(11250 - 300, ship.y));
+                            }
                         }
 
                         socket.emit('shipControl', { x: ship.x, y: ship.y, angle: ship.angle, speed: ship.speed });
@@ -1236,9 +1237,9 @@
                 ctx.strokeStyle = '#d35400';
                 ctx.strokeRect(-145, -15, 15, 30);
 
-                // ** 修理用の分かりやすい「赤い点」を描画 **
+                // 修理スポット（赤い点）を船の上に表示
                 ctx.save();
-                ctx.translate(-30, 0); // 船の中央付近に配置
+                ctx.translate(-110, 0);
                 ctx.fillStyle = '#e74c3c';
                 ctx.beginPath();
                 ctx.arc(0, 0, 12, 0, Math.PI * 2);
@@ -1246,10 +1247,11 @@
                 ctx.lineWidth = 3;
                 ctx.strokeStyle = '#fff';
                 ctx.stroke();
-                // 白い十字マーク
                 ctx.fillStyle = '#fff';
-                ctx.fillRect(-3, -7, 6, 14);
-                ctx.fillRect(-7, -3, 14, 6);
+                ctx.font = 'bold 10px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('🛠️', 0, 0);
                 ctx.restore();
 
                 ctx.restore();
