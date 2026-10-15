@@ -37,19 +37,8 @@
         #controls {
             margin-top: 15px;
             text-align: center;
-        }
-        button {
-            padding: 12px 24px;
-            font-size: 16px;
-            background: #ffcc00;
-            color: #000;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-        button:hover {
-            background: #ffdd33;
+            font-size: 14px;
+            color: #aaa;
         }
     </style>
 </head>
@@ -60,22 +49,24 @@
         <canvas id="gameCanvas" width="800" height="500"></canvas>
     </div>
     <div id="controls">
-        <p>移動: <b>WASD</b> または <b>矢印キー</b> | 上側の「湖エリア」に入ってボタンを押そう！</p>
-        <button id="fish-btn">🐟 釣りをする</button>
+        <p>移動: <b>WASD / 矢印キー</b> | 釣り: 上側の「湖エリア」で <b>スペースキー</b> を押す！</p>
     </div>
 
-    <!-- Socket.ioクライアントライブラリ -->
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const coinCountEl = document.getElementById('coin-count');
-        const fishBtn = document.getElementById('fish-btn');
 
         let players = {};
         let myId = null;
         const movement = { up: false, down: false, left: false, right: false };
+
+        // 釣り・演出用の状態変数
+        let isFishing = false;
+        let fishingTimer = 0;
+        let notification = { text: '', alpha: 0, color: '#fff' };
 
         // キー入力検知
         window.addEventListener('keydown', (e) => {
@@ -83,6 +74,12 @@
             if (e.key === 's' || e.key === 'ArrowDown') movement.down = true;
             if (e.key === 'a' || e.key === 'ArrowLeft') movement.left = true;
             if (e.key === 'd' || e.key === 'ArrowRight') movement.right = true;
+
+            // スペースキーで釣り
+            if (e.code === 'Space') {
+                e.preventDefault(); // 画面スクロール防止
+                tryToFish();
+            }
         });
 
         window.addEventListener('keyup', (e) => {
@@ -91,6 +88,26 @@
             if (e.key === 'a' || e.key === 'ArrowLeft') movement.left = false;
             if (e.key === 'd' || e.key === 'ArrowRight') movement.right = false;
         });
+
+        function tryToFish() {
+            if (!myId || !players[myId]) return;
+
+            if (players[myId].y < 180) {
+                if (isFishing) return; // 既に釣り中なら連打防止
+
+                isFishing = true;
+                fishingTimer = 40; // 釣りにかかるフレーム数（約0.7秒）
+                showNotification('🎣 釣り糸を垂らした...', '#f1c40f');
+            } else {
+                showNotification('⚠️ ここでは釣れません！湖に入ってね', '#e74c3c');
+            }
+        }
+
+        function showNotification(text, color) {
+            notification.text = text;
+            notification.alpha = 1.0;
+            notification.color = color;
+        }
 
         socket.on('currentPlayers', (serverPlayers) => {
             players = serverPlayers;
@@ -112,25 +129,28 @@
             delete players[id];
         });
 
-        socket.on('coinUpdate', (coins) => {
+        // 釣り成功時の結果受け取り
+        socket.on('fishResult', ({ coins, earned }) => {
             coinCountEl.textContent = coins;
+            showNotification(`🎉 釣れた！ +${earned} イノコイン！`, '#2ecc71');
         });
 
-        // 釣りボタンを押したときの処理
-        fishBtn.addEventListener('click', () => {
-            if (myId && players[myId]) {
-                // 上側の水辺エリア（Y座標が200未満）にいるときだけ釣れる
-                if (players[myId].y < 200) {
-                    socket.emit('fishCaught');
-                } else {
-                    alert('⚠️ ここでは釣りができません！上側の「湖エリア」へ移動してください。');
+        function update() {
+            // 釣り中のカウントダウン
+            if (isFishing) {
+                fishingTimer--;
+                if (fishingTimer <= 0) {
+                    isFishing = false;
+                    socket.emit('fishCaught'); // サーバーに釣果を判定してもらう
                 }
             }
-        });
 
-        // 移動の更新
-        function update() {
-            if (myId && players[myId]) {
+            // 通知のフェードアウト処理
+            if (notification.alpha > 0) {
+                notification.alpha -= 0.015;
+            }
+
+            if (myId && players[myId] && !isFishing) {
                 const speed = 4;
                 let moved = false;
                 if (movement.up && players[myId].y > 15) { players[myId].y -= speed; moved = true; }
@@ -144,7 +164,6 @@
             }
         }
 
-        // 描画処理
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -153,7 +172,7 @@
             ctx.fillRect(0, 0, canvas.width, 180);
             ctx.fillStyle = '#ecf0f1';
             ctx.font = '16px sans-serif';
-            ctx.fillText('🌊 湖エリア（ここで釣りができるよ）', 25, 35);
+            ctx.fillText('🌊 湖エリア（スペースキーで釣り！）', 25, 35);
 
             // 陸エリア（下部）
             ctx.fillStyle = '#27ae60';
@@ -164,8 +183,26 @@
             // 全プレイヤーの描画
             for (let id in players) {
                 const p = players[id];
-                // 自分は赤色、他の人は青緑色
-                ctx.fillStyle = (id === myId) ? '#e74c3c' : '#3498db';
+                const isMe = (id === myId);
+
+                // 自分が釣り中のときの演出（ウキや竿の表現）
+                if (isMe && isFishing) {
+                    // 水面にウキを表示
+                    ctx.fillStyle = '#e74c3c';
+                    ctx.beginPath();
+                    ctx.arc(p.x + 15, p.y - 40, 6, 0, Math.PI * 2);
+                    ctx.fill();
+                    // 釣り糸
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(p.x, p.y);
+                    ctx.lineTo(p.x + 15, p.y - 40);
+                    ctx.stroke();
+                }
+
+                // プレイヤー本体
+                ctx.fillStyle = isMe ? '#e74c3c' : '#3498db';
                 ctx.beginPath();
                 ctx.arc(p.x, p.y, 16, 0, Math.PI * 2);
                 ctx.fill();
@@ -173,15 +210,34 @@
                 ctx.strokeStyle = '#fff';
                 ctx.stroke();
 
-                // プレイヤー名
-                ctx.fillStyle = '#fff';
-                ctx.font = '12px sans-serif';
+                // 釣り中サイン
+                if (isMe && isFishing) {
+                    ctx.fillStyle = '#f1c40f';
+                    ctx.font = 'bold 14px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('🎣 釣り中...', p.x, p.y - 28);
+                } else {
+                    ctx.fillStyle = '#fff';
+                    ctx.font = '12px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(p.name, p.x, p.y - 24);
+                }
+            }
+
+            // 画面中央上にポップアップ通知を表示
+            if (notification.alpha > 0) {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, notification.alpha);
+                ctx.font = 'bold 24px sans-serif';
                 ctx.textAlign = 'center';
-                ctx.fillText(p.name, p.x, p.y - 24);
+                ctx.fillStyle = notification.color;
+                ctx.shadowColor = '#000';
+                ctx.shadowBlur = 6;
+                ctx.fillText(notification.text, canvas.width / 2, 100);
+                ctx.restore();
             }
         }
 
-        // メインループ
         function loop() {
             update();
             draw();
