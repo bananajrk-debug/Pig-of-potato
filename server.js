@@ -140,8 +140,10 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('startGame', () => {
-    const room = rooms[socket.roomCode];
+  // 出航ボタン：ルームコードを確実に受け取ってゲームを開始
+  socket.on('startGame', ({ roomCode }) => {
+    const code = roomCode || socket.roomCode;
+    const room = rooms[code];
     if (room) {
       room.status = 'playing';
       for (let id in room.players) {
@@ -153,12 +155,12 @@ io.on('connection', (socket) => {
         p.activeCannonId = null;
       }
 
-      io.to(socket.roomCode).emit('gameStart', { 
+      io.to(code).emit('gameStart', { 
         players: room.players, 
         ships: room.ships, 
         islands: room.islands, 
         potatoes: room.potatoes,
-        roomCode: socket.roomCode
+        roomCode: code
       });
     }
   });
@@ -451,5 +453,5 @@ setInterval(() => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`✨ Pig of Potato v15 サーバー起動: http://localhost:${PORT}`);
+  console.log(`✨ Pig of Potato v16 サーバー起動: http://localhost:${PORT}`);
 });
