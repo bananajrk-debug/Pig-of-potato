@@ -132,7 +132,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // 準備完了・解除の切り替え
   socket.on('toggleReady', () => {
     const room = rooms[socket.roomCode];
     if (room && room.status === 'waiting' && room.players[socket.id]) {
@@ -141,12 +140,21 @@ io.on('connection', (socket) => {
     }
   });
 
-  // 出航ボタンが押されたら確実にゲーム開始
   socket.on('startGame', () => {
     const room = rooms[socket.roomCode];
-    if (room && room.status === 'waiting') {
+    if (room) {
       room.status = 'playing';
-      io.to(roomCode).emit('gameStart', { 
+      // プレイヤーの位置をチームの船の位置に確実に合わせる
+      for (let id in room.players) {
+        let p = room.players[id];
+        let ship = room.ships[p.team];
+        p.x = ship.x;
+        p.y = ship.y;
+        p.role = 'free';
+        p.activeCannonId = null;
+      }
+
+      io.to(socket.roomCode).emit('gameStart', { 
         players: room.players, 
         ships: room.ships, 
         islands: room.islands, 
@@ -444,5 +452,5 @@ setInterval(() => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`✨ Pig of Potato v13 サーバー起動: http://localhost:${PORT}`);
+  console.log(`✨ Pig of Potato v14 サーバー起動: http://localhost:${PORT}`);
 });
