@@ -1,7 +1,7 @@
 {
   "name": "pig-of-potato",
-  "version": "2.0.0",
-  "description": "2v2 multiplayer pirate game with big ships, cannons, and potatoes",
+  "version": "3.0.0",
+  "description": "2v2 multiplayer pirate game with large rectangular ships, fast movement, and cannons",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
