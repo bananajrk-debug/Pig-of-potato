@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pig of Potato - Fixed Start Event</title>
+    <title>Pig of Potato - Rear Pivot & Minimap</title>
     <style>
         body {
             margin: 0;
@@ -231,6 +231,28 @@
             line-height: 1.5;
             border: 1px solid #34495e;
         }
+
+        /* ミニマップ専用のコンテナ（画面右下） */
+        #minimap-container {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 200px;
+            height: 150px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 3px solid #f39c12;
+            border-radius: 10px;
+            overflow: hidden;
+            z-index: 30;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.8);
+            pointer-events: none;
+        }
+        #minimapCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
         canvas { display: block; background: #2980b9; }
     </style>
 </head>
@@ -309,6 +331,11 @@
             - <b>修理:</b> <b>[Rキー]</b>で木材2つ消費して船を修理！
         </div>
 
+        <!-- ミニマップ表示エリア（右下） -->
+        <div id="minimap-container">
+            <canvas id="minimapCanvas" width="200" height="150"></canvas>
+        </div>
+
         <canvas id="gameCanvas"></canvas>
     </div>
 
@@ -336,6 +363,9 @@
         const ctx = canvas.getContext('2d');
         const previewCanvas = document.getElementById('previewCanvas');
         const pCtx = previewCanvas.getContext('2d');
+
+        const minimapCanvas = document.getElementById('minimapCanvas');
+        const mCtx = minimapCanvas.getContext('2d');
 
         function resize() {
             canvas.width = window.innerWidth;
@@ -497,7 +527,6 @@
             socket.emit('toggleReady');
         });
 
-        // 出航ボタン：currentRoomCodeを確実に含めて送信
         btnStart.addEventListener('click', () => {
             socket.emit('startGame', { roomCode: currentRoomCode });
         });
@@ -853,19 +882,34 @@
                         interactTarget = { type: 'helm' };
 
                         let rotSpeed = 0.05;
-                        let currentSpeed = 0;
+                        let targetSpeed = 0;
                         if (keys.a) ship.angle -= rotSpeed;
                         if (keys.d) ship.angle += rotSpeed;
                         
-                        if (keys.w) currentSpeed = ship.maxSpeed;
-                        if (keys.s) currentSpeed = -3.0;
+                        if (keys.w) targetSpeed = ship.maxSpeed;
+                        if (keys.s) targetSpeed = -3.0;
 
-                        ship.speed = currentSpeed;
-                        if (ship.speed !== 0) {
-                            ship.x += Math.cos(ship.angle) * ship.speed;
-                            ship.y += Math.sin(ship.angle) * ship.speed;
-                            ship.x = Math.max(200, Math.min(6000 - 200, ship.x));
-                            ship.y = Math.max(200, Math.min(4500 - 200, ship.y));
+                        // 慣性（少しだけなめらかに加速・減速）を付与
+                        ship.speed += (targetSpeed - ship.speed) * 0.1;
+
+                        if (Math.abs(ship.speed) > 0.01) {
+                            let nextX = ship.x + Math.cos(ship.angle) * ship.speed;
+                            let nextY = ship.y + Math.sin(ship.angle) * ship.speed;
+
+                            let collided = false;
+                            islands.forEach(isl => {
+                                if (Math.hypot(nextX - isl.x, nextY - isl.y) < isl.radius + 110) {
+                                    collided = true;
+                                    ship.speed = 0;
+                                }
+                            });
+
+                            if (!collided) {
+                                ship.x = nextX;
+                                ship.y = nextY;
+                                ship.x = Math.max(200, Math.min(6000 - 200, ship.x));
+                                ship.y = Math.max(200, Math.min(4500 - 200, ship.y));
+                            }
                         }
 
                         socket.emit('shipControl', { x: ship.x, y: ship.y, angle: ship.angle, speed: ship.speed });
@@ -972,6 +1016,9 @@
                 ctx.save();
                 ctx.translate(s.x, s.y);
                 ctx.rotate(s.angle);
+                
+                // 【回転軸を後ろ（船尾）にするため、少し前方に描画オフセットを与える】
+                ctx.translate(60, 0);
 
                 ctx.fillStyle = sId === 'red' ? '#78281f' : '#154360';
                 ctx.fillRect(-130, -65, 260, 130);
@@ -1041,6 +1088,48 @@
             }
 
             ctx.restore();
+
+            // ==========================================
+            // ミニマップ描画（敵船は絶対に映らない仕様）
+            // ==========================================
+            drawMinimap();
+        }
+
+        function drawMinimap() {
+            mCtx.clearRect(0, 0, minimapCanvas.width, minimapCanvas.height);
+            
+            // マップ全体の縮小スケール (ワールド 6000x4500 -> ミニマップ 200x150)
+            const scaleX = minimapCanvas.width / 6000;
+            const scaleY = minimapCanvas.height / 4500;
+
+            // 1. 島を描画
+            islands.forEach(isl => {
+                mCtx.fillStyle = '#f1c40f';
+                mCtx.beginPath();
+                mCtx.arc(isl.x * scaleX, isl.y * scaleY, isl.radius * scaleX, 0, Math.PI * 2);
+                mCtx.fill();
+            });
+
+            // 2. 味方の船のみを描画（敵の船は一切描画しない！）
+            if (myTeam && ships[myTeam]) {
+                const myShip = ships[myTeam];
+                mCtx.fillStyle = myTeam === 'red' ? '#e74c3c' : '#3498db';
+                mCtx.beginPath();
+                mCtx.arc(myShip.x * scaleX, myShip.y * scaleY, 6, 0, Math.PI * 2);
+                mCtx.fill();
+                mCtx.strokeStyle = '#fff';
+                mCtx.lineWidth = 2;
+                mCtx.stroke();
+            }
+
+            // 3. 自分自身（フリー状態の豚）の位置をマーク
+            if (myId && players[myId]) {
+                const me = players[myId];
+                mCtx.fillStyle = '#2ecc71';
+                mCtx.beginPath();
+                mCtx.arc(me.x * scaleX, me.y * scaleY, 4, 0, Math.PI * 2);
+                mCtx.fill();
+            }
         }
 
         function loop() {
