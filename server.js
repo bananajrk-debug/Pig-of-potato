@@ -14,13 +14,14 @@ const WORLD_HEIGHT = 11250;
 
 const rooms = {};
 
+// 一回り小さくなった船の当たり判定
 function getShipCircles(ship) {
   const cos = Math.cos(ship.angle);
   const sin = Math.sin(ship.angle);
   return [
-    { x: ship.x, y: ship.y, r: 65 },
-    { x: ship.x + cos * 80, y: ship.y + sin * 80, r: 55 },
-    { x: ship.x - cos * 80, y: ship.y - sin * 80, r: 55 }
+    { x: ship.x, y: ship.y, r: 50 },
+    { x: ship.x + cos * 60, y: ship.y + sin * 60, r: 40 },
+    { x: ship.x - cos * 60, y: ship.y - sin * 60, r: 40 }
   ];
 }
 
@@ -58,59 +59,72 @@ function createInitialRoomState(isCpuMode = false) {
     { id: 5, x: 12000, y: 8500, radius: 550, wood: 5, hasSpecialAmmo: false }
   ];
 
+  const ships = {
+    red: {
+      id: 'red',
+      name: 'レッドポテト号',
+      color: '#e74c3c',
+      x: 3000,
+      y: 5625,
+      angle: 0,
+      speed: 0,
+      maxSpeed: 6.5,
+      hp: 100,
+      maxHp: 100,
+      wood: 0,
+      ammo: { 1: 15, 2: 5, 3: 5 },
+      leftCooldown: 0,
+      rightCooldown: 0,
+      helmsman: null,
+      cannons: [
+        { id: 'red_l1', side: 'left', offsetRelX: 0, offsetRelY: -50, gunner: null },
+        { id: 'red_r1', side: 'right', offsetRelX: 0, offsetRelY: 50, gunner: null },
+        { id: 'red_l2', side: 'left', offsetRelX: -60, offsetRelY: -50, gunner: null },
+        { id: 'red_r2', side: 'right', offsetRelX: -60, offsetRelY: 50, gunner: null }
+      ],
+      watcher: null,
+      isCpu: false
+    }
+  };
+
+  // CPU船を5個生成し、さらに遠くへ分散配置
+  if (isCpuMode) {
+    const cpuPositions = [
+      { x: 12500, y: 3500 },
+      { x: 13500, y: 5500 },
+      { x: 12500, y: 7500 },
+      { x: 10500, y: 4000 },
+      { x: 10500, y: 7000 }
+    ];
+    for (let i = 0; i < 5; i++) {
+      const cpuId = `blue${i + 1}`;
+      ships[cpuId] = {
+        id: cpuId,
+        name: `敵CPU号 #${i + 1}`,
+        color: '#3498db',
+        x: cpuPositions[i].x,
+        y: cpuPositions[i].y,
+        angle: Math.PI,
+        speed: 0,
+        maxSpeed: 5.5,
+        hp: 60,
+        maxHp: 60,
+        wood: 0,
+        ammo: { 1: 99, 2: 5, 3: 5 },
+        leftCooldown: 0,
+        rightCooldown: 0,
+        helmsman: null,
+        cannons: [],
+        watcher: null,
+        isCpu: true
+      };
+    }
+  }
+
   return {
     status: 'waiting',
     isCpuMode: isCpuMode,
-    ships: {
-      red: {
-        id: 'red',
-        name: 'レッドポテト号',
-        color: '#e74c3c',
-        x: 3500,
-        y: 5625,
-        angle: 0,
-        speed: 0,
-        maxSpeed: 6.5,
-        hp: 100,
-        maxHp: 100,
-        wood: 0,
-        ammo: { 1: 15, 2: 5, 3: 5 },
-        leftCooldown: 0,
-        rightCooldown: 0,
-        helmsman: null,
-        cannons: [
-          { id: 'red_l1', side: 'left', offsetRelX: 0, offsetRelY: -65, gunner: null },
-          { id: 'red_r1', side: 'right', offsetRelX: 0, offsetRelY: 65, gunner: null },
-          { id: 'red_l2', side: 'left', offsetRelX: -80, offsetRelY: -65, gunner: null },
-          { id: 'red_r2', side: 'right', offsetRelX: -80, offsetRelY: 65, gunner: null }
-        ],
-        watcher: null
-      },
-      blue: {
-        id: 'blue',
-        name: 'ブルーマッシュ号 (CPU)',
-        color: '#3498db',
-        x: 11500,
-        y: 5625,
-        angle: Math.PI,
-        speed: 0,
-        maxSpeed: 6.0,
-        hp: 100,
-        maxHp: 100,
-        wood: 0,
-        ammo: { 1: 99, 2: 10, 3: 10 },
-        leftCooldown: 0,
-        rightCooldown: 0,
-        helmsman: null,
-        cannons: [
-          { id: 'blue_l1', side: 'left', offsetRelX: 0, offsetRelY: -65, gunner: null },
-          { id: 'blue_r1', side: 'right', offsetRelX: 0, offsetRelY: 65, gunner: null },
-          { id: 'blue_l2', side: 'left', offsetRelX: -80, offsetRelY: -65, gunner: null },
-          { id: 'blue_r2', side: 'right', offsetRelX: -80, offsetRelY: 65, gunner: null }
-        ],
-        watcher: null
-      }
-    },
+    ships: ships,
     players: {},
     islands: islands,
     potatoes: Array.from({ length: 70 }, (_, i) => ({
@@ -136,24 +150,16 @@ io.on('connection', (socket) => {
     }
     const room = rooms[roomCode];
 
-    const redCount = Object.values(room.players).filter(p => p.team === 'red').length;
-    const blueCount = Object.values(room.players).filter(p => p.team === 'blue').length;
-    
-    let team = 'red';
-    if (!room.isCpuMode) {
-      team = redCount <= blueCount ? 'red' : 'blue';
-    }
-
-    const ship = room.ships[team];
+    const ship = room.ships['red'];
 
     room.players[socket.id] = {
       id: socket.id,
-      team: team,
+      team: 'red',
       x: ship.x,
       y: ship.y,
       role: 'free',
       activeCannonId: null,
-      name: playerName || `${team === 'red' ? '赤' : '青'}乗組員`,
+      name: playerName || 'レッド乗組員',
       bodyColor: bodyColor || '#e67e22',
       ready: false
     };
@@ -226,8 +232,8 @@ io.on('connection', (socket) => {
       } else if (p.role === 'helmsman') {
         ship.helmsman = null;
         p.role = 'free';
-        p.x = ship.x - Math.cos(ship.angle) * 100;
-        p.y = ship.y - Math.sin(ship.angle) * 100;
+        p.x = ship.x - Math.cos(ship.angle) * 80;
+        p.y = ship.y - Math.sin(ship.angle) * 80;
       }
     } else if (actionData.type === 'cannon') {
       const cannon = ship.cannons.find(c => c.id === actionData.cannonId);
@@ -326,8 +332,8 @@ io.on('connection', (socket) => {
 
       ship.ammo[type]--;
 
-      const offsetRelX = -40;
-      const offsetRelY = side === 'left' ? -65 : 65;
+      const offsetRelX = -30;
+      const offsetRelY = side === 'left' ? -50 : 50;
       const wx = ship.x + Math.cos(ship.angle) * offsetRelX - Math.sin(ship.angle) * offsetRelY;
       const wy = ship.y + Math.sin(ship.angle) * offsetRelX + Math.cos(ship.angle) * offsetRelY;
 
@@ -410,7 +416,6 @@ io.on('connection', (socket) => {
           const ship = room.ships[p.team];
           if (ship.helmsman === socket.id) ship.helmsman = null;
           if (ship.watcher === socket.id) ship.watcher = null;
-          ship.cannons.forEach(c => { if (c.gunner === socket.id) c.gunner = null; });
         }
         delete room.players[socket.id];
         if (room.status === 'playing') {
@@ -424,76 +429,74 @@ io.on('connection', (socket) => {
   });
 });
 
-// 改良版CPUのAI挙動（プレイヤーへ真っ直ぐ追尾し、ちょうど良い距離で狙撃）
+// 5体のCPU船のAI挙動（プレイヤーを追尾・攻撃）と勝敗判定
 setInterval(() => {
   for (let roomCode in rooms) {
     const room = rooms[roomCode];
     if (room.status !== 'playing') continue;
 
+    const redShip = room.ships['red'];
+    if (!redShip) continue;
+
     if (room.isCpuMode) {
-      const blueShip = room.ships.blue;
-      const redShip = room.ships.red;
+      for (let sId in room.ships) {
+        const cpuShip = room.ships[sId];
+        if (!cpuShip.isCpu || cpuShip.hp <= 0) continue;
 
-      let dx = redShip.x - blueShip.x;
-      let dy = redShip.y - blueShip.y;
-      let dist = Math.hypot(dx, dy);
+        let dx = redShip.x - cpuShip.x;
+        let dy = redShip.y - cpuShip.y;
+        let dist = Math.hypot(dx, dy);
 
-      // プレイヤーへの角度
-      let angleToPlayer = Math.atan2(dy, dx);
+        let angleToPlayer = Math.atan2(dy, dx);
+        if (dist > 300) {
+          let angleDiff = angleToPlayer - cpuShip.angle;
+          while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+          while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+          cpuShip.angle += angleDiff * 0.04;
+          cpuShip.speed = cpuShip.maxSpeed;
+        } else {
+          let sideAngle = angleToPlayer + Math.PI / 2;
+          let angleDiff = sideAngle - cpuShip.angle;
+          while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+          while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+          cpuShip.angle += angleDiff * 0.06;
+          cpuShip.speed = 1.2;
+        }
 
-      // 距離が遠い（350以上）ならプレイヤーに向かって全速力で移動
-      if (dist > 350) {
-        let angleDiff = angleToPlayer - blueShip.angle;
-        while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-        while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-        
-        blueShip.angle += angleDiff * 0.05;
-        blueShip.speed = blueShip.maxSpeed;
-      } else {
-        // ちょうど良い戦闘距離（350以内）に入ったら、大砲（側面）を向けて旋回
-        let sideAngle = angleToPlayer + Math.PI / 2;
-        let angleDiff = sideAngle - blueShip.angle;
-        while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-        while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+        let nextX = cpuShip.x + Math.cos(cpuShip.angle) * cpuShip.speed;
+        let nextY = cpuShip.y + Math.sin(cpuShip.angle) * cpuShip.speed;
 
-        blueShip.angle += angleDiff * 0.08;
-        blueShip.speed = 1.5; // 狙撃しやすい微速旋回
-      }
-
-      let nextX = blueShip.x + Math.cos(blueShip.angle) * blueShip.speed;
-      let nextY = blueShip.y + Math.sin(blueShip.angle) * blueShip.speed;
-
-      let testShip = { ...blueShip, x: nextX, y: nextY };
-      let collided = false;
-      room.islands.forEach(isl => {
-        if (checkShipIslandCollision(testShip, [isl])) collided = true;
-      });
-      if (checkShipShipCollision(testShip, redShip)) collided = true;
-
-      if (!collided) {
-        blueShip.x = nextX;
-        blueShip.y = nextY;
-      }
-      blueShip.x = Math.max(300, Math.min(WORLD_WIDTH - 300, blueShip.x));
-      blueShip.y = Math.max(300, Math.min(WORLD_HEIGHT - 300, blueShip.y));
-
-      // ちょうど良い距離（1200以内）で自動射撃
-      const now = Date.now();
-      if (dist < 1200 && blueShip.leftCooldown < now) {
-        blueShip.leftCooldown = now + 1600;
-        room.cannonBalls.push({
-          id: Math.random().toString(),
-          team: 'blue',
-          ammoType: 1,
-          x: blueShip.x,
-          y: blueShip.y,
-          vx: Math.cos(blueShip.angle - Math.PI/2) * 18,
-          vy: Math.sin(blueShip.angle - Math.PI/2) * 18,
-          range: 0
+        let testShip = { ...cpuShip, x: nextX, y: nextY };
+        let collided = false;
+        room.islands.forEach(isl => {
+          if (checkShipIslandCollision(testShip, [isl])) collided = true;
         });
+
+        if (!collided) {
+          cpuShip.x = nextX;
+          cpuShip.y = nextY;
+        }
+        cpuShip.x = Math.max(300, Math.min(WORLD_WIDTH - 300, cpuShip.x));
+        cpuShip.y = Math.max(300, Math.min(WORLD_HEIGHT - 300, cpuShip.y));
+
+        const now = Date.now();
+        if (dist < 1100 && cpuShip.leftCooldown < now) {
+          cpuShip.leftCooldown = now + 1800;
+          room.cannonBalls.push({
+            id: Math.random().toString(),
+            team: cpuShip.id,
+            ammoType: 1,
+            x: cpuShip.x,
+            y: cpuShip.y,
+            vx: Math.cos(cpuShip.angle - Math.PI/2) * 16,
+            vy: Math.sin(cpuShip.angle - Math.PI/2) * 16,
+            range: 0
+          });
+        }
       }
     }
 
+    // 砲弾の移動とヒット判定
     for (let i = room.cannonBalls.length - 1; i >= 0; i--) {
       let ball = room.cannonBalls[i];
       ball.x += ball.vx;
@@ -509,16 +512,31 @@ setInterval(() => {
         let ship = room.ships[shipId];
         if (ship.id !== ball.team) {
           let dist = Math.hypot(ship.x - ball.x, ship.y - ball.y);
-          if (dist < 120) {
+          if (dist < 100 && ship.hp > 0) {
             const damage = ball.ammoType === 2 ? 30 : 15;
             ship.hp -= damage;
             io.to(roomCode).emit('shipHit', { shipId: ship.id, hp: ship.hp });
             room.cannonBalls.splice(i, 1);
 
-            if (ship.hp <= 0) {
-              io.to(roomCode).emit('gameOver', `${ball.team === 'red' ? '赤チーム' : '青チーム'}の勝利！`);
+            // 敗北判定（プレイヤーの赤船が沈没）
+            if (ship.id === 'red' && ship.hp <= 0) {
+              io.to(roomCode).emit('gameOver', { result: 'lose', message: '💀 敗北... 船が沈んでしまった！' });
               room.status = 'waiting';
-              ship.hp = 100;
+            }
+
+            // 勝利判定（すべてのCPU船が沈没）
+            if (room.isCpuMode) {
+              let allCpuDead = true;
+              for (let sId in room.ships) {
+                if (room.ships[sId].isCpu && room.ships[sId].hp > 0) {
+                  allCpuDead = false;
+                  break;
+                }
+              }
+              if (allCpuDead) {
+                io.to(roomCode).emit('gameOver', { result: 'win', message: '🎉 勝利！すべての敵船を撃破した！' });
+                room.status = 'waiting';
+              }
             }
             break;
           }
@@ -532,5 +550,5 @@ setInterval(() => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`✨ Pig of Potato v23 サーバー起動: http://localhost:${PORT}`);
+  console.log(`✨ Pig of Potato v24 サーバー起動: http://localhost:${PORT}`);
 });
