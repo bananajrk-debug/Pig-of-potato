@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pig of Potato - Ultimate Inventory & Combat</title>
+    <title>Pig of Potato - Smart CPU Combat</title>
     <style>
         body {
             margin: 0;
@@ -245,7 +245,6 @@
         h2 { margin: 0 0 5px 0; font-size: 20px; color: #f1c40f; }
         p { margin: 4px 0; font-size: 14px; }
 
-        /* わかりやすい持ち物スロット（インベントリUI） */
         #inventory-bar {
             position: absolute;
             bottom: 25px;
@@ -423,7 +422,6 @@
             <p>左大砲: <span id="left-cooldown" style="color:#2ecc71;">READY</span> | 右大砲: <span id="right-cooldown" style="color:#2ecc71;">READY</span></p>
         </div>
 
-        <!-- わかりやすい持ち物スロット（インベントリ） -->
         <div id="inventory-bar">
             <div class="inv-slot active" id="slot-1">
                 <span class="inv-key">[1]</span>
@@ -455,7 +453,7 @@
             - <b>舵・大砲・見張り台:</b> 近くで <b>[ Eキー ]</b><br>
             - <b>大砲発射:</b> <b>[Kキー]で左大砲</b>、<b>[Oキー]で右大砲</b> （個別クールタイム）<br>
             - <b>島での採取:</b> <b>[Eキー長押し (3秒)]</b> で木や特殊弾をゲット！<br>
-            - <b>修理:</b> 船の<b>先頭にある赤い修理ポイント</b>で <b>[Rキー長押し (2秒)]</b> （木材2個以上必要、0個では不可）
+            - <b>修理:</b> 船の<b>先頭にある赤い修理ポイント</b>で <b>[Rキー長押し (2秒)]</b> （木材2個必要）
         </div>
 
         <div id="minimap-container">
@@ -795,12 +793,10 @@
                         const me = players[myId];
                         const ship = ships[myTeam];
                         if (me && ship && me.role === 'free') {
-                            // 木材が0の時は修理できないように制御
                             if (ship.wood < 2) {
                                 alert('木材が足りません！（修理には木材2個以上必要です）');
                                 return;
                             }
-                            // 修理ポイントを船の先端に設定 (ローカル x = 140, y = 0)
                             const rx = ship.x + Math.cos(ship.angle) * 140;
                             const ry = ship.y + Math.sin(ship.angle) * 140;
                             if (Math.hypot(me.x - rx, me.y - ry) < 50) {
@@ -865,7 +861,6 @@
             const names = { 1: '1: 通常弾', 2: '2: 爆発弾', 3: '3: 特製弾' };
             document.getElementById('current-ammo-type').innerText = names[selectedAmmo];
 
-            // インベントリスロットのアクティブ表示更新
             document.querySelectorAll('.inv-slot').forEach(el => el.classList.remove('active'));
             if (selectedAmmo === 1) document.getElementById('slot-1').classList.add('active');
             if (selectedAmmo === 2) document.getElementById('slot-2').classList.add('active');
@@ -916,7 +911,6 @@
             if (document.getElementById('team-hp')) document.getElementById('team-hp').innerText = ship.hp;
             if (document.getElementById('team-wood')) document.getElementById('team-wood').innerText = ship.wood;
             
-            // インベントリスロットの数量表示を更新
             if (document.getElementById('inv-ammo-1')) document.getElementById('inv-ammo-1').innerText = ship.ammo[1] || 0;
             if (document.getElementById('inv-ammo-2')) document.getElementById('inv-ammo-2').innerText = ship.ammo[2] || 0;
             if (document.getElementById('inv-ammo-3')) document.getElementById('inv-ammo-3').innerText = ship.ammo[3] || 0;
@@ -1084,7 +1078,6 @@
                         interactTarget = null;
                         const helmX = ship.x - Math.cos(ship.angle) * 140;
                         const helmY = ship.y - Math.sin(ship.angle) * 140;
-                        // 修理ポイントを先端に設定
                         const rx = ship.x + Math.cos(ship.angle) * 140;
                         const ry = ship.y + Math.sin(ship.angle) * 140;
 
@@ -1330,7 +1323,7 @@
                 ctx.strokeStyle = '#d35400';
                 ctx.strokeRect(-145, -15, 15, 30);
 
-                // 修理スポット（赤い点）を船の先端に配置
+                // 先頭に修理スポット（赤い点）を配置
                 ctx.save();
                 ctx.translate(140, 0);
                 ctx.fillStyle = '#e74c3c';
@@ -1408,9 +1401,7 @@
                 const me = players[myId];
                 mCtx.fillStyle = '#2ecc71';
                 mCtx.beginPath();
-                mIdxX = me.x * scaleX;
-                mIdxY = me.y * scaleY;
-                mCtx.arc(mIdxX, mIdxY, 4, 0, Math.PI * 2);
+                mCtx.arc(me.x * scaleX, me.y * scaleY, 4, 0, Math.PI * 2);
                 mCtx.fill();
             }
         }
