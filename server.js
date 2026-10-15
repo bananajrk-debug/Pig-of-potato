@@ -7,29 +7,24 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// publicフォルダを静的ファイルの配信元に設定
 app.use(express.static(path.join(__dirname, 'public')));
 
-// 接続中のプレイヤー管理
 const players = {};
 
 io.on('connection', (socket) => {
     console.log(`プレイヤーが接続しました: ${socket.id}`);
 
-    // 新しいプレイヤーの初期位置と所持金を設定
     players[socket.id] = {
         x: 400,
         y: 350,
         coins: 0,
-        name: `プレイヤー_${socket.id.substr(0, 4)}`
+        name: `プレイヤー_${socket.id.substr(0, 4)}`,
+        isFishing: false
     };
 
-    // 接続した本人に現在のプレイヤー一覧を送信
     socket.emit('currentPlayers', players);
-    // 他のプレイヤーに新しい参加者を通知
     socket.broadcast.emit('newPlayer', { id: socket.id, player: players[socket.id] });
 
-    // プレイヤーの移動処理
     socket.on('playerMovement', (movementData) => {
         if (players[socket.id]) {
             players[socket.id].x = movementData.x;
@@ -38,16 +33,16 @@ io.on('connection', (socket) => {
         }
     });
 
-    // 釣り実行時（イノコイン獲得）
+    // 釣り実行時
     socket.on('fishCaught', () => {
-        if (players[socket.id]) {
-            const earnedCoins = Math.floor(Math.random() * 50) + 10; // 10〜60イノコインを獲得
+        if (players[socket.id] && players[socket.id].y < 200) {
+            const earnedCoins = Math.floor(Math.random() * 50) + 10; // 10〜60イノコイン
             players[socket.id].coins += earnedCoins;
-            socket.emit('coinUpdate', players[socket.id].coins);
+            // 所持金と、今回いくら稼いだかを送信
+            socket.emit('fishResult', { coins: players[socket.id].coins, earned: earnedCoins });
         }
     });
 
-    // 切断時
     socket.on('disconnect', () => {
         console.log(`プレイヤーが切断しました: ${socket.id}`);
         delete players[socket.id];
