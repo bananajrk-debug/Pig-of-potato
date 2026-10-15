@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pig of Potato - Rear Pivot & Minimap</title>
+    <title>Pig of Potato - Huge Map & Minimap</title>
     <style>
         body {
             margin: 0;
@@ -232,7 +232,6 @@
             border: 1px solid #34495e;
         }
 
-        /* ミニマップ専用のコンテナ（画面右下） */
         #minimap-container {
             position: absolute;
             bottom: 20px;
@@ -331,7 +330,6 @@
             - <b>修理:</b> <b>[Rキー]</b>で木材2つ消費して船を修理！
         </div>
 
-        <!-- ミニマップ表示エリア（右下） -->
         <div id="minimap-container">
             <canvas id="minimapCanvas" width="200" height="150"></canvas>
         </div>
@@ -342,6 +340,9 @@
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
+
+        const WORLD_WIDTH = 10000;
+        const WORLD_HEIGHT = 7500;
 
         const titleScreen = document.getElementById('title-screen');
         const lobbyScreen = document.getElementById('lobby-screen');
@@ -889,7 +890,6 @@
                         if (keys.w) targetSpeed = ship.maxSpeed;
                         if (keys.s) targetSpeed = -3.0;
 
-                        // 慣性（少しだけなめらかに加速・減速）を付与
                         ship.speed += (targetSpeed - ship.speed) * 0.1;
 
                         if (Math.abs(ship.speed) > 0.01) {
@@ -907,8 +907,8 @@
                             if (!collided) {
                                 ship.x = nextX;
                                 ship.y = nextY;
-                                ship.x = Math.max(200, Math.min(6000 - 200, ship.x));
-                                ship.y = Math.max(200, Math.min(4500 - 200, ship.y));
+                                ship.x = Math.max(300, Math.min(WORLD_WIDTH - 300, ship.x));
+                                ship.y = Math.max(300, Math.min(WORLD_HEIGHT - 300, ship.y));
                             }
                         }
 
@@ -944,20 +944,20 @@
 
             ctx.save();
             ctx.translate(canvas.width / 2, canvas.height / 2);
-            let zoom = me.role === 'watcher' ? 0.5 : 1.1;
+            let zoom = me.role === 'watcher' ? 0.35 : 1.0;
             ctx.scale(zoom, zoom);
             ctx.translate(-targetX, -targetY);
 
             ctx.fillStyle = '#2980b9';
-            ctx.fillRect(0, 0, 6000, 4500);
+            ctx.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
 
             ctx.strokeStyle = '#1b4f72';
             ctx.lineWidth = 14;
-            ctx.strokeRect(0, 0, 6000, 4500);
+            ctx.strokeRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
 
             ctx.fillStyle = '#3498db';
-            for (let x = 200; x < 6000; x += 350) {
-                for (let y = 200; y < 4500; y += 350) {
+            for (let x = 300; x < WORLD_WIDTH; x += 500) {
+                for (let y = 300; y < WORLD_HEIGHT; y += 500) {
                     ctx.beginPath();
                     ctx.arc(x, y, 10, 0, Math.PI * 2);
                     ctx.fill();
@@ -1017,7 +1017,6 @@
                 ctx.translate(s.x, s.y);
                 ctx.rotate(s.angle);
                 
-                // 【回転軸を後ろ（船尾）にするため、少し前方に描画オフセットを与える】
                 ctx.translate(60, 0);
 
                 ctx.fillStyle = sId === 'red' ? '#78281f' : '#154360';
@@ -1088,21 +1087,15 @@
             }
 
             ctx.restore();
-
-            // ==========================================
-            // ミニマップ描画（敵船は絶対に映らない仕様）
-            // ==========================================
             drawMinimap();
         }
 
         function drawMinimap() {
             mCtx.clearRect(0, 0, minimapCanvas.width, minimapCanvas.height);
             
-            // マップ全体の縮小スケール (ワールド 6000x4500 -> ミニマップ 200x150)
-            const scaleX = minimapCanvas.width / 6000;
-            const scaleY = minimapCanvas.height / 4500;
+            const scaleX = minimapCanvas.width / WORLD_WIDTH;
+            const scaleY = minimapCanvas.height / WORLD_HEIGHT;
 
-            // 1. 島を描画
             islands.forEach(isl => {
                 mCtx.fillStyle = '#f1c40f';
                 mCtx.beginPath();
@@ -1110,24 +1103,22 @@
                 mCtx.fill();
             });
 
-            // 2. 味方の船のみを描画（敵の船は一切描画しない！）
             if (myTeam && ships[myTeam]) {
                 const myShip = ships[myTeam];
                 mCtx.fillStyle = myTeam === 'red' ? '#e74c3c' : '#3498db';
                 mCtx.beginPath();
-                mCtx.arc(myShip.x * scaleX, myShip.y * scaleY, 6, 0, Math.PI * 2);
+                mCtx.arc(myShip.x * scaleX, myShip.y * scaleY, 5, 0, Math.PI * 2);
                 mCtx.fill();
                 mCtx.strokeStyle = '#fff';
-                mCtx.lineWidth = 2;
+                mCtx.lineWidth = 1.5;
                 mCtx.stroke();
             }
 
-            // 3. 自分自身（フリー状態の豚）の位置をマーク
             if (myId && players[myId]) {
                 const me = players[myId];
                 mCtx.fillStyle = '#2ecc71';
                 mCtx.beginPath();
-                mCtx.arc(me.x * scaleX, me.y * scaleY, 4, 0, Math.PI * 2);
+                mCtx.arc(me.x * scaleX, me.y * scaleY, 3, 0, Math.PI * 2);
                 mCtx.fill();
             }
         }
