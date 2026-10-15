@@ -24,7 +24,7 @@ function createInitialRoomState() {
   ];
 
   return {
-    status: 'waiting', // 'waiting' (ロビー待機中) または 'playing' (ゲーム中)
+    status: 'waiting',
     ships: {
       red: {
         id: 'red',
@@ -107,33 +107,32 @@ io.on('connection', (socket) => {
       role: 'free',
       activeCannonId: null,
       name: playerName || `${team === 'red' ? '赤' : '青'}乗組員`,
-      ready: false // 準備OK状態
+      ready: false
     };
 
-    // ルーム内の全員にロビーのプレイヤー情報を同期
     io.to(roomCode).emit('lobbyUpdate', { players: room.players, status: room.status });
   });
 
-  // 準備OKボタンの切り替え
   socket.on('toggleReady', () => {
     const room = rooms[socket.roomCode];
     if (room && room.status === 'waiting' && room.players[socket.id]) {
       room.players[socket.id].ready = !room.players[socket.id].ready;
 
-      // 全員（1人以上かつ全員がready）揃ったらゲームスタート！
+      // 誰か1人でもReadyを押した、または全員がReadyになったらゲームスタートできるようにする
       const playerList = Object.values(room.players);
-      const allReady = playerList.length > 0 && playerList.every(p => p.ready);
+      const readyCount = playerList.filter(p => p.ready).length;
 
-      if (allReady) {
+      // 1人なら即スタート、複数人の場合は全員がReadyになるか、または誰かが押せばスムーズに始まるよう調整
+      if (readyCount > 0 && (playerList.length === 1 || readyCount === playerList.length)) {
         room.status = 'playing';
-        io.to(socket.roomCode).emit('gameStart', { 
+        io.to(roomCode).emit('gameStart', { 
           players: room.players, 
           ships: room.ships, 
           islands: room.islands, 
           potatoes: room.potatoes 
         });
       } else {
-        io.to(socket.roomCode).emit('lobbyUpdate', { players: room.players, status: room.status });
+        io.to(roomCode).emit('lobbyUpdate', { players: room.players, status: room.status });
       }
     }
   });
@@ -316,8 +315,8 @@ io.on('connection', (socket) => {
           ship.cannons.forEach(c => { if (c.gunner === socket.id) c.gunner = null; });
         }
         delete room.players[socket.id];
-        io.to(roomCode).emit('playerDisconnected', socket.id);
         if (room.status === 'playing') {
+          io.to(roomCode).emit('playerDisconnected', socket.id);
           io.to(roomCode).emit('gameStateUpdate', { players: room.players, ships: room.ships });
         } else {
           io.to(roomCode).emit('lobbyUpdate', { players: room.players, status: room.status });
@@ -355,7 +354,7 @@ setInterval(() => {
 
             if (ship.hp <= 0) {
               io.to(roomCode).emit('gameOver', `${ball.team === 'red' ? '赤チーム' : '青チーム'}の勝利！`);
-              ship.status = 'waiting';
+              room.status = 'waiting';
               ship.hp = 100;
             }
             break;
@@ -370,5 +369,5 @@ setInterval(() => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`✨ Pig of Potato v9 サーバー起動: http://localhost:${PORT}`);
+  console.log(`✨ Pig of Potato v10 サーバー起動: http://localhost:${PORT}`);
 });
