@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pig of Potato - Brawl Style Home</title>
+    <title>Pig of Potato - Ultimate Features</title>
     <style>
         body {
             margin: 0;
@@ -28,7 +28,7 @@
             z-index: 100;
         }
         h1 {
-            font-size: 46px;
+            font-size: 44px;
             color: #f39c12;
             margin-bottom: 15px;
             text-shadow: 3px 3px 10px rgba(0,0,0,0.8);
@@ -76,6 +76,13 @@
         .btn:hover { background: #f39c12; transform: translateY(-2px); }
         .btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #b7950b; }
 
+        .btn-cpu {
+            background: #27ae60;
+            color: #fff;
+            box-shadow: 0 4px 0 #1e8449;
+        }
+        .btn-cpu:hover { background: #2ecc71; }
+
         .btn-ready {
             background: #e74c3c;
             color: #fff;
@@ -89,7 +96,6 @@
         #lobby-screen { display: none; }
         #game-ui { display: none; }
 
-        /* ブロスタ風ホーム画面のレイアウト */
         .brawl-home-container {
             display: flex;
             gap: 20px;
@@ -132,6 +138,49 @@
             font-size: 13px;
             border: 1px solid #4e6d8c;
         }
+
+        /* 右上のコードバッジ */
+        #room-code-badge {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 10px 18px;
+            border-radius: 8px;
+            border: 2px solid #f39c12;
+            cursor: pointer;
+            z-index: 50;
+            font-weight: bold;
+            font-size: 16px;
+            color: #f1c40f;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+            transition: transform 0.1s;
+        }
+        #room-code-badge:hover { transform: scale(1.05); background: #2c3e50; }
+
+        /* コード拡大モーダル */
+        #code-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.85);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: #2c3e50;
+            padding: 40px 60px;
+            border-radius: 20px;
+            border: 4px solid #f39c12;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.9);
+        }
+        .modal-content h3 { margin: 0 0 15px 0; color: #f1c40f; font-size: 24px; }
+        .modal-content div { font-size: 72px; font-weight: bold; color: #fff; letter-spacing: 8px; margin-bottom: 20px; }
 
         #ui {
             position: absolute;
@@ -179,25 +228,28 @@
     </style>
 </head>
 <body>
-    <!-- 1. コード入力画面 -->
+    <!-- 1. ホーム＆コード入力画面 -->
     <div id="title-screen" class="screen">
         <h1>🐷 Pig of Potato 🥔</h1>
         <div class="menu-box">
             <label>船長名:</label>
             <input type="text" id="input-name" value="ポテト海賊団" placeholder="名前">
             
-            <label>4桁のルームコード:</label>
-            <input type="text" id="input-room" maxlength="4" value="1234" placeholder="1234">
+            <label>4桁のルームコード (自動ランダム可):</label>
+            <div style="display: flex; gap: 8px;">
+                <input type="text" id="input-room" maxlength="4" placeholder="1234" style="flex: 1;">
+                <button class="btn" id="btn-random" style="padding: 10px 15px; font-size: 14px;">🎲 乱数</button>
+            </div>
             
-            <button class="btn" id="btn-join">ロビーへ移動</button>
+            <button class="btn" id="btn-join">オンライン対戦ロビーへ</button>
+            <button class="btn btn-cpu" id="btn-cpu">🤖 CPUと対戦する (ソロ)</button>
         </div>
     </div>
 
-    <!-- 2. ブロスタ風ホーム画面（キャラクタープレビュー ＆ カラー変更） -->
+    <!-- 2. ブロスタ風ロビー画面 -->
     <div id="lobby-screen" class="screen">
-        <h1>⭐ チームロビー (コード: <span id="display-room-code">----</span>) ⭐</h1>
+        <h1>⭐ チームロビー ⭐</h1>
         <div class="brawl-home-container">
-            <!-- キャラプレビュー＆カラーパレット -->
             <div class="preview-panel">
                 <label>あなたの豚:</label>
                 <canvas id="previewCanvas" width="100" height="100" style="background:#1b4f72; border-radius:8px;"></canvas>
@@ -212,7 +264,6 @@
                 </div>
             </div>
 
-            <!-- メンバー＆準備ボタン -->
             <div class="menu-box" style="width: 320px;">
                 <label>乗組員メンバー:</label>
                 <div class="player-list" id="lobby-player-list">読み込み中...</div>
@@ -227,18 +278,32 @@
         <div id="ui">
             <h2>🐷 Pig of Potato 🥔</h2>
             <p>チーム: <span id="team-name">-</span> | HP: <span id="team-hp">100</span> | 木材: <span id="team-wood">0</span>個</p>
-            <p>砲弾切り替え: <b>[1]</b> 通常弾(<span id="ammo-1">5</span>) | <b>[2]</b> 爆発弾(<span id="ammo-2">0</span>) | <b>[3]</b> 特製弾(<span id="ammo-3">0</span>)</p>
-            <p>選択中: <b id="current-ammo-type" style="color:#f1c40f;">1: 通常弾</b> | リロード: <span id="reload-status" style="color:#2ecc71;">READY</span></p>
+            <p>弾切替: <b>[1]</b> 通常(<span id="ammo-1">15</span>) | <b>[2]</b> 爆発(<span id="ammo-2">5</span>) | <b>[3]</b> 特製(<span id="ammo-3">5</span>)</p>
+            <p>選択中: <b id="current-ammo-type" style="color:#f1c40f;">1: 通常弾</b></p>
+            <p>左大砲: <span id="left-cooldown" style="color:#2ecc71;">READY</span> | 右大砲: <span id="right-cooldown" style="color:#2ecc71;">READY</span></p>
+        </div>
+
+        <!-- 右上のコードバッジ（タップで拡大） -->
+        <div id="room-code-badge" onclick="openCodeModal()">コード: <span id="badge-code">----</span></div>
+
+        <!-- コード拡大モーダル -->
+        <div id="code-modal" onclick="closeCodeModal()">
+            <div class="modal-content" onclick="event.stopPropagation()">
+                <h3>ルームコード (タップして閉じる)</h3>
+                <div id="modal-big-code">----</div>
+                <button class="btn" onclick="closeCodeModal()">閉じる</button>
+            </div>
         </div>
 
         <div id="prompt">【Eキー】インタラクト</div>
 
         <div id="instructions">
             <b>操作方法:</b><br>
-            - <b>移動:</b> W / A / S / D （船の上または拡大された島の上）<br>
+            - <b>移動:</b> W / A / S / D （船の上または島の上）<br>
             - <b>舵・大砲・見張り台:</b> 近くで <b>[ Eキー ]</b><br>
-            - <b>島での採取:</b> 島の上で <b>[ Eキー長押し (3秒) ]</b> で木や効果付き砲弾をゲット！<br>
-            - <b>修理:</b> <b>[Rキー]</b>で木材を消費して船を修理！
+            - <b>大砲発射:</b> 操舵中でも自由行動中でも <b>[Kキー]で左大砲</b>、<b>[Oキー]で右大砲</b> が撃てます！（個別クールタイム）<br>
+            - <b>島での採取:</b> <b>[Eキー長押し (3秒)]</b> で木や特殊弾をゲット！<br>
+            - <b>修理:</b> <b>[Rキー]</b>で木材2つ消費して船を修理！
         </div>
 
         <canvas id="gameCanvas"></canvas>
@@ -255,14 +320,16 @@
         const inputName = document.getElementById('input-name');
         const inputRoom = document.getElementById('input-room');
         const btnJoin = document.getElementById('btn-join');
+        const btnCpu = document.getElementById('btn-cpu');
+        const btnRandom = document.getElementById('btn-random');
         const btnReady = document.getElementById('btn-ready');
-        const displayRoomCode = document.getElementById('display-room-code');
         const lobbyPlayerList = document.getElementById('lobby-player-list');
+        const badgeCode = document.getElementById('badge-code');
+        const modalBigCode = document.getElementById('modal-big-code');
+        const codeModal = document.getElementById('code-modal');
 
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-
-        // プレビュー用キャンバス
         const previewCanvas = document.getElementById('previewCanvas');
         const pCtx = previewCanvas.getContext('2d');
 
@@ -275,16 +342,19 @@
 
         let myId = null;
         let myTeam = null;
+        let currentRoomCode = '';
         let players = {};
         let ships = {};
         let islands = [];
         let potatoes = [];
         let cannonBalls = [];
         let interactTarget = null;
-        let canFire = true;
         let selectedAmmo = 1;
         let isReady = false;
         let myBodyColor = '#e67e22';
+
+        let leftReady = true;
+        let rightReady = true;
 
         let gatheringIslandId = null;
         let gatherStartTime = 0;
@@ -293,32 +363,48 @@
         const keys = { w: false, s: false, a: false, d: false, e: false };
         let lastSendTime = 0;
 
-        // 豚の顔と長方形の体を描画する共通関数（高グラフィック化対応）
+        // 4桁のランダム数字コードを生成
+        function generateRandomCode() {
+            return Math.floor(1000 + Math.random() * 9000).toString();
+        }
+
+        btnRandom.addEventListener('click', () => {
+            inputRoom.value = generateRandomCode();
+        });
+
+        // 初期状態でランダムコードを設定しておく
+        inputRoom.value = generateRandomCode();
+
+        // コード拡大モーダルの制御
+        function openCodeModal() {
+            modalBigCode.innerText = currentRoomCode;
+            codeModal.style.display = 'flex';
+        }
+        function closeCodeModal() {
+            codeModal.style.display = 'none';
+        }
+
         function drawPigCharacter(context, x, y, bodyColor, name) {
             context.save();
             context.translate(x, y);
 
-            // 影の表現
             context.fillStyle = 'rgba(0, 0, 0, 0.3)';
             context.beginPath();
             context.ellipse(0, 15, 18, 10, 0, 0, Math.PI * 2);
             context.fill();
 
-            // 長方形の体
             context.fillStyle = bodyColor;
             context.fillRect(-16, -10, 32, 22);
             context.lineWidth = 2;
             context.strokeStyle = '#2c3e50';
             context.strokeRect(-16, -10, 32, 22);
 
-            // 豚の顔（丸）
             context.fillStyle = '#ff9ff3';
             context.beginPath();
             context.arc(0, -16, 14, 0, Math.PI * 2);
             context.fill();
             context.stroke();
 
-            // 耳
             context.beginPath();
             context.moveTo(-10, -25);
             context.lineTo(-14, -32);
@@ -335,21 +421,18 @@
             context.fill();
             context.stroke();
 
-            // 鼻（マズル）
             context.fillStyle = '#f368e0';
             context.beginPath();
             context.ellipse(0, -14, 6, 4, 0, 0, Math.PI * 2);
             context.fill();
             context.stroke();
 
-            // 鼻の穴
             context.fillStyle = '#b33939';
             context.beginPath();
             context.arc(-2, -14, 1.2, 0, Math.PI * 2);
             context.arc(2, -14, 1.2, 0, Math.PI * 2);
             context.fill();
 
-            // 目
             context.fillStyle = '#2c3e50';
             context.beginPath();
             context.arc(-5, -19, 1.8, 0, Math.PI * 2);
@@ -368,7 +451,6 @@
             context.restore();
         }
 
-        // ホーム画面のプレビュー描画ループ
         function drawPreview() {
             pCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
             drawPigCharacter(pCtx, previewCanvas.width / 2, previewCanvas.height / 2 + 10, myBodyColor, null);
@@ -381,21 +463,32 @@
             socket.emit('changeColor', color);
         }
 
+        // オンライン対戦入室
         btnJoin.addEventListener('click', () => {
-            const playerName = inputName.value.trim() || '名無しの豚';
-            const roomCode = inputRoom.value.trim();
+            joinGame(false);
+        });
 
+        // CPU戦入室
+        btnCpu.addEventListener('click', () => {
+            joinGame(true);
+        });
+
+        function joinGame(isCpu) {
+            const playerName = inputName.value.trim() || '名無しの豚';
+            let roomCode = inputRoom.value.trim();
             if (roomCode.length !== 4) {
-                alert('4桁の数字（ルームコード）を入力してください！');
-                return;
+                roomCode = generateRandomCode();
+                inputRoom.value = roomCode;
             }
 
-            displayRoomCode.innerText = roomCode;
+            currentRoomCode = roomCode;
+            badgeCode.innerText = roomCode;
+
             titleScreen.style.display = 'none';
             lobbyScreen.style.display = 'flex';
 
-            socket.emit('joinRoom', { roomCode, playerName, bodyColor: myBodyColor });
-        });
+            socket.emit('joinRoom', { roomCode, playerName, bodyColor: myBodyColor, isCpu });
+        }
 
         btnReady.addEventListener('click', () => {
             isReady = !isReady;
@@ -411,6 +504,8 @@
 
         socket.on('lobbyUpdate', (data) => {
             players = data.players;
+            currentRoomCode = data.roomCode;
+            badgeCode.innerText = currentRoomCode;
             let html = '';
             for (let id in players) {
                 let p = players[id];
@@ -427,6 +522,9 @@
             ships = data.ships;
             islands = data.islands;
             potatoes = data.potatoes;
+            currentRoomCode = data.roomCode;
+            badgeCode.innerText = currentRoomCode;
+
             if (players[myId]) {
                 myTeam = players[myId].team;
             } else {
@@ -473,17 +571,20 @@
                 }
             }
 
-            if (e.key === 'k' || e.key === 'K' || e.key === 'o' || e.key === 'O') {
-                if (myId && players[myId] && players[myId].role === 'cannon') {
-                    if (!canFire) return;
-                    const ship = ships[myTeam];
-                    if (ship.ammo[selectedAmmo] <= 0) return;
-                    
-                    const cannon = ship.cannons.find(c => c.id === players[myId].activeCannonId);
-                    if (cannon) {
-                        const wx = ship.x + Math.cos(ship.angle) * cannon.offsetRelX - Math.sin(ship.angle) * cannon.offsetRelY;
-                        const wy = ship.y + Math.sin(ship.angle) * cannon.offsetRelX + Math.cos(ship.angle) * cannon.offsetRelY;
-                        socket.emit('fireCannon', { x: wx, y: wy, angle: ship.angle + (cannon.side === 'left' ? -Math.PI/2 : Math.PI/2), ammoType: selectedAmmo });
+            // Kキー：左大砲発射（舵を握っていても自由行動中でも発射可能）
+            if (e.key === 'k' || e.key === 'K') {
+                if (myId && players[myId]) {
+                    if (leftReady) {
+                        socket.emit('fireSideCannon', { side: 'left', ammoType: selectedAmmo });
+                    }
+                }
+            }
+
+            // Oキー：右大砲発射（舵を握っていても自由行動中でも発射可能）
+            if (e.key === 'o' || e.key === 'O') {
+                if (myId && players[myId]) {
+                    if (rightReady) {
+                        socket.emit('fireSideCannon', { side: 'right', ammoType: selectedAmmo });
                     }
                 }
             }
@@ -521,7 +622,7 @@
             if(players[myId]) {
                 const role = players[myId].role;
                 let roleTxt = '自由行動';
-                if(role === 'helmsman') roleTxt = '舵手 (操舵中)';
+                if(role === 'helmsman') roleTxt = '舵手 (操舵中 - 左右大砲発射可能！)';
                 if(role === 'cannon') roleTxt = '砲手 (大砲操作中)';
                 if(role === 'watcher') roleTxt = '見張り台 (索敵中)';
                 document.getElementById('role-name').innerText = roleTxt;
@@ -572,22 +673,26 @@
             }
         });
 
-        socket.on('reloadStarted', (duration) => {
-            canFire = false;
-            const statusEl = document.getElementById('reload-status');
-            statusEl.style.color = '#e74c3c';
-            statusEl.innerText = 'RELOADING...';
+        // 左右個別大砲のクールタイム処理
+        socket.on('sideCooldownStarted', ({ side, duration }) => {
+            let el = document.getElementById(side === 'left' ? 'left-cooldown' : 'right-cooldown');
+            if (side === 'left') leftReady = false;
+            if (side === 'right') rightReady = false;
+
+            el.style.color = '#e74c3c';
+            el.innerText = 'RELOADING...';
 
             let startTime = Date.now();
             let interval = setInterval(() => {
                 let elapsed = Date.now() - startTime;
                 let left = Math.max(0, ((duration - elapsed) / 1000).toFixed(1));
                 if (left > 0) {
-                    statusEl.innerText = `RELOADING (${left}s)`;
+                    el.innerText = `(${left}s)`;
                 } else {
-                    canFire = true;
-                    statusEl.style.color = '#2ecc71';
-                    statusEl.innerText = 'READY';
+                    if (side === 'left') leftReady = true;
+                    if (side === 'right') rightReady = true;
+                    el.style.color = '#2ecc71';
+                    el.innerText = 'READY';
                     clearInterval(interval);
                 }
             }, 100);
@@ -717,7 +822,7 @@
                     if (!nearIsland) {
                         if (Math.hypot(p.x - helmX, p.y - helmY) < 55 && !ship.helmsman) {
                             interactTarget = { type: 'helm' };
-                            promptEl.innerText = '【Eキー】舵を取る（船の一番後ろ）';
+                            promptEl.innerText = '【Eキー】舵を取る（船の一番後ろ） | 【K:左大砲 / O:右大砲】';
                             promptEl.style.display = 'block';
                         } else if (ship.watcher === null && Math.hypot(p.x - ship.x, p.y - ship.y) < 50) {
                             interactTarget = { type: 'watcher' };
@@ -752,7 +857,7 @@
                 const promptEl = document.getElementById('prompt');
                 promptEl.style.display = 'block';
                 if (p.role === 'helmsman') {
-                    promptEl.innerText = '【Eキー】舵から離れる | 【Rキー】木材2つで船を修理';
+                    promptEl.innerText = '【Eキー】舵から離れる | 【Rキー】船修理 | 【Kキー】左大砲発射 | 【Oキー】右大砲発射';
                     interactTarget = { type: 'helm' };
 
                     let rotSpeed = 0.05;
@@ -802,12 +907,10 @@
 
             ctx.save();
             ctx.translate(canvas.width / 2, canvas.height / 2);
-            // 画面のズームをもっとアップ（見張り台は0.5、通常は1.1）
             let zoom = me.role === 'watcher' ? 0.5 : 1.1;
             ctx.scale(zoom, zoom);
             ctx.translate(-targetX, -targetY);
 
-            // 海の背景グラフィック強化
             ctx.fillStyle = '#2980b9';
             ctx.fillRect(0, 0, 6000, 4500);
 
@@ -815,7 +918,6 @@
             ctx.lineWidth = 14;
             ctx.strokeRect(0, 0, 6000, 4500);
 
-            // リッチな波のドット
             ctx.fillStyle = '#3498db';
             for (let x = 200; x < 6000; x += 350) {
                 for (let y = 200; y < 4500; y += 350) {
@@ -825,17 +927,14 @@
                 }
             }
 
-            // 2.5倍に拡大された小島の描画
             islands.forEach(isl => {
                 ctx.save();
                 ctx.translate(isl.x, isl.y);
-                // 島の影
                 ctx.fillStyle = 'rgba(0,0,0,0.25)';
                 ctx.beginPath();
                 ctx.arc(15, 15, isl.radius, 0, Math.PI * 2);
                 ctx.fill();
 
-                // 砂浜（外縁）
                 ctx.fillStyle = '#f1c40f';
                 ctx.beginPath();
                 ctx.arc(0, 0, isl.radius, 0, Math.PI * 2);
@@ -844,7 +943,6 @@
                 ctx.strokeStyle = '#d4ac0d';
                 ctx.stroke();
 
-                // 島内部（草地）
                 ctx.fillStyle = '#27ae60';
                 ctx.beginPath();
                 ctx.arc(0, 0, isl.radius * 0.75, 0, Math.PI * 2);
@@ -882,14 +980,12 @@
                 ctx.translate(s.x, s.y);
                 ctx.rotate(s.angle);
 
-                // 船の本体
                 ctx.fillStyle = sId === 'red' ? '#78281f' : '#154360';
                 ctx.fillRect(-130, -65, 260, 130);
                 ctx.lineWidth = 5;
                 ctx.strokeStyle = '#111';
                 ctx.strokeRect(-130, -65, 260, 130);
 
-                // 船首
                 ctx.beginPath();
                 ctx.moveTo(130, -65);
                 ctx.lineTo(180, 0);
@@ -899,12 +995,10 @@
                 ctx.fill();
                 ctx.stroke();
 
-                // 甲板
                 ctx.fillStyle = '#d4ac0d';
                 ctx.fillRect(-90, -45, 180, 90);
                 ctx.strokeRect(-90, -45, 180, 90);
 
-                // マスト
                 ctx.fillStyle = '#5d4037';
                 ctx.fillRect(-15, -15, 30, 30);
                 ctx.beginPath();
@@ -920,7 +1014,6 @@
                     ctx.strokeRect(c.offsetRelX - 12, c.offsetRelY - 10, 24, 20);
                 });
 
-                // 舵
                 ctx.fillStyle = '#e67e22';
                 ctx.fillRect(-145, -15, 15, 30);
                 ctx.strokeStyle = '#d35400';
@@ -947,7 +1040,6 @@
                 ctx.stroke();
             });
 
-            // プレイヤー描画（豚の顔＋長方形の体、カスタマイズ色）
             for (let id in players) {
                 let p = players[id];
                 if (p.role === 'free' && ships[p.team]) {
