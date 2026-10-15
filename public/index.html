@@ -302,17 +302,21 @@
             left: 50%;
             transform: translateX(-50%);
             background: rgba(0, 0, 0, 0.9);
-            padding: 12px 24px;
-            border-radius: 10px;
-            font-size: 16px;
+            padding: 14px 28px;
+            border-radius: 12px;
+            font-size: 18px;
             color: #f1c40f;
             display: none;
-            z-index: 20;
+            z-index: 25;
             border: 2px solid #f39c12;
             text-align: center;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.8);
+            cursor: pointer;
             pointer-events: auto;
+            transition: transform 0.1s, background 0.2s;
         }
+        #prompt:hover { background: #1b263b; transform: translateX(-50%) scale(1.05); }
+
         #instructions {
             position: absolute;
             bottom: 15px;
@@ -497,14 +501,15 @@
             </div>
         </div>
 
-        <div id="prompt">【Eキー】インタラクト</div>
+        <!-- プロンプト（タップ/クリックしてもインタラクトできるように対応） -->
+        <div id="prompt" onclick="handlePromptClick()">【Eキー / タップ】インタラクト</div>
 
         <div id="instructions">
             <b>オープンワールド操作:</b><br>
             - <b>移動:</b> W / A / S / D （船の上または島の上）<br>
-            - <b>舵・大砲:</b> 近くで <b>[ Eキー ]</b><br>
+            - <b>舵・大砲:</b> 近くで <b>[ Eキー または 画面のボタンをタップ ]</b><br>
             - <b>港町（中央の巨大島）:</b> 立ち寄ると木材をコインに換金＆船を強化可能！<br>
-            - <b>修理:</b> 船先端の赤い修理ポイントで <b>[Rキー長押し]</b> （木材2個必要）
+            - <b>修理:</b> 船先端の赤い修理ポイントで <b>[Rキー または タップ]</b> （木材2個必要）
         </div>
 
         <div id="minimap-container">
@@ -560,18 +565,13 @@
         let potatoes = [];
         let cannonBalls = [];
         let interactTarget = null;
+        let isRepairPrompt = false;
         let selectedAmmo = 1;
         let isReady = false;
         let myBodyColor = '#e67e22';
 
         let leftReady = true;
         let rightReady = true;
-        let gatheringIslandId = null;
-        let gatherStartTime = 0;
-        let gatheringDuration = 3000;
-        let repairing = false;
-        let repairStartTime = 0;
-        let repairDuration = 2000;
 
         const keys = { w: false, s: false, a: false, d: false, e: false, r: false };
         let lastSendTime = 0;
@@ -689,6 +689,20 @@
             resize();
         });
 
+        // 画面上のプロンプトをタップ/クリックした時の処理（タブレット・スマホ対応）
+        function handlePromptClick() {
+            if (isRepairPrompt) {
+                const ship = ships['red'];
+                if (ship && ship.wood < 2) {
+                    alert('木材が足りません！（修理には2個必要）');
+                    return;
+                }
+                socket.emit('repairShip');
+            } else if (interactTarget) {
+                socket.emit('interact', interactTarget);
+            }
+        }
+
         window.addEventListener('keydown', (e) => {
             if (!gameUi.classList.contains('hidden')) {
                 if (['w','W','ArrowUp'].includes(e.key)) keys.w = true;
@@ -706,7 +720,7 @@
                         if (ship.wood < 2) { alert('木材が足りません！（修理には2個必要）'); return; }
                         const rx = ship.x + 110;
                         const ry = ship.y;
-                        if (Math.hypot(me.x - rx, me.y - ry) < 60) { repairing = true; repairStartTime = Date.now(); }
+                        if (Math.hypot(me.x - rx, me.y - ry) < 60) { socket.emit('repairShip'); }
                     }
                 }
                 if (['e','E'].includes(e.key) && !keys.e) {
@@ -723,8 +737,8 @@
             if (['s','S','ArrowDown'].includes(e.key)) keys.s = false;
             if (['a','A','ArrowLeft'].includes(e.key)) keys.a = false;
             if (['d','D','ArrowRight'].includes(e.key)) keys.d = false;
-            if (['e','E'].includes(e.key)) { keys.e = false; gatheringIslandId = null; }
-            if (['r','R'].includes(e.key)) { keys.r = false; repairing = false; }
+            if (['e','E'].includes(e.key)) keys.e = false;
+            if (['r','R'].includes(e.key)) keys.r = false;
         });
 
         function updateAmmoDisplay() {
@@ -826,6 +840,7 @@
                 const promptEl = document.getElementById('prompt');
                 if (promptEl) {
                     interactTarget = null;
+                    isRepairPrompt = false;
                     let inTown = false;
                     islands.forEach(isl => {
                         if (isl.isTown && Math.hypot(p.x - isl.x, p.y - isl.y) < isl.radius) inTown = true;
@@ -841,11 +856,12 @@
                         const ry = ship.y;
 
                         if (Math.hypot(p.x - rx, p.y - ry) < 60) {
-                            promptEl.innerText = '【Rキー長押し】船の先端で修理 (木材2個必要)';
+                            isRepairPrompt = true;
+                            promptEl.innerText = '【Rキーまたはタップ】船の修理 (木材2個必要)';
                             promptEl.style.display = 'block';
                         } else if (Math.hypot(p.x - helmX, p.y - helmY) < 60 && !ship.helmsman) {
                             interactTarget = { type: 'helm' };
-                            promptEl.innerText = '【Eキー】舵を取る';
+                            promptEl.innerText = '【Eキー または タップ】舵を取る';
                             promptEl.style.display = 'block';
                         } else {
                             promptEl.style.display = 'none';
