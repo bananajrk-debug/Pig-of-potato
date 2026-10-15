@@ -9,19 +9,19 @@ const io = new Server(server);
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-// マップを広大化 (10000 x 7500)
-const WORLD_WIDTH = 10000;
-const WORLD_HEIGHT = 7500;
+// マップをさらに広大に拡張 (15000 x 11250)
+const WORLD_WIDTH = 15000;
+const WORLD_HEIGHT = 11250;
 
 const rooms = {};
 
 function createInitialRoomState(isCpuMode = false) {
   const islands = [
-    { id: 1, x: 2500, y: 2000, radius: 700, wood: 5, hasSpecialAmmo: true, ammoType: 2 },
-    { id: 2, x: 7500, y: 2000, radius: 700, wood: 5, hasSpecialAmmo: true, ammoType: 3 },
-    { id: 3, x: 5000, y: 5500, radius: 800, wood: 8, hasSpecialAmmo: true, ammoType: 2 },
-    { id: 4, x: 2000, y: 5500, radius: 600, wood: 4, hasSpecialAmmo: false },
-    { id: 5, x: 8000, y: 5500, radius: 600, wood: 4, hasSpecialAmmo: false }
+    { id: 1, x: 3500, y: 3000, radius: 900, wood: 8, hasSpecialAmmo: true, ammoType: 2 },
+    { id: 2, x: 11500, y: 3000, radius: 900, wood: 8, hasSpecialAmmo: true, ammoType: 3 },
+    { id: 3, x: 7500, y: 8000, radius: 1100, wood: 12, hasSpecialAmmo: true, ammoType: 2 },
+    { id: 4, x: 3000, y: 8500, radius: 800, wood: 6, hasSpecialAmmo: false },
+    { id: 5, x: 12000, y: 8500, radius: 800, wood: 6, hasSpecialAmmo: false }
   ];
 
   return {
@@ -32,8 +32,8 @@ function createInitialRoomState(isCpuMode = false) {
         id: 'red',
         name: 'レッドポテト号',
         color: '#e74c3c',
-        x: 2500,
-        y: 3750,
+        x: 3500,
+        y: 5625,
         angle: 0,
         speed: 0,
         maxSpeed: 6.5,
@@ -56,8 +56,8 @@ function createInitialRoomState(isCpuMode = false) {
         id: 'blue',
         name: 'ブルーマッシュ号 (CPU)',
         color: '#3498db',
-        x: 7500,
-        y: 3750,
+        x: 11500,
+        y: 5625,
         angle: Math.PI,
         speed: 0,
         maxSpeed: 6.0,
@@ -79,7 +79,7 @@ function createInitialRoomState(isCpuMode = false) {
     },
     players: {},
     islands: islands,
-    potatoes: Array.from({ length: 50 }, (_, i) => ({
+    potatoes: Array.from({ length: 70 }, (_, i) => ({
       id: i + 1,
       x: Math.random() * (WORLD_WIDTH - 1000) + 500,
       y: Math.random() * (WORLD_HEIGHT - 1000) + 500,
@@ -246,11 +246,22 @@ io.on('connection', (socket) => {
       let nextY = controlData.y;
       let collided = false;
 
+      // 島との衝突判定
       room.islands.forEach(isl => {
-        if (Math.hypot(nextX - isl.x, nextY - isl.y) < isl.radius + 110) {
+        if (Math.hypot(nextX - isl.x, nextY - isl.y) < isl.radius + 130) {
           collided = true;
         }
       });
+
+      // 船同士が重ならないための厳格な衝突・反発判定
+      for (let otherId in room.ships) {
+        if (otherId !== s.id) {
+          let otherShip = room.ships[otherId];
+          if (Math.hypot(nextX - otherShip.x, nextY - otherShip.y) < 320) {
+            collided = true;
+          }
+        }
+      }
 
       if (!collided) {
         s.x = nextX;
@@ -351,7 +362,7 @@ io.on('connection', (socket) => {
 
       setTimeout(() => {
         if (room.islands) {
-          island.wood = 4;
+          island.wood = 6;
           island.hasSpecialAmmo = true;
           io.to(socket.roomCode).emit('islandRespawned', island);
         }
@@ -401,7 +412,7 @@ setInterval(() => {
       else if (angleDiff < -0.05) blueShip.angle -= 0.03;
 
       let dist = Math.hypot(redShip.x - blueShip.x, redShip.y - blueShip.y);
-      if (dist > 500) {
+      if (dist > 600) {
         blueShip.speed = blueShip.maxSpeed;
       } else {
         blueShip.speed = 2.0;
@@ -412,8 +423,9 @@ setInterval(() => {
       
       let collided = false;
       room.islands.forEach(isl => {
-        if (Math.hypot(nextX - isl.x, nextY - isl.y) < isl.radius + 110) collided = true;
+        if (Math.hypot(nextX - isl.x, nextY - isl.y) < isl.radius + 130) collided = true;
       });
+      if (Math.hypot(nextX - redShip.x, nextY - redShip.y) < 320) collided = true;
 
       if (!collided) {
         blueShip.x = nextX;
@@ -423,7 +435,7 @@ setInterval(() => {
       blueShip.y = Math.max(300, Math.min(WORLD_HEIGHT - 300, blueShip.y));
 
       const now = Date.now();
-      if (dist < 1500 && blueShip.ammo[1] > 0 && blueShip.leftCooldown < now) {
+      if (dist < 1800 && blueShip.ammo[1] > 0 && blueShip.leftCooldown < now) {
         blueShip.leftCooldown = now + 2000;
         blueShip.ammo[1]--;
         room.cannonBalls.push({
@@ -445,7 +457,7 @@ setInterval(() => {
       ball.y += ball.vy;
       ball.range += 1;
 
-      if (ball.range > 100) {
+      if (ball.range > 120) {
         room.cannonBalls.splice(i, 1);
         continue;
       }
@@ -454,7 +466,7 @@ setInterval(() => {
         let ship = room.ships[shipId];
         if (ship.id !== ball.team) {
           let dist = Math.hypot(ship.x - ball.x, ship.y - ball.y);
-          if (dist < 110) {
+          if (dist < 120) {
             const damage = ball.ammoType === 2 ? 30 : 15;
             ship.hp -= damage;
             io.to(roomCode).emit('shipHit', { shipId: ship.id, hp: ship.hp });
@@ -477,5 +489,5 @@ setInterval(() => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`✨ Pig of Potato v19 (Huge Map) サーバー起動: http://localhost:${PORT}`);
+  console.log(`✨ Pig of Potato v20 サーバー起動: http://localhost:${PORT}`);
 });
