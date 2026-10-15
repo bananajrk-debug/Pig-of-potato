@@ -87,7 +87,7 @@ io.on('connection', (socket) => {
     name: `${team === 'red' ? '赤' : '青'}チーム乗組員_${Math.floor(Math.random() * 90 + 10)}`
   };
 
-  socket.emit('init', { id: socket.id, players, ships, potatoes });
+  socket.emit('init', { id: socket.id, players, ships, potatoes, cannonBalls });
   socket.broadcast.emit('newPlayer', players[socket.id]);
 
   socket.on('playerMove', (data) => {
@@ -155,8 +155,8 @@ io.on('connection', (socket) => {
         team: p.team,
         x: data.x,
         y: data.y,
-        vx: Math.cos(data.angle) * 16,
-        vy: Math.sin(data.angle) * 16,
+        vx: Math.cos(data.angle) * 18,
+        vy: Math.sin(data.angle) * 18,
         range: 0
       };
       cannonBalls.push(ball);
@@ -216,7 +216,7 @@ setInterval(() => {
     ball.y += ball.vy;
     ball.range += 1;
 
-    if (ball.range > 60) {
+    if (ball.range > 70) {
       cannonBalls.splice(i, 1);
       continue;
     }
@@ -245,5 +245,5 @@ setInterval(() => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`✨ Pig of Potato v3.1 サーバー起動: http://localhost:${PORT}`);
+  console.log(`✨ Pig of Potato サーバー起動: http://localhost:${PORT}`);
 });
