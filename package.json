@@ -1,7 +1,7 @@
 {
-  "name": "tank-battle-game",
+  "name": "inocoin-fishing-world",
   "version": "1.0.0",
-  "description": "2D Top-down Multiplayer Tank Game with Cover Mechanics",
+  "description": "Virtual world fishing game to earn Inocoin",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
