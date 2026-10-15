@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pig of Potato 2v2 - Mega Ships</title>
+    <title>Pig of Potato 2v2 - Smooth & K/O Cannon</title>
     <style>
         body {
             margin: 0;
@@ -57,7 +57,7 @@
 </head>
 <body>
     <div id="ui">
-        <h1>🐷 Pig of Potato 🥔 [Mega Ship Edition]</h1>
+        <h1>🐷 Pig of Potato 🥔 [Smooth Edition]</h1>
         <p>チーム: <span id="team-name">-</span> | 役割: <span id="role-name">自由行動</span></p>
         <p>赤チームHP: <span id="red-hp">100</span> | 青チームHP: <span id="blue-hp">100</span></p>
         <p>チーム大砲弾薬: <span id="team-ammo">15</span>発</p>
@@ -67,10 +67,10 @@
 
     <div id="instructions">
         <b>操作方法:</b><br>
-        - <b>移動:</b> W/A/S/D (スピードアップ！)<br>
-        - <b>舵(船の一番後ろ)・大砲・見張り台:</b> 近くに行って <b>[ Eキー ]</b><br>
+        - <b>移動:</b> W / A / S / D （なめらかに移動）<br>
+        - <b>舵(船の一番後ろ)・大砲・見張り台:</b> 近くで <b>[ Eキー ]</b><br>
         - <b>操舵中:</b> A/Dで旋回、W/Sで前進・後退<br>
-        - <b>大砲操作中:</b> マウス左クリックで強力なジャガイモ弾を発射！<br>
+        - <b>大砲操作中:</b> <b>[ Kキー ]</b> または <b>[ Oキー ]</b> でジャガイモ弾を発射！<br>
         - 浮かんでいるジャガイモを拾って弾薬補給！
     </div>
 
@@ -100,34 +100,36 @@
         const keys = { w: false, s: false, a: false, d: false };
 
         window.addEventListener('keydown', (e) => {
-            if (e.key === 'w' || e.key === 'W') keys.w = true;
-            if (e.key === 's' || e.key === 'S') keys.s = true;
-            if (e.key === 'a' || e.key === 'A') keys.a = true;
-            if (e.key === 'd' || e.key === 'D') keys.d = true;
+            if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') keys.w = true;
+            if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') keys.s = true;
+            if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') keys.a = true;
+            if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') keys.d = true;
+
             if (e.key === 'e' || e.key === 'E') {
                 if (interactTarget) {
                     socket.emit('interact', interactTarget);
                 }
             }
+
+            // KキーまたはOキーで大砲発射
+            if (e.key === 'k' || e.key === 'K' || e.key === 'o' || e.key === 'O') {
+                if (myId && players[myId] && players[myId].role === 'cannon') {
+                    const ship = ships[myTeam];
+                    const cannon = ship.cannons.find(c => c.id === players[myId].activeCannonId);
+                    if (cannon) {
+                        const wx = ship.x + Math.cos(ship.angle) * cannon.offsetRelX - Math.sin(ship.angle) * cannon.offsetRelY;
+                        const wy = ship.y + Math.sin(ship.angle) * cannon.offsetRelX + Math.cos(ship.angle) * cannon.offsetRelY;
+                        socket.emit('fireCannon', { x: wx, y: wy, angle: ship.angle + (cannon.side === 'left' ? -Math.PI/2 : Math.PI/2) });
+                    }
+                }
+            }
         });
 
         window.addEventListener('keyup', (e) => {
-            if (e.key === 'w' || e.key === 'W') keys.w = false;
-            if (e.key === 's' || e.key === 'S') keys.s = false;
-            if (e.key === 'a' || e.key === 'A') keys.a = false;
-            if (e.key === 'd' || e.key === 'D') keys.d = false;
-        });
-
-        window.addEventListener('mousedown', () => {
-            if (myId && players[myId] && players[myId].role === 'cannon') {
-                const ship = ships[myTeam];
-                const cannon = ship.cannons.find(c => c.id === players[myId].activeCannonId);
-                if (cannon) {
-                    const wx = ship.x + Math.cos(ship.angle) * cannon.offsetRelX - Math.sin(ship.angle) * cannon.offsetRelY;
-                    const wy = ship.y + Math.sin(ship.angle) * cannon.offsetRelX + Math.cos(ship.angle) * cannon.offsetRelY;
-                    socket.emit('fireCannon', { x: wx, y: wy, angle: ship.angle + (cannon.side === 'left' ? -Math.PI/2 : Math.PI/2) });
-                }
-            }
+            if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') keys.w = false;
+            if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') keys.s = false;
+            if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') keys.a = false;
+            if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') keys.d = false;
         });
 
         socket.on('init', (data) => {
@@ -194,12 +196,18 @@
             const ship = ships[p.team];
 
             if (p.role === 'free') {
-                let speed = 4.5; // 移動スピードアップ
+                let speed = 5.0; // 滑らかでスムーズな移動速度
                 let dx = 0, dy = 0;
                 if (keys.w) dy -= speed;
                 if (keys.s) dy += speed;
                 if (keys.a) dx -= speed;
                 if (keys.d) dx += speed;
+
+                if (dx !== 0 && dy !== 0) {
+                    // 斜め移動時の速度正規化で均一なめらかな動きに
+                    dx *= 0.7071;
+                    dy *= 0.7071;
+                }
 
                 if (dx !== 0 || dy !== 0) {
                     p.x += dx;
@@ -210,15 +218,14 @@
                 interactTarget = null;
                 const promptEl = document.getElementById('prompt');
 
-                // 舵の位置：船の一番後ろ（先端を前として、後ろ側の端）
                 const helmX = ship.x - Math.cos(ship.angle) * 140;
                 const helmY = ship.y - Math.sin(ship.angle) * 140;
 
-                if (Math.hypot(p.x - helmX, p.y - helmY) < 50 && !ship.helmsman) {
+                if (Math.hypot(p.x - helmX, p.y - helmY) < 55 && !ship.helmsman) {
                     interactTarget = { type: 'helm' };
                     promptEl.innerText = '【Eキー】舵を取る（船の一番後ろ）';
                     promptEl.style.display = 'block';
-                } else if (ship.watcher === null && Math.hypot(p.x - ship.x, p.y - ship.y) < 45) {
+                } else if (ship.watcher === null && Math.hypot(p.x - ship.x, p.y - ship.y) < 50) {
                     interactTarget = { type: 'watcher' };
                     promptEl.innerText = '【Eキー】見張り台に登る';
                     promptEl.style.display = 'block';
@@ -227,7 +234,7 @@
                     ship.cannons.forEach(c => {
                         const cx = ship.x + Math.cos(ship.angle) * c.offsetRelX - Math.sin(ship.angle) * c.offsetRelY;
                         const cy = ship.y + Math.sin(ship.angle) * c.offsetRelX + Math.cos(ship.angle) * c.offsetRelY;
-                        if (Math.hypot(p.x - cx, p.y - cy) < 45 && !c.gunner) {
+                        if (Math.hypot(p.x - cx, p.y - cy) < 50 && !c.gunner) {
                             interactTarget = { type: 'cannon', cannonId: c.id };
                             promptEl.innerText = '【Eキー】大砲に乗り込む';
                             promptEl.style.display = 'block';
@@ -240,7 +247,7 @@
                 }
 
                 potatoes.forEach(pot => {
-                    if (!pot.collected && Math.hypot(p.x - pot.x, p.y - pot.y) < 50) {
+                    if (!pot.collected && Math.hypot(p.x - pot.x, p.y - pot.y) < 55) {
                         socket.emit('collectPotato', pot.id);
                     }
                 });
@@ -252,7 +259,7 @@
                     promptEl.innerText = '【Eキー】舵から離れる';
                     interactTarget = { type: 'helm' };
 
-                    let rotSpeed = 0.04; // 旋回スピードアップ
+                    let rotSpeed = 0.045;
                     let currentSpeed = ship.speed;
                     if (keys.a) ship.angle -= rotSpeed;
                     if (keys.d) ship.angle += rotSpeed;
@@ -262,7 +269,7 @@
                     socket.emit('shipControl', { angle: ship.angle, speed: currentSpeed });
 
                 } else if (p.role === 'cannon') {
-                    promptEl.innerText = '【Eキー】大砲から離れる | 【左クリック】ジャガイモ弾発射！';
+                    promptEl.innerText = '【Eキー】大砲から離れる | 【K または Oキー】ジャガイモ弾発射！';
                     interactTarget = { type: 'cannon', cannonId: p.activeCannonId };
                 } else if (p.role === 'watcher') {
                     promptEl.innerText = '【Eキー】見張り台から降りる';
@@ -283,17 +290,14 @@
 
             ctx.save();
             ctx.translate(canvas.width / 2, canvas.height / 2);
-            // 画面にしっかり収まるようにズーム倍率を調整 (0.75倍表示)
             let zoom = me.role === 'watcher' ? 0.45 : 0.75;
             ctx.scale(zoom, zoom);
             ctx.translate(-targetX, -targetY);
 
-            // ワールド境界
             ctx.strokeStyle = '#1b4f72';
             ctx.lineWidth = 10;
             ctx.strokeRect(0, 0, 4000, 3000);
 
-            // 海の背景
             ctx.fillStyle = '#2471a3';
             for (let x = 200; x < 4000; x += 400) {
                 for (let y = 200; y < 3000; y += 400) {
@@ -303,7 +307,6 @@
                 }
             }
 
-            // じゃがいも
             potatoes.forEach(pot => {
                 if (!pot.collected) {
                     ctx.save();
@@ -319,21 +322,20 @@
                 }
             });
 
-            // 【大型船の描画】（長方形や多角形を組み合わせて作成、横・縦3倍サイズ）
             for (let sId in ships) {
                 let s = ships[sId];
                 ctx.save();
                 ctx.translate(s.x, s.y);
                 ctx.rotate(s.angle);
 
-                // 1. 船体ベース（長方形）
+                // 船体ベース
                 ctx.fillStyle = sId === 'red' ? '#78281f' : '#154360';
                 ctx.fillRect(-130, -65, 260, 130);
                 ctx.lineWidth = 4;
                 ctx.strokeStyle = '#273746';
                 ctx.strokeRect(-130, -65, 260, 130);
 
-                // 2. 船首（三角形の先端部分）
+                // 船首
                 ctx.beginPath();
                 ctx.moveTo(130, -65);
                 ctx.lineTo(180, 0);
@@ -343,12 +345,12 @@
                 ctx.fill();
                 ctx.stroke();
 
-                // 3. 甲板（中央の明るい長方形部分）
+                // 甲板
                 ctx.fillStyle = '#d4ac0d';
                 ctx.fillRect(-90, -45, 180, 90);
                 ctx.strokeRect(-90, -45, 180, 90);
 
-                // 4. マスト（中央の見張り台）
+                // マスト
                 ctx.fillStyle = '#5d4037';
                 ctx.fillRect(-15, -15, 30, 30);
                 ctx.beginPath();
@@ -357,7 +359,7 @@
                 ctx.fill();
                 ctx.stroke();
 
-                // 5. 大砲（長方形のパーツとして配置）
+                // 大砲
                 s.cannons.forEach(c => {
                     ctx.fillStyle = '#2c3e50';
                     ctx.fillRect(c.offsetRelX - 12, c.offsetRelY - 10, 24, 20);
@@ -365,7 +367,7 @@
                     ctx.strokeRect(c.offsetRelX - 12, c.offsetRelY - 10, 24, 20);
                 });
 
-                // 6. 舵（船の一番後ろに配置）
+                // 舵（一番後ろ）
                 ctx.fillStyle = '#e67e22';
                 ctx.fillRect(-145, -15, 15, 30);
                 ctx.strokeStyle = '#d35400';
@@ -373,14 +375,12 @@
 
                 ctx.restore();
 
-                // 船名とHP
                 ctx.fillStyle = '#fff';
                 ctx.font = 'bold 16px sans-serif';
                 ctx.textAlign = 'center';
                 ctx.fillText(`${s.name} (HP: ${s.hp})`, s.x, s.y - 95);
             }
 
-            // 飛んでいる弾
             cannonBalls.forEach(b => {
                 ctx.fillStyle = '#d35400';
                 ctx.beginPath();
@@ -391,7 +391,6 @@
                 ctx.stroke();
             });
 
-            // プレイヤー（豚）
             for (let id in players) {
                 let p = players[id];
                 if (p.role === 'free') {
