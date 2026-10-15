@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pig of Potato 2v2 - Quick & Stop Fix</title>
+    <title>Pig of Potato 2v2 - iPad & Smooth Optimized</title>
     <style>
         body {
             margin: 0;
@@ -57,7 +57,7 @@
 </head>
 <body>
     <div id="ui">
-        <h1>🐷 Pig of Potato 🥔 [No Inertia & Smooth Edition]</h1>
+        <h1>🐷 Pig of Potato 🥔 [iPad Edition]</h1>
         <p>チーム: <span id="team-name">-</span> | 役割: <span id="role-name">自由行動</span></p>
         <p>赤チームHP: <span id="red-hp">100</span> | 青チームHP: <span id="blue-hp">100</span></p>
         <p>チーム大砲弾薬: <span id="team-ammo">15</span>発</p>
@@ -67,11 +67,11 @@
 
     <div id="instructions">
         <b>操作方法:</b><br>
-        - <b>移動:</b> W / A / S / D （キーを離すとピタッと止まります）<br>
+        - <b>移動:</b> W / A / S / D （なめらか＆即停止）<br>
         - <b>舵(一番後ろ)・大砲・見張り台:</b> 近くで <b>[ Eキー ]</b><br>
-        - <b>操舵中:</b> A/Dでブルブルせずにスムーズ旋回、W/Sを離すと即停止！<br>
+        - <b>操舵中:</b> Wで前進、Sで後退、A/Dで旋回 (カクつきなし)<br>
         - <b>大砲操作中:</b> <b>[ Kキー ]</b> または <b>[ Oキー ]</b> でジャガイモ弾発射！<br>
-        - 浮かんでいるジャガイモを拾って弾薬補給！
+        - <b>ポテト接触:</b> 浮かんでいるジャガイモに近づくと弾薬を獲得！
     </div>
 
     <canvas id="gameCanvas"></canvas>
@@ -169,12 +169,12 @@
             for (let id in data.ships) {
                 if (ships[id]) {
                     const s = ships[id];
-                    // 自分が舵を取っている船の場合は、サーバーからの強制上書きによるブルブルを防ぐため角度は変えない
+                    // 自分が舵を取っていない船のみサーバーから同期
                     if (s.helmsman !== myId) {
+                        s.x = data.ships[id].x;
+                        s.y = data.ships[id].y;
                         s.angle = data.ships[id].angle;
                     }
-                    s.x = data.ships[id].x;
-                    s.y = data.ships[id].y;
                     s.speed = data.ships[id].speed;
                     s.hp = data.ships[id].hp;
                     s.cannonAmmo = data.ships[id].cannonAmmo;
@@ -185,6 +185,14 @@
             document.getElementById('blue-hp').innerText = ships.blue.hp;
             if(ships[myTeam]) {
                 document.getElementById('team-ammo').innerText = ships[myTeam].cannonAmmo;
+            }
+        });
+
+        socket.on('shipMoved', (updatedShip) => {
+            if (ships[updatedShip.id] && ships[updatedShip.id].helmsman !== myId) {
+                ships[updatedShip.id].x = updatedShip.x;
+                ships[updatedShip.id].y = updatedShip.y;
+                ships[updatedShip.id].angle = updatedShip.angle;
             }
         });
 
@@ -234,7 +242,6 @@
                     ldy *= 0.7071;
                 }
 
-                // 船のローカル座標系で移動を計算（船の上だけを歩き、キーを離せばピタッと停止）
                 if (ldx !== 0 || ldy !== 0) {
                     const cos = Math.cos(-ship.angle);
                     const sin = Math.sin(-ship.angle);
@@ -246,7 +253,6 @@
                     localX += ldx;
                     localY += ldy;
 
-                    // 甲板の範囲（X: -110 〜 140, Y: -50 〜 50）
                     localX = Math.max(-110, Math.min(140, localX));
                     localY = Math.max(-50, Math.min(50, localY));
 
@@ -293,8 +299,9 @@
                     }
                 }
 
+                // ポテト回収判定（船ごと、またはプレイヤー位置で判定して即獲得）
                 potatoes.forEach(pot => {
-                    if (!pot.collected && Math.hypot(p.x - pot.x, p.y - pot.y) < 55) {
+                    if (!pot.collected && Math.hypot(ship.x - pot.x, ship.y - pot.y) < 140) {
                         socket.emit('collectPotato', pot.id);
                     }
                 });
@@ -310,11 +317,21 @@
                     let currentSpeed = 0;
                     if (keys.a) ship.angle -= rotSpeed;
                     if (keys.d) ship.angle += rotSpeed;
+                    
+                    // Wで前進、Sで後退（方向を正しく修正）
                     if (keys.w) currentSpeed = ship.maxSpeed;
-                    if (keys.s) currentSpeed = -3.0; // キーを離せば即座に speed = 0 になり滑らなくなる
+                    if (keys.s) currentSpeed = -3.0;
 
                     ship.speed = currentSpeed;
-                    socket.emit('shipControl', { angle: ship.angle, speed: currentSpeed });
+                    if (ship.speed !== 0) {
+                        ship.x += Math.cos(ship.angle) * ship.speed;
+                        ship.y += Math.sin(ship.angle) * ship.speed;
+                        ship.x = Math.max(200, Math.min(6000 - 200, ship.x));
+                        ship.y = Math.max(200, Math.min(4500 - 200, ship.y));
+                    }
+
+                    // 操舵中の自分の動きをサーバーに即時送信して一瞬の停止（カクつき）を完全に排除
+                    socket.emit('shipControl', { x: ship.x, y: ship.y, angle: ship.angle, speed: ship.speed });
 
                 } else if (p.role === 'cannon') {
                     promptEl.innerText = '【Eキー】大砲から離れる | 【K または Oキー】ジャガイモ弾発射！';
@@ -323,6 +340,13 @@
                     promptEl.innerText = '【Eキー】見張り台から降りる';
                     interactTarget = { type: 'watcher' };
                 }
+
+                // 操舵中もポテトにぶつかれば獲得
+                potatoes.forEach(pot => {
+                    if (!pot.collected && Math.hypot(ship.x - pot.x, ship.y - pot.y) < 140) {
+                        socket.emit('collectPotato', pot.id);
+                    }
+                });
             }
         }
 
@@ -338,17 +362,18 @@
 
             ctx.save();
             ctx.translate(canvas.width / 2, canvas.height / 2);
-            let zoom = me.role === 'watcher' ? 0.45 : 0.75;
+            // iPadの画面にしっかり収まるようにズーム倍率を 0.5 に縮小（見張り時は 0.3）
+            let zoom = me.role === 'watcher' ? 0.3 : 0.5;
             ctx.scale(zoom, zoom);
             ctx.translate(-targetX, -targetY);
 
             ctx.strokeStyle = '#1b4f72';
             ctx.lineWidth = 10;
-            ctx.strokeRect(0, 0, 4000, 3000);
+            ctx.strokeRect(0, 0, 6000, 4500);
 
             ctx.fillStyle = '#2471a3';
-            for (let x = 200; x < 4000; x += 400) {
-                for (let y = 200; y < 3000; y += 400) {
+            for (let x = 300; x < 6000; x += 500) {
+                for (let y = 300; y < 4500; y += 500) {
                     ctx.beginPath();
                     ctx.arc(x, y, 7, 0, Math.PI * 2);
                     ctx.fill();
