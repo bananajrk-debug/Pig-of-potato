@@ -21,7 +21,7 @@ const ships = {
     y: 1500,
     angle: 0,
     speed: 0,
-    maxSpeed: 6.5, // よりクイックに
+    maxSpeed: 6.5,
     hp: 100,
     cannonAmmo: 15,
     helmsman: null,
@@ -110,7 +110,6 @@ io.on('connection', (socket) => {
       } else if (p.role === 'helmsman') {
         ship.helmsman = null;
         p.role = 'free';
-        // 舵から降りたときは船の後方（舵の少し前）の安全な位置に戻す
         p.x = ship.x - Math.cos(ship.angle) * 100;
         p.y = ship.y - Math.sin(ship.angle) * 100;
       }
@@ -124,7 +123,6 @@ io.on('connection', (socket) => {
         const currentCannon = ship.cannons.find(c => c.id === p.activeCannonId);
         if (currentCannon) {
           currentCannon.gunner = null;
-          // 大砲から降りたときは甲板上の安全な位置に戻す
           p.x = ship.x + Math.cos(ship.angle) * currentCannon.offsetRelX - Math.sin(ship.angle) * (currentCannon.side === 'left' ? 20 : -20);
           p.y = ship.y + Math.sin(ship.angle) * currentCannon.offsetRelX + Math.cos(ship.angle) * (currentCannon.side === 'left' ? 20 : -20);
         }
@@ -255,5 +253,5 @@ setInterval(() => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`✨ Pig of Potato v4 サーバー起動: http://localhost:${PORT}`);
+  console.log(`✨ Pig of Potato v4.1 サーバー起動: http://localhost:${PORT}`);
 });
