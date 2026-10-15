@@ -3,239 +3,302 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>イノコイン釣りワールド</title>
+    <title>Pig of Potato</title>
     <style>
         body {
             margin: 0;
-            background: #111;
-            color: white;
-            font-family: sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-        }
-        #game-container {
-            position: relative;
-            border: 4px solid #444;
-            box-shadow: 0 0 20px rgba(0,0,0,0.8);
-        }
-        canvas {
-            display: block;
+            padding: 0;
+            background-color: #1a2530;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            user-select: none;
         }
         #ui {
             position: absolute;
             top: 15px;
             left: 15px;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 10px 15px;
+            background: rgba(0, 0, 0, 0.75);
+            padding: 15px 20px;
             border-radius: 8px;
-            font-size: 18px;
-            border: 1px solid #555;
+            pointer-events: none;
+            z-index: 10;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
         }
-        #controls {
-            margin-top: 15px;
-            text-align: center;
+        h1 {
+            margin: 0 0 5px 0;
+            font-size: 20px;
+            color: #f39c12;
+        }
+        p {
+            margin: 4px 0;
             font-size: 14px;
-            color: #aaa;
+        }
+        #instructions {
+            position: absolute;
+            bottom: 15px;
+            left: 15px;
+            background: rgba(0, 0, 0, 0.75);
+            padding: 12px 18px;
+            border-radius: 8px;
+            font-size: 13px;
+            pointer-events: none;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+        canvas {
+            display: block;
+            background: #2980b9;
         }
     </style>
 </head>
 <body>
-    <h1>🎣 イノコイン釣りワールド</h1>
-    <div id="game-container">
-        <div id="ui">所持金: <span id="coin-count">0</span> イノコイン</div>
-        <canvas id="gameCanvas" width="800" height="500"></canvas>
-    </div>
-    <div id="controls">
-        <p>移動: <b>WASD / 矢印キー</b> | 釣り: 上側の「湖エリア」で <b>スペースキー</b> を押す！</p>
+    <div id="ui">
+        <h1>🐷 Pig of Potato 🥔</h1>
+        <p>船長名: <span id="player-name">-</span></p>
+        <p>獲得ジャガイモ: <span id="player-score">0</span> 個</p>
     </div>
 
+    <div id="instructions">
+        <b>操船方法:</b> W または ↑ (前進) | S または ↓ (後退/減速) | A/D または ←/→ (舵を切る)<br>
+        海に漂う「巨大じゃがいも」を集めて最高の海賊豚を目指せ！
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- Socket.ioクライアントライブラリ -->
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
+
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        const coinCountEl = document.getElementById('coin-count');
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
 
         let players = {};
+        let potatoes = [];
         let myId = null;
-        const movement = { up: false, down: false, left: false, right: false };
 
-        // 釣り・演出用の状態変数
-        let isFishing = false;
-        let fishingTimer = 0;
-        let notification = { text: '', alpha: 0, color: '#fff' };
+        // キー入力状態
+        const keys = { w: false, s: false, a: false, d: false, ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false };
 
-        // キー入力検知
         window.addEventListener('keydown', (e) => {
-            if (e.key === 'w' || e.key === 'ArrowUp') movement.up = true;
-            if (e.key === 's' || e.key === 'ArrowDown') movement.down = true;
-            if (e.key === 'a' || e.key === 'ArrowLeft') movement.left = true;
-            if (e.key === 'd' || e.key === 'ArrowRight') movement.right = true;
-
-            // スペースキーで釣り
-            if (e.code === 'Space') {
-                e.preventDefault(); // 画面スクロール防止
-                tryToFish();
+            if (e.key in keys || e.code in keys) {
+                if (e.key === 'w' || e.key === 'W') keys.w = true;
+                if (e.key === 's' || e.key === 'S') keys.s = true;
+                if (e.key === 'a' || e.key === 'A') keys.a = true;
+                if (e.key === 'd' || e.key === 'D') keys.d = true;
+                if (e.key === 'ArrowUp') keys.ArrowUp = true;
+                if (e.key === 'ArrowDown') keys.ArrowDown = true;
+                if (e.key === 'ArrowLeft') keys.ArrowLeft = true;
+                if (e.key === 'ArrowRight') keys.ArrowRight = true;
             }
         });
 
         window.addEventListener('keyup', (e) => {
-            if (e.key === 'w' || e.key === 'ArrowUp') movement.up = false;
-            if (e.key === 's' || e.key === 'ArrowDown') movement.down = false;
-            if (e.key === 'a' || e.key === 'ArrowLeft') movement.left = false;
-            if (e.key === 'd' || e.key === 'ArrowRight') movement.right = false;
+            if (e.key === 'w' || e.key === 'W') keys.w = false;
+            if (e.key === 's' || e.key === 'S') keys.s = false;
+            if (e.key === 'a' || e.key === 'A') keys.a = false;
+            if (e.key === 'd' || e.key === 'D') keys.d = false;
+            if (e.key === 'ArrowUp') keys.ArrowUp = false;
+            if (e.key === 'ArrowDown') keys.ArrowDown = false;
+            if (e.key === 'ArrowLeft') keys.ArrowLeft = false;
+            if (e.key === 'ArrowRight') keys.ArrowRight = false;
         });
 
-        function tryToFish() {
-            if (!myId || !players[myId]) return;
-
-            if (players[myId].y < 180) {
-                if (isFishing) return; // 既に釣り中なら連打防止
-
-                isFishing = true;
-                fishingTimer = 40; // 釣りにかかるフレーム数（約0.7秒）
-                showNotification('🎣 釣り糸を垂らした...', '#f1c40f');
-            } else {
-                showNotification('⚠️ ここでは釣れません！湖に入ってね', '#e74c3c');
-            }
-        }
-
-        function showNotification(text, color) {
-            notification.text = text;
-            notification.alpha = 1.0;
-            notification.color = color;
-        }
-
-        socket.on('currentPlayers', (serverPlayers) => {
-            players = serverPlayers;
+        socket.on('connect', () => {
             myId = socket.id;
         });
 
-        socket.on('newPlayer', ({ id, player }) => {
-            players[id] = player;
+        socket.on('currentPlayers', (serverPlayers) => {
+            players = serverPlayers;
+            if (players[myId]) {
+                document.getElementById('player-name').innerText = players[myId].name;
+                document.getElementById('player-score').innerText = players[myId].score;
+            }
         });
 
-        socket.on('playerMoved', ({ id, x, y }) => {
-            if (players[id]) {
-                players[id].x = x;
-                players[id].y = y;
-            }
+        socket.on('newPlayer', (playerInfo) => {
+            players[playerInfo.id] = playerInfo;
         });
 
         socket.on('disconnectPlayer', (id) => {
             delete players[id];
         });
 
-        // 釣り成功時の結果受け取り
-        socket.on('fishResult', ({ coins, earned }) => {
-            coinCountEl.textContent = coins;
-            showNotification(`🎉 釣れた！ +${earned} イノコイン！`, '#2ecc71');
+        socket.on('currentPotatoes', (serverPotatoes) => {
+            potatoes = serverPotatoes;
         });
 
+        socket.on('playerMoved', (playerInfo) => {
+            if (players[playerInfo.id]) {
+                players[playerInfo.id].x = playerInfo.x;
+                players[playerInfo.id].y = playerInfo.y;
+                players[playerInfo.id].angle = playerInfo.angle;
+            }
+        });
+
+        socket.on('potatoCollected', (data) => {
+            const p = potatoes.find(item => item.id === data.potatoId);
+            if (p) p.collected = true;
+            if (data.playerId === myId) {
+                document.getElementById('player-score').innerText = data.score;
+            }
+            if (players[data.playerId]) {
+                players[data.playerId].score = data.score;
+            }
+        });
+
+        socket.on('potatoRespawned', (newPotato) => {
+            const p = potatoes.find(item => item.id === newPotato.id);
+            if (p) {
+                p.x = newPotato.x;
+                p.y = newPotato.y;
+                p.collected = false;
+            }
+        });
+
+        const WORLD_WIDTH = 2000;
+        const WORLD_HEIGHT = 1500;
+
         function update() {
-            // 釣り中のカウントダウン
-            if (isFishing) {
-                fishingTimer--;
-                if (fishingTimer <= 0) {
-                    isFishing = false;
-                    socket.emit('fishCaught'); // サーバーに釣果を判定してもらう
+            if (myId && players[myId]) {
+                let p = players[myId];
+                let speed = 3.5;
+                let rotSpeed = 0.045;
+
+                if (keys.a || keys.ArrowLeft) p.angle -= rotSpeed;
+                if (keys.d || keys.ArrowRight) p.angle += rotSpeed;
+
+                let moving = 0;
+                if (keys.w || keys.ArrowUp) moving = 1;
+                if (keys.s || keys.ArrowDown) moving = -0.4;
+
+                if (moving !== 0) {
+                    p.x += Math.cos(p.angle) * speed * moving;
+                    p.y += Math.sin(p.angle) * speed * moving;
+
+                    // マップの外に出ないように制限
+                    p.x = Math.max(40, Math.min(WORLD_WIDTH - 40, p.x));
+                    p.y = Math.max(40, Math.min(WORLD_HEIGHT - 40, p.y));
+
+                    socket.emit('playerMovement', { x: p.x, y: p.y, angle: p.angle });
                 }
-            }
 
-            // 通知のフェードアウト処理
-            if (notification.alpha > 0) {
-                notification.alpha -= 0.015;
-            }
-
-            if (myId && players[myId] && !isFishing) {
-                const speed = 4;
-                let moved = false;
-                if (movement.up && players[myId].y > 15) { players[myId].y -= speed; moved = true; }
-                if (movement.down && players[myId].y < canvas.height - 15) { players[myId].y += speed; moved = true; }
-                if (movement.left && players[myId].x > 15) { players[myId].x -= speed; moved = true; }
-                if (movement.right && players[myId].x < canvas.width - 15) { players[myId].x += speed; moved = true; }
-
-                if (moved) {
-                    socket.emit('playerMovement', { x: players[myId].x, y: players[myId].y });
-                }
+                // じゃがいもとの接触判定
+                potatoes.forEach(pot => {
+                    if (!pot.collected) {
+                        const dist = Math.hypot(p.x - pot.x, p.y - pot.y);
+                        if (dist < 45) {
+                            socket.emit('collectPotato', pot.id);
+                        }
+                    }
+                });
             }
         }
 
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // 湖エリア（上部）
-            ctx.fillStyle = '#2980b9';
-            ctx.fillRect(0, 0, canvas.width, 180);
-            ctx.fillStyle = '#ecf0f1';
-            ctx.font = '16px sans-serif';
-            ctx.fillText('🌊 湖エリア（スペースキーで釣り！）', 25, 35);
+            if (!myId || !players[myId]) return;
 
-            // 陸エリア（下部）
-            ctx.fillStyle = '#27ae60';
-            ctx.fillRect(0, 180, canvas.width, canvas.height - 180);
-            ctx.fillStyle = '#2ecc71';
-            ctx.fillText('🌱 散策エリア', 25, 215);
+            const me = players[myId];
+            const cameraX = canvas.width / 2 - me.x;
+            const cameraY = canvas.height / 2 - me.y;
 
-            // 全プレイヤーの描画
-            for (let id in players) {
-                const p = players[id];
-                const isMe = (id === myId);
+            ctx.save();
+            ctx.translate(cameraX, cameraY);
 
-                // 自分が釣り中のときの演出（ウキや竿の表現）
-                if (isMe && isFishing) {
-                    // 水面にウキを表示
-                    ctx.fillStyle = '#e74c3c';
+            // ワールドの枠線
+            ctx.strokeStyle = '#1b4f72';
+            ctx.lineWidth = 6;
+            ctx.strokeRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+
+            // 海の背景模様
+            ctx.fillStyle = '#2471a3';
+            for (let x = 150; x < WORLD_WIDTH; x += 350) {
+                for (let y = 150; y < WORLD_HEIGHT; y += 350) {
                     ctx.beginPath();
-                    ctx.arc(p.x + 15, p.y - 40, 6, 0, Math.PI * 2);
+                    ctx.arc(x, y, 5, 0, Math.PI * 2);
                     ctx.fill();
-                    // 釣り糸
-                    ctx.strokeStyle = '#fff';
-                    ctx.lineWidth = 1;
-                    ctx.beginPath();
-                    ctx.moveTo(p.x, p.y);
-                    ctx.lineTo(p.x + 15, p.y - 40);
-                    ctx.stroke();
                 }
+            }
 
-                // プレイヤー本体
-                ctx.fillStyle = isMe ? '#e74c3c' : '#3498db';
+            // じゃがいもの描画
+            potatoes.forEach(pot => {
+                if (!pot.collected) {
+                    ctx.save();
+                    ctx.translate(pot.x, pot.y);
+                    // 楕円形のじゃがいも
+                    ctx.fillStyle = '#d4ac0d';
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, 20, 14, Math.PI / 5, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.lineWidth = 2;
+                    ctx.strokeStyle = '#7d6608';
+                    ctx.stroke();
+                    // じゃがいもの芽の模様
+                    ctx.fillStyle = '#7d6608';
+                    ctx.fillRect(-5, -4, 3, 3);
+                    ctx.fillRect(5, 3, 2, 2);
+                    ctx.restore();
+                }
+            });
+
+            // プレイヤー（豚の船）の描画
+            for (let id in players) {
+                let p = players[id];
+                ctx.save();
+                ctx.translate(p.x, p.y);
+                ctx.rotate(p.angle);
+
+                // 船体（木製）
+                ctx.fillStyle = '#b9770e';
                 ctx.beginPath();
-                ctx.arc(p.x, p.y, 16, 0, Math.PI * 2);
+                ctx.ellipse(0, 0, 32, 18, 0, 0, Math.PI * 2);
                 ctx.fill();
-                ctx.lineWidth = 3;
-                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#7e5109';
                 ctx.stroke();
 
-                // 釣り中サイン
-                if (isMe && isFishing) {
-                    ctx.fillStyle = '#f1c40f';
-                    ctx.font = 'bold 14px sans-serif';
-                    ctx.textAlign = 'center';
-                    ctx.fillText('🎣 釣り中...', p.x, p.y - 28);
-                } else {
-                    ctx.fillStyle = '#fff';
-                    ctx.font = '12px sans-serif';
-                    ctx.textAlign = 'center';
-                    ctx.fillText(p.name, p.x, p.y - 24);
-                }
+                // 帆（ホワイト）
+                ctx.fillStyle = '#f2f4f4';
+                ctx.fillRect(-12, -12, 24, 24);
+                ctx.strokeStyle = '#bdc3c7';
+                ctx.strokeRect(-12, -12, 24, 24);
+
+                // 豚の船長
+                ctx.fillStyle = '#f1948a';
+                ctx.beginPath();
+                ctx.arc(12, 0, 10, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#c0392b';
+                ctx.stroke();
+
+                // 豚の鼻
+                ctx.fillStyle = '#e74c3c';
+                ctx.beginPath();
+                ctx.ellipse(18, 0, 4, 2.5, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.restore();
+
+                // プレイヤー名とスコア表示
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 13px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.shadowColor = 'rgba(0,0,0,0.8)';
+                ctx.shadowBlur = 4;
+                ctx.fillText(`${p.name} (${p.score})`, p.x, p.y - 40);
+                ctx.shadowBlur = 0;
             }
 
-            // 画面中央上にポップアップ通知を表示
-            if (notification.alpha > 0) {
-                ctx.save();
-                ctx.globalAlpha = Math.max(0, notification.alpha);
-                ctx.font = 'bold 24px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.fillStyle = notification.color;
-                ctx.shadowColor = '#000';
-                ctx.shadowBlur = 6;
-                ctx.fillText(notification.text, canvas.width / 2, 100);
-                ctx.restore();
-            }
+            ctx.restore();
         }
 
         function loop() {
