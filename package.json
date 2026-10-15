@@ -1,7 +1,7 @@
 {
   "name": "pig-of-potato",
-  "version": "7.0.0",
-  "description": "2v2 multiplayer pirate game with islands, wood gathering, repair, special ammo, and 4-digit room code lobby",
+  "version": "8.0.0",
+  "description": "Multiplayer pirate game with islands, 3-second wood gathering, ship/island walking, and 4-digit rooms",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
