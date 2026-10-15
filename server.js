@@ -132,7 +132,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // 【修正】roomCode を socket.roomCode に修正しました
   socket.on('toggleReady', () => {
     const room = rooms[socket.roomCode];
     if (room && room.status === 'waiting' && room.players[socket.id]) {
@@ -241,10 +240,25 @@ io.on('connection', (socket) => {
     const p = room.players[socket.id];
     if (p && p.role === 'helmsman') {
       const s = room.ships[p.team];
-      s.x = controlData.x;
-      s.y = controlData.y;
+      
+      // 島との当たり判定チェック（衝突時は位置を戻す）
+      let nextX = controlData.x;
+      let nextY = controlData.y;
+      let collided = false;
+
+      room.islands.forEach(isl => {
+        if (Math.hypot(nextX - isl.x, nextY - isl.y) < isl.radius + 110) {
+          collided = true;
+        }
+      });
+
+      if (!collided) {
+        s.x = nextX;
+        s.y = nextY;
+      }
       s.angle = controlData.angle;
       s.speed = controlData.speed;
+      
       socket.to(socket.roomCode).emit('shipMoved', s);
     }
   });
@@ -393,8 +407,18 @@ setInterval(() => {
         blueShip.speed = 2.0;
       }
 
-      blueShip.x += Math.cos(blueShip.angle) * blueShip.speed;
-      blueShip.y += Math.sin(blueShip.angle) * blueShip.speed;
+      let nextX = blueShip.x + Math.cos(blueShip.angle) * blueShip.speed;
+      let nextY = blueShip.y + Math.sin(blueShip.angle) * blueShip.speed;
+      
+      let collided = false;
+      room.islands.forEach(isl => {
+        if (Math.hypot(nextX - isl.x, nextY - isl.y) < isl.radius + 110) collided = true;
+      });
+
+      if (!collided) {
+        blueShip.x = nextX;
+        blueShip.y = nextY;
+      }
       blueShip.x = Math.max(200, Math.min(6000 - 200, blueShip.x));
       blueShip.y = Math.max(200, Math.min(4500 - 200, blueShip.y));
 
@@ -453,5 +477,5 @@ setInterval(() => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`✨ Pig of Potato v17 サーバー起動: http://localhost:${PORT}`);
+  console.log(`✨ Pig of Potato v18 サーバー起動: http://localhost:${PORT}`);
 });
