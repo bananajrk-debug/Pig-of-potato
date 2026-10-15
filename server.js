@@ -12,22 +12,25 @@ app.use(express.static(path.join(__dirname, 'public')));
 const WORLD_WIDTH = 4000;
 const WORLD_HEIGHT = 3000;
 
-// 2つのチームの大型船
+// 2対2のチーム大型船（サイズ3倍、舵は一番後ろ）
 const ships = {
   red: {
     id: 'red',
     name: 'レッドポテト号',
     color: '#e74c3c',
-    x: 800,
+    x: 1000,
     y: 1500,
     angle: 0,
     speed: 0,
+    maxSpeed: 5.5, // スピードアップ
     hp: 100,
-    cannonAmmo: 10,
-    helmsman: null, // 舵を取っているプレイヤーID
+    cannonAmmo: 15,
+    helmsman: null,
     cannons: [
-      { id: 'red_l1', side: 'left', offsetRelX: -20, offsetRelY: -35, gunner: null },
-      { id: 'red_r1', side: 'right', offsetRelX: -20, offsetRelY: 35, gunner: null }
+      { id: 'red_l1', side: 'left', offsetRelX: 0, offsetRelY: -65, gunner: null },
+      { id: 'red_r1', side: 'right', offsetRelX: 0, offsetRelY: 65, gunner: null },
+      { id: 'red_l2', side: 'left', offsetRelX: -80, offsetRelY: -65, gunner: null },
+      { id: 'red_r2', side: 'right', offsetRelX: -80, offsetRelY: 65, gunner: null }
     ],
     watcher: null
   },
@@ -35,27 +38,29 @@ const ships = {
     id: 'blue',
     name: 'ブルーマッシュ号',
     color: '#3498db',
-    x: 3200,
+    x: 3000,
     y: 1500,
     angle: Math.PI,
     speed: 0,
+    maxSpeed: 5.5,
     hp: 100,
-    cannonAmmo: 10,
+    cannonAmmo: 15,
     helmsman: null,
     cannons: [
-      { id: 'blue_l1', side: 'left', offsetRelX: -20, offsetRelY: -35, gunner: null },
-      { id: 'blue_r1', side: 'right', offsetRelX: -20, offsetRelY: 35, gunner: null }
+      { id: 'blue_l1', side: 'left', offsetRelX: 0, offsetRelY: -65, gunner: null },
+      { id: 'blue_r1', side: 'right', offsetRelX: 0, offsetRelY: 65, gunner: null },
+      { id: 'blue_l2', side: 'left', offsetRelX: -80, offsetRelY: -65, gunner: null },
+      { id: 'blue_r2', side: 'right', offsetRelX: -80, offsetRelY: 65, gunner: null }
     ],
     watcher: null
   }
 };
 
-// プレイヤー管理
 const players = {};
 
-// 海に浮かぶじゃがいも（お宝 兼 弾薬）
+// じゃがいもの配置
 let potatoes = [];
-for (let i = 1; i <= 20; i++) {
+for (let i = 1; i <= 25; i++) {
   potatoes.push({
     id: i,
     x: Math.random() * (WORLD_WIDTH - 400) + 200,
@@ -64,33 +69,29 @@ for (let i = 1; i <= 20; i++) {
   });
 }
 
-// 飛んでいるじゃがいも弾
 let cannonBalls = [];
 
 io.on('connection', (socket) => {
-  console.log(`プレイヤーが接続: ${socket.id}`);
+  console.log(`プレイヤー接続: ${socket.id}`);
 
-  // チームを自動割り当て（赤または青）
   const redCount = Object.values(players).filter(p => p.team === 'red').length;
   const blueCount = Object.values(players).filter(p => p.team === 'blue').length;
   const team = redCount <= blueCount ? 'red' : 'blue';
-
   const ship = ships[team];
 
   players[socket.id] = {
     id: socket.id,
     team: team,
-    x: ship.x + (Math.random() * 60 - 30),
-    y: ship.y + (Math.random() * 60 - 30),
-    role: 'free', // 'free', 'helmsman', 'cannon', 'watcher'
+    x: ship.x + (Math.random() * 80 - 40),
+    y: ship.y + (Math.random() * 80 - 40),
+    role: 'free',
     activeCannonId: null,
-    name: `${team === 'red' ? '赤' : '青'}の豚乗組員_${Math.floor(Math.random() * 90 + 10)}`
+    name: `${team === 'red' ? '赤' : '青'}チーム乗組員_${Math.floor(Math.random() * 90 + 10)}`
   };
 
   socket.emit('init', { id: socket.id, players, ships, potatoes });
   socket.broadcast.emit('newPlayer', players[socket.id]);
 
-  // プレイヤーの移動
   socket.on('playerMove', (data) => {
     const p = players[socket.id];
     if (p && p.role === 'free') {
@@ -100,7 +101,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // インタラクション要求（Eキー：舵・大砲・見張り台に乗る・降りる）
   socket.on('interact', (actionData) => {
     const p = players[socket.id];
     const ship = ships[p.team];
@@ -137,7 +137,6 @@ io.on('connection', (socket) => {
     io.emit('gameStateUpdate', { players, ships });
   });
 
-  // 船の操舵更新（舵を取っている人のみ）
   socket.on('shipControl', (controlData) => {
     const p = players[socket.id];
     if (p && p.role === 'helmsman') {
@@ -147,21 +146,19 @@ io.on('connection', (socket) => {
     }
   });
 
-  // 大砲発射
   socket.on('fireCannon', (data) => {
     const p = players[socket.id];
     const ship = ships[p.team];
     if (p && p.role === 'cannon' && ship.cannonAmmo > 0) {
       ship.cannonAmmo--;
 
-      // 弾の生成
       const ball = {
         id: Math.random().toString(),
         team: p.team,
         x: data.x,
         y: data.y,
-        vx: Math.cos(data.angle) * 12,
-        vy: Math.sin(data.angle) * 12,
+        vx: Math.cos(data.angle) * 16, // 弾速アップ
+        vy: Math.sin(data.angle) * 16,
         range: 0
       };
       cannonBalls.push(ball);
@@ -170,24 +167,22 @@ io.on('connection', (socket) => {
     }
   });
 
-  // じゃがいも回収
   socket.on('collectPotato', (potatoId) => {
     const p = players[socket.id];
     const potato = potatoes.find(pt => pt.id === potatoId);
     if (potato && !potato.collected) {
       potato.collected = true;
       const ship = ships[p.team];
-      ship.cannonAmmo += 3; // 拾うと弾が3つ増える
+      ship.cannonAmmo += 4;
 
       io.emit('potatoCollected', { potatoId, team: p.team, ammo: ship.cannonAmmo });
 
-      // 7秒後にリスポーン
       setTimeout(() => {
         potato.x = Math.random() * (WORLD_WIDTH - 400) + 200;
         potato.y = Math.random() * (WORLD_HEIGHT - 400) + 200;
         potato.collected = false;
         io.emit('potatoRespawned', potato);
-      }, 7000);
+      }, 5000);
     }
   });
 
@@ -205,48 +200,42 @@ io.on('connection', (socket) => {
   });
 });
 
-// ゲームの物理演算ループ（船の移動、砲弾の判定）
+// 物理演算・判定ループ
 setInterval(() => {
-  // 船の位置更新
   for (let id in ships) {
     let ship = ships[id];
     if (ship.speed !== 0) {
       ship.x += Math.cos(ship.angle) * ship.speed;
       ship.y += Math.sin(ship.angle) * ship.speed;
 
-      // マップ境界制限
-      ship.x = Math.max(150, Math.min(WORLD_WIDTH - 150, ship.x));
-      ship.y = Math.max(150, Math.min(WORLD_HEIGHT - 150, ship.y));
+      ship.x = Math.max(200, Math.min(WORLD_WIDTH - 200, ship.x));
+      ship.y = Math.max(200, Math.min(WORLD_HEIGHT - 200, ship.y));
     }
   }
 
-  // 砲弾の移動とヒット判定
   for (let i = cannonBalls.length - 1; i >= 0; i--) {
     let ball = cannonBalls[i];
     ball.x += ball.vx;
     ball.y += ball.vy;
     ball.range += 1;
 
-    // 射程切れ
-    if (ball.range > 50) {
+    if (ball.range > 60) {
       cannonBalls.splice(i, 1);
       continue;
     }
 
-    // 敵船とのヒット判定
     for (let shipId in ships) {
       let ship = ships[shipId];
       if (ship.id !== ball.team) {
         let dist = Math.hypot(ship.x - ball.x, ship.y - ball.y);
-        if (dist < 60) {
-          // 命中！
-          ship.hp -= 10;
+        if (dist < 110) { // 船が3倍に大きくなったため判定も拡大
+          ship.hp -= 15;
           io.emit('shipHit', { shipId: ship.id, hp: ship.hp });
           cannonBalls.splice(i, 1);
 
           if (ship.hp <= 0) {
-            io.emit('gameOver', `${ball.team === 'red' ? '赤チーム（レッドポテト号）' : '青チーム（ブルーマッシュ号）'}の勝利！`);
-            ship.hp = 100; // リセット
+            io.emit('gameOver', `${ball.team === 'red' ? '赤チーム' : '青チーム'}の勝利！`);
+            ship.hp = 100;
           }
           break;
         }
@@ -259,5 +248,5 @@ setInterval(() => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`✨ Pig of Potato v2 サーバー起動: http://localhost:${PORT}`);
+  console.log(`✨ Pig of Potato v3 サーバー起動: http://localhost:${PORT}`);
 });
