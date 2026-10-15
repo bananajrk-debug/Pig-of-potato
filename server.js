@@ -132,15 +132,15 @@ io.on('connection', (socket) => {
     }
   });
 
+  // 【修正】roomCode を socket.roomCode に修正しました
   socket.on('toggleReady', () => {
     const room = rooms[socket.roomCode];
     if (room && room.status === 'waiting' && room.players[socket.id]) {
       room.players[socket.id].ready = !room.players[socket.id].ready;
-      io.to(roomCode).emit('lobbyUpdate', { players: room.players, status: room.status, roomCode: socket.roomCode });
+      io.to(socket.roomCode).emit('lobbyUpdate', { players: room.players, status: room.status, roomCode: socket.roomCode });
     }
   });
 
-  // 出航ボタン：ルームコードを確実に受け取ってゲームを開始
   socket.on('startGame', ({ roomCode }) => {
     const code = roomCode || socket.roomCode;
     const room = rooms[code];
@@ -453,5 +453,5 @@ setInterval(() => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`✨ Pig of Potato v16 サーバー起動: http://localhost:${PORT}`);
+  console.log(`✨ Pig of Potato v17 サーバー起動: http://localhost:${PORT}`);
 });
