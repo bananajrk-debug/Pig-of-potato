@@ -9,7 +9,6 @@ const io = new Server(server);
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-// マップをさらに広大に拡張 (15000 x 11250)
 const WORLD_WIDTH = 15000;
 const WORLD_HEIGHT = 11250;
 
@@ -246,25 +245,33 @@ io.on('connection', (socket) => {
       let nextY = controlData.y;
       let collided = false;
 
-      // 島との衝突判定
       room.islands.forEach(isl => {
-        if (Math.hypot(nextX - isl.x, nextY - isl.y) < isl.radius + 130) {
+        if (Math.hypot(nextX - isl.x, nextY - isl.y) < isl.radius + 140) {
           collided = true;
         }
       });
 
-      // 船同士が重ならないための厳格な衝突・反発判定
+      // 船同士が引っかからないよう、衝突時に反発して押し戻す処理
       for (let otherId in room.ships) {
         if (otherId !== s.id) {
           let otherShip = room.ships[otherId];
-          if (Math.hypot(nextX - otherShip.x, nextY - otherShip.y) < 320) {
+          let dist = Math.hypot(nextX - otherShip.x, nextY - otherShip.y);
+          if (dist < 300) {
             collided = true;
+            // 押し出しベクトルを計算してスタックを防止
+            let pushAngle = Math.atan2(nextY - otherShip.y, nextX - otherShip.x);
+            nextX = otherShip.x + Math.cos(pushAngle) * 300;
+            nextY = otherShip.y + Math.sin(pushAngle) * 300;
+            s.speed = 0;
           }
         }
       }
 
       if (!collided) {
         s.x = nextX;
+        s.y = nextY;
+      } else {
+        s.x = nextX; // 反発位置を反映
         s.y = nextY;
       }
       s.angle = controlData.angle;
@@ -423,14 +430,17 @@ setInterval(() => {
       
       let collided = false;
       room.islands.forEach(isl => {
-        if (Math.hypot(nextX - isl.x, nextY - isl.y) < isl.radius + 130) collided = true;
+        if (Math.hypot(nextX - isl.x, nextY - isl.y) < isl.radius + 140) collided = true;
       });
-      if (Math.hypot(nextX - redShip.x, nextY - redShip.y) < 320) collided = true;
-
-      if (!collided) {
-        blueShip.x = nextX;
-        blueShip.y = nextY;
+      if (Math.hypot(nextX - redShip.x, nextY - redShip.y) < 300) {
+        collided = true;
+        let pushAngle = Math.atan2(nextY - redShip.y, nextX - redShip.x);
+        nextX = redShip.x + Math.cos(pushAngle) * 300;
+        nextY = redShip.y + Math.sin(pushAngle) * 300;
       }
+
+      blueShip.x = nextX;
+      blueShip.y = nextY;
       blueShip.x = Math.max(300, Math.min(WORLD_WIDTH - 300, blueShip.x));
       blueShip.y = Math.max(300, Math.min(WORLD_HEIGHT - 300, blueShip.y));
 
@@ -489,5 +499,5 @@ setInterval(() => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`✨ Pig of Potato v20 サーバー起動: http://localhost:${PORT}`);
+  console.log(`✨ Pig of Potato v21 サーバー起動: http://localhost:${PORT}`);
 });
