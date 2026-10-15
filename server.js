@@ -125,7 +125,6 @@ function createInitialRoomState(isCpuMode = false) {
     ships: ships,
     players: {},
     islands: islands,
-    // 海に浮かぶポテトの数を50個から18個に削減
     potatoes: Array.from({ length: 18 }, (_, i) => ({
       id: i + 1,
       x: Math.random() * (WORLD_WIDTH - 1000) + 500,
@@ -325,11 +324,10 @@ io.on('connection', (socket) => {
     }
   });
 
-  // KとOキーによる大砲発射は「ソロプレイ（CPUモード）」のときのみ許可
   socket.on('fireSideCannon', ({ side, ammoType }) => {
     const room = rooms[socket.roomCode];
     if (!room || room.status !== 'playing') return;
-    if (!room.isCpuMode) return; // ソロプレイ時以外は無効化
+    if (!room.isCpuMode) return;
 
     const p = room.players[socket.id];
     if (!p) return;
