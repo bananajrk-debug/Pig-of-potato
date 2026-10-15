@@ -15,13 +15,12 @@ const WORLD_HEIGHT = 4500;
 const rooms = {};
 
 function createInitialRoomState() {
-  // 小島の生成
   const islands = [
-    { id: 1, x: 1500, y: 1200, radius: 180, wood: 5, hasSpecialAmmo: true, ammoType: 2 }, // 爆発弾の島
-    { id: 2, x: 4500, y: 1200, radius: 180, wood: 5, hasSpecialAmmo: true, ammoType: 3 }, // 貫通・炎弾の島
-    { id: 3, x: 3000, y: 3300, radius: 220, wood: 8, hasSpecialAmmo: true, ammoType: 2 }, // 木が多い島
-    { id: 4, x: 1200, y: 3200, radius: 160, wood: 4, hasSpecialAmmo: false },
-    { id: 5, x: 4800, y: 3200, radius: 160, wood: 4, hasSpecialAmmo: false }
+    { id: 1, x: 1500, y: 1200, radius: 220, wood: 5, hasSpecialAmmo: true, ammoType: 2 },
+    { id: 2, x: 4500, y: 1200, radius: 220, wood: 5, hasSpecialAmmo: true, ammoType: 3 },
+    { id: 3, x: 3000, y: 3300, radius: 260, wood: 8, hasSpecialAmmo: true, ammoType: 2 },
+    { id: 4, x: 1200, y: 3200, radius: 200, wood: 4, hasSpecialAmmo: false },
+    { id: 5, x: 4800, y: 3200, radius: 200, wood: 4, hasSpecialAmmo: false }
   ];
 
   return {
@@ -38,8 +37,7 @@ function createInitialRoomState() {
         hp: 100,
         maxHp: 100,
         wood: 0,
-        // 砲弾ストック：1:通常弾, 2:爆発弾, 3:特製散弾
-        ammo: { 1: 5, 2: 0, 3: 0 }, 
+        ammo: { 1: 5, 2: 0, 3: 0 },
         helmsman: null,
         cannons: [
           { id: 'red_l1', side: 'left', offsetRelX: 0, offsetRelY: -65, gunner: null },
@@ -85,9 +83,6 @@ function createInitialRoomState() {
 }
 
 io.on('connection', (socket) => {
-  console.log(`接続: ${socket.id}`);
-
-  // 4桁のルームコード参加
   socket.on('joinRoom', ({ roomCode, playerName }) => {
     if (!roomCode || roomCode.length !== 4) return;
     socket.join(roomCode);
@@ -182,7 +177,6 @@ io.on('connection', (socket) => {
     io.to(socket.roomCode).emit('gameStateUpdate', { players: room.players, ships: room.ships });
   });
 
-  // 船の修理（木を消費してHP回復）
   socket.on('repairShip', () => {
     const room = rooms[socket.roomCode];
     if (!room) return;
@@ -209,7 +203,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // 砲弾発射（種類対応 1:通常, 2:爆発弾, 3:特製弾）
   socket.on('fireCannon', (data) => {
     const room = rooms[socket.roomCode];
     if (!room) return;
@@ -219,9 +212,7 @@ io.on('connection', (socket) => {
 
     const now = Date.now();
     if (p && p.role === 'cannon' && ship.ammo[ammoType] > 0) {
-      if (p.lastFireTime && now - p.lastFireTime < 2000) {
-        return; // 2秒リロード
-      }
+      if (p.lastFireTime && now - p.lastFireTime < 2000) return;
       p.lastFireTime = now;
       ship.ammo[ammoType]--;
 
@@ -242,7 +233,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // 海上のポテト回収
   socket.on('collectPotato', (potatoId) => {
     const room = rooms[socket.roomCode];
     if (!room) return;
@@ -251,7 +241,7 @@ io.on('connection', (socket) => {
     if (potato && !potato.collected) {
       potato.collected = true;
       const ship = room.ships[p.team];
-      ship.ammo[1] += 3; // 通常弾3発補充
+      ship.ammo[1] += 3;
 
       io.to(socket.roomCode).emit('potatoCollected', { potatoId, team: p.team, ammo: ship.ammo });
 
@@ -266,7 +256,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // 島からの資源（木・効果付き砲弾）回収
   socket.on('gatherIsland', (islandId) => {
     const room = rooms[socket.roomCode];
     if (!room) return;
@@ -280,12 +269,11 @@ io.on('connection', (socket) => {
         ship.wood += 1;
       }
       if (island.hasSpecialAmmo) {
-        ship.ammo[island.ammoType] = (ship.ammo[island.ammoType] || 0) + 2; // 特殊弾2発獲得
+        ship.ammo[island.ammoType] = (ship.ammo[island.ammoType] || 0) + 2;
         island.hasSpecialAmmo = false;
       }
       io.to(socket.roomCode).emit('islandGathered', { islandId, shipWood: ship.wood, ammo: ship.ammo });
 
-      // 一定時間後に島を復活
       setTimeout(() => {
         if (room.islands) {
           island.wood = 4;
@@ -334,7 +322,6 @@ setInterval(() => {
         if (ship.id !== ball.team) {
           let dist = Math.hypot(ship.x - ball.x, ship.y - ball.y);
           if (dist < 110) {
-            // 弾の種類によるダメージ変動（2:爆発弾は高ダメージ）
             const damage = ball.ammoType === 2 ? 30 : 15;
             ship.hp -= damage;
             io.to(roomCode).emit('shipHit', { shipId: ship.id, hp: ship.hp });
@@ -356,5 +343,5 @@ setInterval(() => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`✨ Pig of Potato v7 サーバー起動: http://localhost:${PORT}`);
+  console.log(`✨ Pig of Potato v8 サーバー起動: http://localhost:${PORT}`);
 });
