@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pig of Potato - Fixed Screen Toggle</title>
+    <title>Pig of Potato - Repair Red Dot & Anti-Stuck</title>
     <style>
         body {
             margin: 0;
@@ -27,11 +27,9 @@
             align-items: center;
             z-index: 100;
         }
-        /* 確実な非表示用クラス */
         .screen.hidden {
             display: none !important;
         }
-
         h1 {
             font-size: 52px;
             color: #f1c40f;
@@ -322,7 +320,7 @@
         </div>
     </div>
 
-    <!-- ロビー画面（最初はhiddenクラスで非表示） -->
+    <!-- ロビー画面 -->
     <div id="lobby-screen" class="screen hidden">
         <h1>⭐ チームロビー ⭐</h1>
         <div class="brawl-lobby-container">
@@ -378,7 +376,7 @@
             - <b>舵・大砲・見張り台:</b> 近くで <b>[ Eキー ]</b><br>
             - <b>大砲発射:</b> <b>[Kキー]で左大砲</b>、<b>[Oキー]で右大砲</b> （個別クールタイム）<br>
             - <b>島での採取:</b> <b>[Eキー長押し (3秒)]</b> で木や特殊弾をゲット！<br>
-            - <b>修理:</b> <b>[Rキー]</b>で木材2つ消費して船を修理！
+            - <b>船の修理:</b> 赤い点の近くで <b>[Rキー長押し (2.5秒)]</b> （木材2つ消費）
         </div>
 
         <div id="minimap-container">
@@ -446,7 +444,11 @@
         let gatherStartTime = 0;
         let gatheringDuration = 3000;
 
-        const keys = { w: false, s: false, a: false, d: false, e: false };
+        let repairing = false;
+        let repairStartTime = 0;
+        let repairDuration = 2500;
+
+        const keys = { w: false, s: false, a: false, d: false, e: false, r: false };
         let lastSendTime = 0;
 
         function generateRandomCode() {
@@ -627,7 +629,6 @@
             badgeCode.innerText = roomCode;
             roomCodeBadge.style.display = 'block';
 
-            // クラス切り替えで確実に画面を切り替える
             titleScreen.classList.add('hidden');
             lobbyScreen.classList.remove('hidden');
 
@@ -710,7 +711,19 @@
                 if (e.key === '3') { selectedAmmo = 3; updateAmmoDisplay(); }
 
                 if (e.key === 'r' || e.key === 'R') {
-                    socket.emit('repairShip');
+                    if (!keys.r) {
+                        keys.r = true;
+                        const me = players[myId];
+                        if (me && me.role === 'free' && ships[myTeam]) {
+                            const ship = ships[myTeam];
+                            const repairX = ship.x + Math.cos(ship.angle) * 30 - Math.sin(ship.angle) * 0;
+                            const repairY = ship.y + Math.sin(ship.angle) * 30 + Math.cos(ship.angle) * 0;
+                            if (Math.hypot(me.x - repairX, me.y - repairY) < 45) {
+                                repairing = true;
+                                repairStartTime = Date.now();
+                            }
+                        }
+                    }
                 }
 
                 if (e.key === 'e' || e.key === 'E') {
@@ -751,6 +764,11 @@
             if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') keys.s = false;
             if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') keys.a = false;
             if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') keys.d = false;
+
+            if (e.key === 'r' || e.key === 'R') {
+                keys.r = false;
+                repairing = false;
+            }
 
             if (e.key === 'e' || e.key === 'E') {
                 keys.e = false;
@@ -948,7 +966,17 @@
 
                 const promptEl = document.getElementById('prompt');
                 if (promptEl) {
-                    if (gatheringIslandId !== null) {
+                    if (repairing) {
+                        let elapsed = Date.now() - repairStartTime;
+                        let percent = Math.min(100, Math.floor((elapsed / repairDuration) * 100));
+                        promptEl.innerText = `🛠️ 船を修理中... [ ${percent}% ] (Rキー長押し)`;
+                        promptEl.style.display = 'block';
+
+                        if (elapsed >= repairDuration) {
+                            socket.emit('repairShip');
+                            repairing = false;
+                        }
+                    } else if (gatheringIslandId !== null) {
                         let elapsed = Date.now() - gatherStartTime;
                         let percent = Math.min(100, Math.floor((elapsed / gatheringDuration) * 100));
                         promptEl.innerText = `🌲 木を採集中... [ ${percent}% ] (Eキー長押し)`;
@@ -963,6 +991,9 @@
                         const helmX = ship.x - Math.cos(ship.angle) * 140;
                         const helmY = ship.y - Math.sin(ship.angle) * 140;
 
+                        const repairX = ship.x + Math.cos(ship.angle) * 30;
+                        const repairY = ship.y + Math.sin(ship.angle) * 30;
+
                         let nearIsland = false;
                         islands.forEach(isl => {
                             if (Math.hypot(p.x - isl.x, p.y - isl.y) < isl.radius + 20) {
@@ -973,7 +1004,10 @@
                         });
 
                         if (!nearIsland) {
-                            if (Math.hypot(p.x - helmX, p.y - helmY) < 55 && !ship.helmsman) {
+                            if (Math.hypot(p.x - repairX, p.y - repairY) < 45) {
+                                promptEl.innerText = '【Rキー長押し】赤点の上で船を修理 (木材2つ消費)';
+                                promptEl.style.display = 'block';
+                            } else if (Math.hypot(p.x - helmX, p.y - helmY) < 55 && !ship.helmsman) {
                                 interactTarget = { type: 'helm' };
                                 promptEl.innerText = '【Eキー】舵を取る | 【K:左大砲 / O:右大砲】';
                                 promptEl.style.display = 'block';
@@ -1012,7 +1046,7 @@
                 if (promptEl) {
                     promptEl.style.display = 'block';
                     if (p.role === 'helmsman') {
-                        promptEl.innerText = '【Eキー】舵から離れる | 【R】船修理 | 【K】左大砲 | 【O】右大砲';
+                        promptEl.innerText = '【Eキー】舵から離れる | 【R長押し】赤点で船修理 | 【K】左大砲 | 【O】右大砲';
                         interactTarget = { type: 'helm' };
 
                         let rotSpeed = 0.05;
@@ -1031,7 +1065,7 @@
 
                             let collided = false;
                             islands.forEach(isl => {
-                                if (Math.hypot(nextX - isl.x, nextY - isl.y) < isl.radius + 130) {
+                                if (Math.hypot(nextX - isl.x, nextY - isl.y) < isl.radius + 140) {
                                     collided = true;
                                     ship.speed = 0;
                                 }
@@ -1040,19 +1074,20 @@
                             for (let otherId in ships) {
                                 if (otherId !== ship.id) {
                                     let otherShip = ships[otherId];
-                                    if (Math.hypot(nextX - otherShip.x, nextY - otherShip.y) < 320) {
+                                    if (Math.hypot(nextX - otherShip.x, nextY - otherShip.y) < 300) {
                                         collided = true;
+                                        let pushAngle = Math.atan2(nextY - otherShip.y, nextX - otherShip.x);
+                                        nextX = otherShip.x + Math.cos(pushAngle) * 300;
+                                        nextY = otherShip.y + Math.sin(pushAngle) * 300;
                                         ship.speed = 0;
                                     }
                                 }
                             }
 
-                            if (!collided) {
-                                ship.x = nextX;
-                                ship.y = nextY;
-                                ship.x = Math.max(300, Math.min(15000 - 300, ship.x));
-                                ship.y = Math.max(300, Math.min(11250 - 300, ship.y));
-                            }
+                            ship.x = nextX;
+                            ship.y = nextY;
+                            ship.x = Math.max(300, Math.min(15000 - 300, ship.x));
+                            ship.y = Math.max(300, Math.min(11250 - 300, ship.y));
                         }
 
                         socket.emit('shipControl', { x: ship.x, y: ship.y, angle: ship.angle, speed: ship.speed });
@@ -1200,6 +1235,22 @@
                 ctx.fillRect(-145, -15, 15, 30);
                 ctx.strokeStyle = '#d35400';
                 ctx.strokeRect(-145, -15, 15, 30);
+
+                // ** 修理用の分かりやすい「赤い点」を描画 **
+                ctx.save();
+                ctx.translate(-30, 0); // 船の中央付近に配置
+                ctx.fillStyle = '#e74c3c';
+                ctx.beginPath();
+                ctx.arc(0, 0, 12, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = '#fff';
+                ctx.stroke();
+                // 白い十字マーク
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(-3, -7, 6, 14);
+                ctx.fillRect(-7, -3, 14, 6);
+                ctx.restore();
 
                 ctx.restore();
 
