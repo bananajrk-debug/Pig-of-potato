@@ -9,18 +9,19 @@ const io = new Server(server);
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-const WORLD_WIDTH = 6000;
-const WORLD_HEIGHT = 4500;
+// マップを広大化 (10000 x 7500)
+const WORLD_WIDTH = 10000;
+const WORLD_HEIGHT = 7500;
 
 const rooms = {};
 
 function createInitialRoomState(isCpuMode = false) {
   const islands = [
-    { id: 1, x: 1500, y: 1200, radius: 550, wood: 5, hasSpecialAmmo: true, ammoType: 2 },
-    { id: 2, x: 4500, y: 1200, radius: 550, wood: 5, hasSpecialAmmo: true, ammoType: 3 },
-    { id: 3, x: 3000, y: 3300, radius: 650, wood: 8, hasSpecialAmmo: true, ammoType: 2 },
-    { id: 4, x: 1200, y: 3200, radius: 500, wood: 4, hasSpecialAmmo: false },
-    { id: 5, x: 4800, y: 3200, radius: 500, wood: 4, hasSpecialAmmo: false }
+    { id: 1, x: 2500, y: 2000, radius: 700, wood: 5, hasSpecialAmmo: true, ammoType: 2 },
+    { id: 2, x: 7500, y: 2000, radius: 700, wood: 5, hasSpecialAmmo: true, ammoType: 3 },
+    { id: 3, x: 5000, y: 5500, radius: 800, wood: 8, hasSpecialAmmo: true, ammoType: 2 },
+    { id: 4, x: 2000, y: 5500, radius: 600, wood: 4, hasSpecialAmmo: false },
+    { id: 5, x: 8000, y: 5500, radius: 600, wood: 4, hasSpecialAmmo: false }
   ];
 
   return {
@@ -31,8 +32,8 @@ function createInitialRoomState(isCpuMode = false) {
         id: 'red',
         name: 'レッドポテト号',
         color: '#e74c3c',
-        x: 1500,
-        y: 2250,
+        x: 2500,
+        y: 3750,
         angle: 0,
         speed: 0,
         maxSpeed: 6.5,
@@ -55,8 +56,8 @@ function createInitialRoomState(isCpuMode = false) {
         id: 'blue',
         name: 'ブルーマッシュ号 (CPU)',
         color: '#3498db',
-        x: 4500,
-        y: 2250,
+        x: 7500,
+        y: 3750,
         angle: Math.PI,
         speed: 0,
         maxSpeed: 6.0,
@@ -78,10 +79,10 @@ function createInitialRoomState(isCpuMode = false) {
     },
     players: {},
     islands: islands,
-    potatoes: Array.from({ length: 30 }, (_, i) => ({
+    potatoes: Array.from({ length: 50 }, (_, i) => ({
       id: i + 1,
-      x: Math.random() * (WORLD_WIDTH - 600) + 300,
-      y: Math.random() * (WORLD_HEIGHT - 600) + 300,
+      x: Math.random() * (WORLD_WIDTH - 1000) + 500,
+      y: Math.random() * (WORLD_HEIGHT - 1000) + 500,
       collected: false
     })),
     cannonBalls: []
@@ -241,7 +242,6 @@ io.on('connection', (socket) => {
     if (p && p.role === 'helmsman') {
       const s = room.ships[p.team];
       
-      // 島との当たり判定チェック（衝突時は位置を戻す）
       let nextX = controlData.x;
       let nextY = controlData.y;
       let collided = false;
@@ -322,8 +322,8 @@ io.on('connection', (socket) => {
 
       setTimeout(() => {
         if (room.potatoes) {
-          potato.x = Math.random() * (WORLD_WIDTH - 600) + 300;
-          potato.y = Math.random() * (WORLD_HEIGHT - 600) + 300;
+          potato.x = Math.random() * (WORLD_WIDTH - 1000) + 500;
+          potato.y = Math.random() * (WORLD_HEIGHT - 1000) + 500;
           potato.collected = false;
           io.to(socket.roomCode).emit('potatoRespawned', potato);
         }
@@ -401,7 +401,7 @@ setInterval(() => {
       else if (angleDiff < -0.05) blueShip.angle -= 0.03;
 
       let dist = Math.hypot(redShip.x - blueShip.x, redShip.y - blueShip.y);
-      if (dist > 400) {
+      if (dist > 500) {
         blueShip.speed = blueShip.maxSpeed;
       } else {
         blueShip.speed = 2.0;
@@ -419,11 +419,11 @@ setInterval(() => {
         blueShip.x = nextX;
         blueShip.y = nextY;
       }
-      blueShip.x = Math.max(200, Math.min(6000 - 200, blueShip.x));
-      blueShip.y = Math.max(200, Math.min(4500 - 200, blueShip.y));
+      blueShip.x = Math.max(300, Math.min(WORLD_WIDTH - 300, blueShip.x));
+      blueShip.y = Math.max(300, Math.min(WORLD_HEIGHT - 300, blueShip.y));
 
       const now = Date.now();
-      if (dist < 1200 && blueShip.ammo[1] > 0 && blueShip.leftCooldown < now) {
+      if (dist < 1500 && blueShip.ammo[1] > 0 && blueShip.leftCooldown < now) {
         blueShip.leftCooldown = now + 2000;
         blueShip.ammo[1]--;
         room.cannonBalls.push({
@@ -445,7 +445,7 @@ setInterval(() => {
       ball.y += ball.vy;
       ball.range += 1;
 
-      if (ball.range > 80) {
+      if (ball.range > 100) {
         room.cannonBalls.splice(i, 1);
         continue;
       }
@@ -477,5 +477,5 @@ setInterval(() => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`✨ Pig of Potato v18 サーバー起動: http://localhost:${PORT}`);
+  console.log(`✨ Pig of Potato v19 (Huge Map) サーバー起動: http://localhost:${PORT}`);
 });
