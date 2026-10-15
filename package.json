@@ -1,7 +1,7 @@
 {
-  "name": "inocoin-fishing-world",
+  "name": "pig-of-potato",
   "version": "1.0.0",
-  "description": "Virtual world fishing game to earn Inocoin",
+  "description": "A multiplayer pirate-style adventure game with pigs and potatoes",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
