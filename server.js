@@ -12,96 +12,113 @@ app.use(express.static(path.join(__dirname, 'public')));
 const WORLD_WIDTH = 6000;
 const WORLD_HEIGHT = 4500;
 
-const ships = {
-  red: {
-    id: 'red',
-    name: 'レッドポテト号',
-    color: '#e74c3c',
-    x: 1500,
-    y: 2250,
-    angle: 0,
-    speed: 0,
-    maxSpeed: 6.5,
-    hp: 100,
-    cannonAmmo: 15,
-    helmsman: null,
-    cannons: [
-      { id: 'red_l1', side: 'left', offsetRelX: 0, offsetRelY: -65, gunner: null },
-      { id: 'red_r1', side: 'right', offsetRelX: 0, offsetRelY: 65, gunner: null },
-      { id: 'red_l2', side: 'left', offsetRelX: -80, offsetRelY: -65, gunner: null },
-      { id: 'red_r2', side: 'right', offsetRelX: -80, offsetRelY: 65, gunner: null }
-    ],
-    watcher: null
-  },
-  blue: {
-    id: 'blue',
-    name: 'ブルーマッシュ号',
-    color: '#3498db',
-    x: 4500,
-    y: 2250,
-    angle: Math.PI,
-    speed: 0,
-    maxSpeed: 6.5,
-    hp: 100,
-    cannonAmmo: 15,
-    helmsman: null,
-    cannons: [
-      { id: 'blue_l1', side: 'left', offsetRelX: 0, offsetRelY: -65, gunner: null },
-      { id: 'blue_r1', side: 'right', offsetRelX: 0, offsetRelY: 65, gunner: null },
-      { id: 'blue_l2', side: 'left', offsetRelX: -80, offsetRelY: -65, gunner: null },
-      { id: 'blue_r2', side: 'right', offsetRelX: -80, offsetRelY: 65, gunner: null }
-    ],
-    watcher: null
-  }
-};
+// ルームごとのゲームデータを管理
+const rooms = {};
 
-const players = {};
-
-let potatoes = [];
-for (let i = 1; i <= 40; i++) {
-  potatoes.push({
-    id: i,
-    x: Math.random() * (WORLD_WIDTH - 600) + 300,
-    y: Math.random() * (WORLD_HEIGHT - 600) + 300,
-    collected: false
-  });
+function createInitialRoomState() {
+  return {
+    ships: {
+      red: {
+        id: 'red',
+        name: 'レッドポテト号',
+        color: '#e74c3c',
+        x: 1500,
+        y: 2250,
+        angle: 0,
+        speed: 0,
+        maxSpeed: 6.5,
+        hp: 100,
+        cannonAmmo: 15,
+        helmsman: null,
+        cannons: [
+          { id: 'red_l1', side: 'left', offsetRelX: 0, offsetRelY: -65, gunner: null },
+          { id: 'red_r1', side: 'right', offsetRelX: 0, offsetRelY: 65, gunner: null },
+          { id: 'red_l2', side: 'left', offsetRelX: -80, offsetRelY: -65, gunner: null },
+          { id: 'red_r2', side: 'right', offsetRelX: -80, offsetRelY: 65, gunner: null }
+        ],
+        watcher: null
+      },
+      blue: {
+        id: 'blue',
+        name: 'ブルーマッシュ号',
+        color: '#3498db',
+        x: 4500,
+        y: 2250,
+        angle: Math.PI,
+        speed: 0,
+        maxSpeed: 6.5,
+        hp: 100,
+        cannonAmmo: 15,
+        helmsman: null,
+        cannons: [
+          { id: 'blue_l1', side: 'left', offsetRelX: 0, offsetRelY: -65, gunner: null },
+          { id: 'blue_r1', side: 'right', offsetRelX: 0, offsetRelY: 65, gunner: null },
+          { id: 'blue_l2', side: 'left', offsetRelX: -80, offsetRelY: -65, gunner: null },
+          { id: 'blue_r2', side: 'right', offsetRelX: -80, offsetRelY: 65, gunner: null }
+        ],
+        watcher: null
+      }
+    },
+    players: {},
+    potatoes: Array.from({ length: 40 }, (_, i) => ({
+      id: i + 1,
+      x: Math.random() * (WORLD_WIDTH - 600) + 300,
+      y: Math.random() * (WORLD_HEIGHT - 600) + 300,
+      collected: false
+    })),
+    cannonBalls: []
+  };
 }
 
-let cannonBalls = [];
-
 io.on('connection', (socket) => {
-  console.log(`プレイヤー接続: ${socket.id}`);
+  console.log(`接続: ${socket.id}`);
 
-  const redCount = Object.values(players).filter(p => p.team === 'red').length;
-  const blueCount = Object.values(players).filter(p => p.team === 'blue').length;
-  const team = redCount <= blueCount ? 'red' : 'blue';
-  const ship = ships[team];
+  // ルーム参加・作成処理
+  socket.on('joinRoom', ({ roomName, playerName }) => {
+    socket.join(roomName);
+    socket.roomName = roomName;
 
-  players[socket.id] = {
-    id: socket.id,
-    team: team,
-    x: ship.x,
-    y: ship.y,
-    role: 'free',
-    activeCannonId: null,
-    name: `${team === 'red' ? '赤' : '青'}チーム乗組員_${Math.floor(Math.random() * 90 + 10)}`
-  };
+    if (!rooms[roomName]) {
+      rooms[roomName] = createInitialRoomState();
+    }
+    const room = rooms[roomName];
 
-  socket.emit('init', { id: socket.id, players, ships, potatoes, cannonBalls });
-  socket.broadcast.emit('newPlayer', players[socket.id]);
+    const redCount = Object.values(room.players).filter(p => p.team === 'red').length;
+    const blueCount = Object.values(room.players).filter(p => p.team === 'blue').length;
+    const team = redCount <= blueCount ? 'red' : 'blue';
+    const ship = room.ships[team];
+
+    room.players[socket.id] = {
+      id: socket.id,
+      team: team,
+      x: ship.x,
+      y: ship.y,
+      role: 'free',
+      activeCannonId: null,
+      name: playerName || `${team === 'red' ? '赤' : '青'}乗組員`
+    };
+
+    socket.emit('init', { id: socket.id, players: room.players, ships: room.ships, potatoes: room.potatoes, cannonBalls: room.cannonBalls });
+    socket.to(roomName).emit('newPlayer', room.players[socket.id]);
+  });
 
   socket.on('playerMove', (data) => {
-    const p = players[socket.id];
-    if (p && p.role === 'free') {
-      p.x = data.x;
-      p.y = data.y;
-      socket.broadcast.emit('playerMoved', p);
+    const room = rooms[socket.roomName];
+    if (room && room.players[socket.id]) {
+      const p = room.players[socket.id];
+      if (p.role === 'free') {
+        p.x = data.x;
+        p.y = data.y;
+        socket.to(socket.roomName).emit('playerMoved', p);
+      }
     }
   });
 
   socket.on('interact', (actionData) => {
-    const p = players[socket.id];
-    const ship = ships[p.team];
+    const room = rooms[socket.roomName];
+    if (!room) return;
+    const p = room.players[socket.id];
+    const ship = room.ships[p.team];
 
     if (actionData.type === 'helm') {
       if (p.role === 'free' && !ship.helmsman) {
@@ -140,26 +157,36 @@ io.on('connection', (socket) => {
         p.y = ship.y;
       }
     }
-    io.emit('gameStateUpdate', { players, ships });
+    io.to(socket.roomName).emit('gameStateUpdate', { players: room.players, ships: room.ships });
   });
 
-  // 舵を取っているプレイヤーからの正確な位置・角度を受け取って即時反映（カクつきゼロに）
   socket.on('shipControl', (controlData) => {
-    const p = players[socket.id];
+    const room = rooms[socket.roomName];
+    if (!room) return;
+    const p = room.players[socket.id];
     if (p && p.role === 'helmsman') {
-      const ship = ships[p.team];
-      ship.x = controlData.x;
-      ship.y = controlData.y;
-      ship.angle = controlData.angle;
-      ship.speed = controlData.speed;
-      socket.broadcast.emit('shipMoved', ship);
+      const s = room.ships[p.team];
+      s.x = controlData.x;
+      s.y = controlData.y;
+      s.angle = controlData.angle;
+      s.speed = controlData.speed;
+      socket.to(socket.roomName).emit('shipMoved', s);
     }
   });
 
+  // 大砲発射（2秒のリロード制限つき）
   socket.on('fireCannon', (data) => {
-    const p = players[socket.id];
-    const ship = ships[p.team];
+    const room = rooms[socket.roomName];
+    if (!room) return;
+    const p = room.players[socket.id];
+    const ship = room.ships[p.team];
+    
+    const now = Date.now();
     if (p && p.role === 'cannon' && ship.cannonAmmo > 0) {
+      if (p.lastFireTime && now - p.lastFireTime < 2000) {
+        return; // リロード中のため発射不可
+      }
+      p.lastFireTime = now;
       ship.cannonAmmo--;
 
       const ball = {
@@ -171,81 +198,93 @@ io.on('connection', (socket) => {
         vy: Math.sin(data.angle) * 18,
         range: 0
       };
-      cannonBalls.push(ball);
-      io.emit('cannonFired', ball);
-      io.emit('shipAmmoUpdate', { team: p.team, ammo: ship.cannonAmmo });
+      room.cannonBalls.push(ball);
+      io.to(socket.roomName).emit('cannonFired', ball);
+      io.to(socket.roomName).emit('shipAmmoUpdate', { team: p.team, ammo: ship.cannonAmmo });
+      socket.emit('reloadStarted', 2000);
     }
   });
 
   socket.on('collectPotato', (potatoId) => {
-    const p = players[socket.id];
-    const potato = potatoes.find(pt => pt.id === potatoId);
+    const room = rooms[socket.roomName];
+    if (!room) return;
+    const p = room.players[socket.id];
+    const potato = room.potatoes.find(pt => pt.id === potatoId);
     if (potato && !potato.collected) {
       potato.collected = true;
-      const ship = ships[p.team];
-      ship.cannonAmmo += 5; // ポテト獲得で弾が5発に増加
+      const ship = room.ships[p.team];
+      ship.cannonAmmo += 5;
 
-      io.emit('potatoCollected', { potatoId, team: p.team, ammo: ship.cannonAmmo });
+      io.to(socket.roomName).emit('potatoCollected', { potatoId, team: p.team, ammo: ship.cannonAmmo });
 
       setTimeout(() => {
-        potato.x = Math.random() * (WORLD_WIDTH - 600) + 300;
-        potato.y = Math.random() * (WORLD_HEIGHT - 600) + 300;
-        potato.collected = false;
-        io.emit('potatoRespawned', potato);
+        if (room.potatoes) {
+          potato.x = Math.random() * (WORLD_WIDTH - 600) + 300;
+          potato.y = Math.random() * (WORLD_HEIGHT - 600) + 300;
+          potato.collected = false;
+          io.to(socket.roomName).emit('potatoRespawned', potato);
+        }
       }, 5000);
     }
   });
 
   socket.on('disconnect', () => {
-    const p = players[socket.id];
-    if (p) {
-      const ship = ships[p.team];
-      if (ship.helmsman === socket.id) ship.helmsman = null;
-      if (ship.watcher === socket.id) ship.watcher = null;
-      ship.cannons.forEach(c => { if (c.gunner === socket.id) c.gunner = null; });
-      delete players[socket.id];
-      io.emit('playerDisconnected', socket.id);
-      io.emit('gameStateUpdate', { players, ships });
+    const roomName = socket.roomName;
+    if (roomName && rooms[roomName]) {
+      const room = rooms[roomName];
+      const p = room.players[socket.id];
+      if (p) {
+        const ship = room.ships[p.team];
+        if (ship.helmsman === socket.id) ship.helmsman = null;
+        if (ship.watcher === socket.id) ship.watcher = null;
+        ship.cannons.forEach(c => { if (c.gunner === socket.id) c.gunner = null; });
+        delete room.players[socket.id];
+        io.to(roomName).emit('playerDisconnected', socket.id);
+        io.to(roomName).emit('gameStateUpdate', { players: room.players, ships: room.ships });
+      }
     }
   });
 });
 
-// 砲弾の物理演算ループ
 setInterval(() => {
-  for (let i = cannonBalls.length - 1; i >= 0; i--) {
-    let ball = cannonBalls[i];
-    ball.x += ball.vx;
-    ball.y += ball.vy;
-    ball.range += 1;
+  for (let roomName in rooms) {
+    const room = rooms[roomName];
 
-    if (ball.range > 80) {
-      cannonBalls.splice(i, 1);
-      continue;
-    }
+    for (let i = room.cannonBalls.length - 1; i >= 0; i--) {
+      let ball = room.cannonBalls[i];
+      ball.x += ball.vx;
+      ball.y += ball.vy;
+      ball.range += 1;
 
-    for (let shipId in ships) {
-      let ship = ships[shipId];
-      if (ship.id !== ball.team) {
-        let dist = Math.hypot(ship.x - ball.x, ship.y - ball.y);
-        if (dist < 110) {
-          ship.hp -= 15;
-          io.emit('shipHit', { shipId: ship.id, hp: ship.hp });
-          cannonBalls.splice(i, 1);
+      if (ball.range > 80) {
+        room.cannonBalls.splice(i, 1);
+        continue;
+      }
 
-          if (ship.hp <= 0) {
-            io.emit('gameOver', `${ball.team === 'red' ? '赤チーム' : '青チーム'}の勝利！`);
-            ship.hp = 100;
+      for (let shipId in room.ships) {
+        let ship = room.ships[shipId];
+        if (ship.id !== ball.team) {
+          let dist = Math.hypot(ship.x - ball.x, ship.y - ball.y);
+          if (dist < 110) {
+            ship.hp -= 15;
+            io.to(roomName).emit('shipHit', { shipId: ship.id, hp: ship.hp });
+            room.cannonBalls.splice(i, 1);
+
+            if (ship.hp <= 0) {
+              io.to(roomName).emit('gameOver', `${ball.team === 'red' ? '赤チーム' : '青チーム'}の勝利！`);
+              ship.hp = 100;
+            }
+            break;
           }
-          break;
         }
       }
     }
-  }
 
-  io.emit('serverTick', { ships, cannonBalls });
+    io.to(roomName).emit('serverTick', { ships: room.ships, cannonBalls: room.cannonBalls });
+  }
 }, 1000 / 60);
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`✨ Pig of Potato v5 サーバー起動: http://localhost:${PORT}`);
+  console.log(`✨ Pig of Potato v6 サーバー起動: http://localhost:${PORT}`);
 });
