@@ -21,7 +21,7 @@ const ships = {
     y: 1500,
     angle: 0,
     speed: 0,
-    maxSpeed: 5.5,
+    maxSpeed: 6.5, // よりクイックに
     hp: 100,
     cannonAmmo: 15,
     helmsman: null,
@@ -41,7 +41,7 @@ const ships = {
     y: 1500,
     angle: Math.PI,
     speed: 0,
-    maxSpeed: 5.5,
+    maxSpeed: 6.5,
     hp: 100,
     cannonAmmo: 15,
     helmsman: null,
@@ -80,8 +80,8 @@ io.on('connection', (socket) => {
   players[socket.id] = {
     id: socket.id,
     team: team,
-    x: ship.x + (Math.random() * 80 - 40),
-    y: ship.y + (Math.random() * 80 - 40),
+    x: ship.x,
+    y: ship.y,
     role: 'free',
     activeCannonId: null,
     name: `${team === 'red' ? '赤' : '青'}チーム乗組員_${Math.floor(Math.random() * 90 + 10)}`
@@ -110,6 +110,9 @@ io.on('connection', (socket) => {
       } else if (p.role === 'helmsman') {
         ship.helmsman = null;
         p.role = 'free';
+        // 舵から降りたときは船の後方（舵の少し前）の安全な位置に戻す
+        p.x = ship.x - Math.cos(ship.angle) * 100;
+        p.y = ship.y - Math.sin(ship.angle) * 100;
       }
     } else if (actionData.type === 'cannon') {
       const cannon = ship.cannons.find(c => c.id === actionData.cannonId);
@@ -119,7 +122,12 @@ io.on('connection', (socket) => {
         p.activeCannonId = cannon.id;
       } else if (p.role === 'cannon') {
         const currentCannon = ship.cannons.find(c => c.id === p.activeCannonId);
-        if (currentCannon) currentCannon.gunner = null;
+        if (currentCannon) {
+          currentCannon.gunner = null;
+          // 大砲から降りたときは甲板上の安全な位置に戻す
+          p.x = ship.x + Math.cos(ship.angle) * currentCannon.offsetRelX - Math.sin(ship.angle) * (currentCannon.side === 'left' ? 20 : -20);
+          p.y = ship.y + Math.sin(ship.angle) * currentCannon.offsetRelX + Math.cos(ship.angle) * (currentCannon.side === 'left' ? 20 : -20);
+        }
         p.role = 'free';
         p.activeCannonId = null;
       }
@@ -130,6 +138,8 @@ io.on('connection', (socket) => {
       } else if (p.role === 'watcher') {
         ship.watcher = null;
         p.role = 'free';
+        p.x = ship.x;
+        p.y = ship.y;
       }
     }
     io.emit('gameStateUpdate', { players, ships });
@@ -245,5 +255,5 @@ setInterval(() => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`✨ Pig of Potato サーバー起動: http://localhost:${PORT}`);
+  console.log(`✨ Pig of Potato v4 サーバー起動: http://localhost:${PORT}`);
 });
