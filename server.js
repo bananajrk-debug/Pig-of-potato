@@ -144,7 +144,6 @@ io.on('connection', (socket) => {
     const room = rooms[socket.roomCode];
     if (room) {
       room.status = 'playing';
-      // プレイヤーの位置をチームの船の位置に確実に合わせる
       for (let id in room.players) {
         let p = room.players[id];
         let ship = room.ships[p.team];
@@ -452,5 +451,5 @@ setInterval(() => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`✨ Pig of Potato v14 サーバー起動: http://localhost:${PORT}`);
+  console.log(`✨ Pig of Potato v15 サーバー起動: http://localhost:${PORT}`);
 });
