@@ -12,7 +12,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 const WORLD_WIDTH = 4000;
 const WORLD_HEIGHT = 3000;
 
-// 2対2のチーム大型船（サイズ3倍、舵は一番後ろ）
 const ships = {
   red: {
     id: 'red',
@@ -22,7 +21,7 @@ const ships = {
     y: 1500,
     angle: 0,
     speed: 0,
-    maxSpeed: 5.5, // スピードアップ
+    maxSpeed: 5.5,
     hp: 100,
     cannonAmmo: 15,
     helmsman: null,
@@ -58,7 +57,6 @@ const ships = {
 
 const players = {};
 
-// じゃがいもの配置
 let potatoes = [];
 for (let i = 1; i <= 25; i++) {
   potatoes.push({
@@ -157,7 +155,7 @@ io.on('connection', (socket) => {
         team: p.team,
         x: data.x,
         y: data.y,
-        vx: Math.cos(data.angle) * 16, // 弾速アップ
+        vx: Math.cos(data.angle) * 16,
         vy: Math.sin(data.angle) * 16,
         range: 0
       };
@@ -200,7 +198,6 @@ io.on('connection', (socket) => {
   });
 });
 
-// 物理演算・判定ループ
 setInterval(() => {
   for (let id in ships) {
     let ship = ships[id];
@@ -228,7 +225,7 @@ setInterval(() => {
       let ship = ships[shipId];
       if (ship.id !== ball.team) {
         let dist = Math.hypot(ship.x - ball.x, ship.y - ball.y);
-        if (dist < 110) { // 船が3倍に大きくなったため判定も拡大
+        if (dist < 110) {
           ship.hp -= 15;
           io.emit('shipHit', { shipId: ship.id, hp: ship.hp });
           cannonBalls.splice(i, 1);
@@ -248,5 +245,5 @@ setInterval(() => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`✨ Pig of Potato v3 サーバー起動: http://localhost:${PORT}`);
+  console.log(`✨ Pig of Potato v3.1 サーバー起動: http://localhost:${PORT}`);
 });
