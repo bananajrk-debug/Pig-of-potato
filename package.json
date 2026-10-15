@@ -1,7 +1,7 @@
 {
   "name": "pig-of-potato",
-  "version": "1.0.0",
-  "description": "A multiplayer pirate-style adventure game with pigs and potatoes",
+  "version": "2.0.0",
+  "description": "2v2 multiplayer pirate game with big ships, cannons, and potatoes",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
