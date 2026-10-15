@@ -9,16 +9,16 @@ const io = new Server(server);
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-const WORLD_WIDTH = 4000;
-const WORLD_HEIGHT = 3000;
+const WORLD_WIDTH = 6000;
+const WORLD_HEIGHT = 4500;
 
 const ships = {
   red: {
     id: 'red',
     name: 'レッドポテト号',
     color: '#e74c3c',
-    x: 1000,
-    y: 1500,
+    x: 1500,
+    y: 2250,
     angle: 0,
     speed: 0,
     maxSpeed: 6.5,
@@ -37,8 +37,8 @@ const ships = {
     id: 'blue',
     name: 'ブルーマッシュ号',
     color: '#3498db',
-    x: 3000,
-    y: 1500,
+    x: 4500,
+    y: 2250,
     angle: Math.PI,
     speed: 0,
     maxSpeed: 6.5,
@@ -58,11 +58,11 @@ const ships = {
 const players = {};
 
 let potatoes = [];
-for (let i = 1; i <= 25; i++) {
+for (let i = 1; i <= 40; i++) {
   potatoes.push({
     id: i,
-    x: Math.random() * (WORLD_WIDTH - 400) + 200,
-    y: Math.random() * (WORLD_HEIGHT - 400) + 200,
+    x: Math.random() * (WORLD_WIDTH - 600) + 300,
+    y: Math.random() * (WORLD_HEIGHT - 600) + 300,
     collected: false
   });
 }
@@ -143,12 +143,16 @@ io.on('connection', (socket) => {
     io.emit('gameStateUpdate', { players, ships });
   });
 
+  // 舵を取っているプレイヤーからの正確な位置・角度を受け取って即時反映（カクつきゼロに）
   socket.on('shipControl', (controlData) => {
     const p = players[socket.id];
     if (p && p.role === 'helmsman') {
       const ship = ships[p.team];
+      ship.x = controlData.x;
+      ship.y = controlData.y;
       ship.angle = controlData.angle;
       ship.speed = controlData.speed;
+      socket.broadcast.emit('shipMoved', ship);
     }
   });
 
@@ -179,13 +183,13 @@ io.on('connection', (socket) => {
     if (potato && !potato.collected) {
       potato.collected = true;
       const ship = ships[p.team];
-      ship.cannonAmmo += 4;
+      ship.cannonAmmo += 5; // ポテト獲得で弾が5発に増加
 
       io.emit('potatoCollected', { potatoId, team: p.team, ammo: ship.cannonAmmo });
 
       setTimeout(() => {
-        potato.x = Math.random() * (WORLD_WIDTH - 400) + 200;
-        potato.y = Math.random() * (WORLD_HEIGHT - 400) + 200;
+        potato.x = Math.random() * (WORLD_WIDTH - 600) + 300;
+        potato.y = Math.random() * (WORLD_HEIGHT - 600) + 300;
         potato.collected = false;
         io.emit('potatoRespawned', potato);
       }, 5000);
@@ -206,25 +210,15 @@ io.on('connection', (socket) => {
   });
 });
 
+// 砲弾の物理演算ループ
 setInterval(() => {
-  for (let id in ships) {
-    let ship = ships[id];
-    if (ship.speed !== 0) {
-      ship.x += Math.cos(ship.angle) * ship.speed;
-      ship.y += Math.sin(ship.angle) * ship.speed;
-
-      ship.x = Math.max(200, Math.min(WORLD_WIDTH - 200, ship.x));
-      ship.y = Math.max(200, Math.min(WORLD_HEIGHT - 200, ship.y));
-    }
-  }
-
   for (let i = cannonBalls.length - 1; i >= 0; i--) {
     let ball = cannonBalls[i];
     ball.x += ball.vx;
     ball.y += ball.vy;
     ball.range += 1;
 
-    if (ball.range > 70) {
+    if (ball.range > 80) {
       cannonBalls.splice(i, 1);
       continue;
     }
@@ -253,5 +247,5 @@ setInterval(() => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`✨ Pig of Potato v4.1 サーバー起動: http://localhost:${PORT}`);
+  console.log(`✨ Pig of Potato v5 サーバー起動: http://localhost:${PORT}`);
 });
