@@ -14,6 +14,42 @@ const WORLD_HEIGHT = 11250;
 
 const rooms = {};
 
+// 船の正確な当たり判定（3つの円で先端から後方までカバー）
+function getShipCircles(ship) {
+  const cos = Math.cos(ship.angle);
+  const sin = Math.sin(ship.angle);
+  return [
+    { x: ship.x, y: ship.y, r: 65 },                    // 中央
+    { x: ship.x + cos * 80, y: ship.y + sin * 80, r: 55 }, // 前方
+    { x: ship.x - cos * 80, y: ship.y - sin * 80, r: 55 }  // 後方
+  ];
+}
+
+function checkShipIslandCollision(ship, islands) {
+  const circles = getShipCircles(ship);
+  for (let isl of islands) {
+    for (let c of circles) {
+      if (Math.hypot(c.x - isl.x, c.y - isl.y) < isl.radius + c.r) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+function checkShipShipCollision(shipA, shipB) {
+  const circlesA = getShipCircles(shipA);
+  const circlesB = getShipCircles(shipB);
+  for (let ca of circlesA) {
+    for (let cb of circlesB) {
+      if (Math.hypot(ca.x - cb.x, ca.y - cb.y) < ca.r + cb.r) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 function createInitialRoomState(isCpuMode = false) {
   const islands = [
     { id: 1, x: 3500, y: 3000, radius: 900, wood: 8, hasSpecialAmmo: true, ammoType: 2 },
@@ -241,38 +277,26 @@ io.on('connection', (socket) => {
     if (p && p.role === 'helmsman') {
       const s = room.ships[p.team];
       
-      let nextX = controlData.x;
-      let nextY = controlData.y;
+      let testShip = { ...s, x: controlData.x, y: controlData.y, angle: controlData.angle };
       let collided = false;
 
-      room.islands.forEach(isl => {
-        if (Math.hypot(nextX - isl.x, nextY - isl.y) < isl.radius + 140) {
-          collided = true;
-        }
-      });
+      // 島との衝突判定（正確なマルチサークル）
+      if (checkShipIslandCollision(testShip, room.islands)) {
+        collided = true;
+      }
 
-      // 船同士が引っかからないよう、衝突時に反発して押し戻す処理
+      // 敵船との衝突防止
       for (let otherId in room.ships) {
         if (otherId !== s.id) {
-          let otherShip = room.ships[otherId];
-          let dist = Math.hypot(nextX - otherShip.x, nextY - otherShip.y);
-          if (dist < 300) {
+          if (checkShipShipCollision(testShip, room.ships[otherId])) {
             collided = true;
-            // 押し出しベクトルを計算してスタックを防止
-            let pushAngle = Math.atan2(nextY - otherShip.y, nextX - otherShip.x);
-            nextX = otherShip.x + Math.cos(pushAngle) * 300;
-            nextY = otherShip.y + Math.sin(pushAngle) * 300;
-            s.speed = 0;
           }
         }
       }
 
       if (!collided) {
-        s.x = nextX;
-        s.y = nextY;
-      } else {
-        s.x = nextX; // 反発位置を反映
-        s.y = nextY;
+        s.x = controlData.x;
+        s.y = controlData.y;
       }
       s.angle = controlData.angle;
       s.speed = controlData.speed;
@@ -401,6 +425,7 @@ io.on('connection', (socket) => {
   });
 });
 
+// CPUのAI挙動（横幅の4倍＝約520の距離を保ち、横向きになって大砲を撃つ）
 setInterval(() => {
   for (let roomCode in rooms) {
     const room = rooms[roomCode];
@@ -410,43 +435,47 @@ setInterval(() => {
       const blueShip = room.ships.blue;
       const redShip = room.ships.red;
 
-      let targetAngle = Math.atan2(redShip.y - blueShip.y, redShip.x - blueShip.x);
+      let dx = redShip.x - blueShip.x;
+      let dy = redShip.y - blueShip.y;
+      let dist = Math.hypot(dx, dy);
+
+      // 船の横幅（約130）の4倍 ＝ 520の距離を維持
+      let targetDist = 520;
+      let toPlayerAngle = Math.atan2(dy, dx);
+
+      // プレイヤーに対して横向き（側面を向く）になるための目標角度
+      // プレイヤーとの位置関係に応じて、左または右の側面を向く
+      let targetAngle = toPlayerAngle + Math.PI / 2;
       let angleDiff = targetAngle - blueShip.angle;
       while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
       while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+      blueShip.angle += angleDiff * 0.04;
 
-      if (angleDiff > 0.05) blueShip.angle += 0.03;
-      else if (angleDiff < -0.05) blueShip.angle -= 0.03;
-
-      let dist = Math.hypot(redShip.x - blueShip.x, redShip.y - blueShip.y);
-      if (dist > 600) {
-        blueShip.speed = blueShip.maxSpeed;
-      } else {
-        blueShip.speed = 2.0;
-      }
+      // 距離に応じて前進・後退を調整して520の距離を保つ
+      let distDiff = dist - targetDist;
+      blueShip.speed = Math.max(-3.0, Math.min(blueShip.maxSpeed, distDiff * 0.02));
 
       let nextX = blueShip.x + Math.cos(blueShip.angle) * blueShip.speed;
       let nextY = blueShip.y + Math.sin(blueShip.angle) * blueShip.speed;
-      
+
+      let testShip = { ...blueShip, x: nextX, y: nextY };
       let collided = false;
       room.islands.forEach(isl => {
-        if (Math.hypot(nextX - isl.x, nextY - isl.y) < isl.radius + 140) collided = true;
+        if (checkShipIslandCollision(testShip, [isl])) collided = true;
       });
-      if (Math.hypot(nextX - redShip.x, nextY - redShip.y) < 300) {
-        collided = true;
-        let pushAngle = Math.atan2(nextY - redShip.y, nextX - redShip.x);
-        nextX = redShip.x + Math.cos(pushAngle) * 300;
-        nextY = redShip.y + Math.sin(pushAngle) * 300;
-      }
+      if (checkShipShipCollision(testShip, redShip)) collided = true;
 
-      blueShip.x = nextX;
-      blueShip.y = nextY;
+      if (!collided) {
+        blueShip.x = nextX;
+        blueShip.y = nextY;
+      }
       blueShip.x = Math.max(300, Math.min(WORLD_WIDTH - 300, blueShip.x));
       blueShip.y = Math.max(300, Math.min(WORLD_HEIGHT - 300, blueShip.y));
 
+      // 距離が十分近く、側面を向いている時に大砲を発射
       const now = Date.now();
       if (dist < 1800 && blueShip.ammo[1] > 0 && blueShip.leftCooldown < now) {
-        blueShip.leftCooldown = now + 2000;
+        blueShip.leftCooldown = now + 1800;
         blueShip.ammo[1]--;
         room.cannonBalls.push({
           id: Math.random().toString(),
@@ -461,6 +490,7 @@ setInterval(() => {
       }
     }
 
+    // 砲弾の移動とヒット判定
     for (let i = room.cannonBalls.length - 1; i >= 0; i--) {
       let ball = room.cannonBalls[i];
       ball.x += ball.vx;
