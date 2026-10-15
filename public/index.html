@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pig of Potato - Smart CPU Combat</title>
+    <title>Pig of Potato - 5 CPU Fleet & Radar</title>
     <style>
         body {
             margin: 0;
@@ -157,7 +157,6 @@
             gap: 12px;
         }
         .team-box.red-team { border-color: #e74c3c; }
-        .team-box.blue-team { border-color: #3498db; }
 
         .team-title {
             font-size: 18px;
@@ -166,9 +165,8 @@
             padding-bottom: 8px;
             border-bottom: 2px solid rgba(255,255,255,0.15);
             letter-spacing: 1px;
+            color: #e74c3c;
         }
-        .red-team .team-title { color: #e74c3c; }
-        .blue-team .team-title { color: #3498db; }
 
         .member-list {
             display: flex;
@@ -343,6 +341,62 @@
         }
         #minimapCanvas { width: 100%; height: 100%; display: block; }
 
+        /* 勝敗結果表示画面オーバーレイ */
+        #result-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.85);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+        .result-box {
+            background: #1b263b;
+            padding: 50px 70px;
+            border-radius: 25px;
+            border: 4px solid #f39c12;
+            text-align: center;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.9);
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+            width: 420px;
+        }
+        #result-message {
+            font-size: 32px;
+            font-weight: bold;
+            color: #f1c40f;
+            text-shadow: 0 4px 15px rgba(0,0,0,0.8);
+        }
+
+        /* 敵接近インジケーター */
+        #danger-indicator {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(231, 76, 60, 0.9);
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 12px;
+            font-weight: bold;
+            font-size: 16px;
+            border: 2px solid #fff;
+            box-shadow: 0 0 20px rgba(231, 76, 60, 0.9);
+            display: none;
+            z-index: 40;
+            animation: pulse 0.8s infinite alternate;
+        }
+        @keyframes pulse {
+            0% { opacity: 0.6; transform: translateX(-50%) scale(1); }
+            100% { opacity: 1; transform: translateX(-50%) scale(1.05); }
+        }
+
         canvas { display: block; background: #2980b9; }
     </style>
 </head>
@@ -356,6 +410,17 @@
             <button class="btn" onclick="closeCodeModal()">閉じる</button>
         </div>
     </div>
+
+    <!-- 勝敗結果画面オーバーレイ -->
+    <div id="result-overlay">
+        <div class="result-box">
+            <div id="result-message">ゲーム結果</div>
+            <button class="btn" onclick="returnToLobby()">🏠 ロビーに戻る</button>
+        </div>
+    </div>
+
+    <!-- 敵接近アラート -->
+    <div id="danger-indicator">⚠️ 敵船が接近中！</div>
 
     <!-- タイトル画面 -->
     <div id="title-screen" class="screen">
@@ -371,7 +436,7 @@
             </div>
             
             <button class="btn" id="btn-join">オンライン対戦ロビーへ</button>
-            <button class="btn btn-cpu" id="btn-cpu">🤖 CPUと対戦する (ソロ)</button>
+            <button class="btn btn-cpu" id="btn-cpu">🤖 敵艦隊(5隻)と対戦する</button>
         </div>
     </div>
 
@@ -395,13 +460,8 @@
 
             <div class="teams-container">
                 <div class="team-box red-team">
-                    <div class="team-title">🔴 赤チーム</div>
+                    <div class="team-title">🔴 プレイヤーチーム</div>
                     <div class="member-list" id="red-member-list">メンバーなし</div>
-                </div>
-
-                <div class="team-box blue-team">
-                    <div class="team-title">🔵 青チーム</div>
-                    <div class="member-list" id="blue-member-list">メンバーなし</div>
                 </div>
             </div>
 
@@ -417,7 +477,7 @@
     <div id="game-ui" class="hidden" style="position: absolute; top:0; left:0; width:100vw; height:100vh;">
         <div id="ui">
             <h2>🐷 Pig of Potato 🥔</h2>
-            <p>チーム: <span id="team-name">-</span> | HP: <span id="team-hp">100</span> | 木材: <span id="team-wood">0</span>個</p>
+            <p>HP: <span id="team-hp">100</span> | 木材: <span id="team-wood">0</span>個</p>
             <p>選択中弾: <b id="current-ammo-type" style="color:#f1c40f;">1: 通常弾</b></p>
             <p>左大砲: <span id="left-cooldown" style="color:#2ecc71;">READY</span> | 右大砲: <span id="right-cooldown" style="color:#2ecc71;">READY</span></p>
         </div>
@@ -453,7 +513,7 @@
             - <b>舵・大砲・見張り台:</b> 近くで <b>[ Eキー ]</b><br>
             - <b>大砲発射:</b> <b>[Kキー]で左大砲</b>、<b>[Oキー]で右大砲</b> （個別クールタイム）<br>
             - <b>島での採取:</b> <b>[Eキー長押し (3秒)]</b> で木や特殊弾をゲット！<br>
-            - <b>修理:</b> 船の<b>先頭にある赤い修理ポイント</b>で <b>[Rキー長押し (2秒)]</b> （木材2個必要）
+            - <b>修理:</b> 船の<b>先端の赤い修理ポイント</b>で <b>[Rキー長押し (2秒)]</b> （木材2個必要）
         </div>
 
         <div id="minimap-container">
@@ -470,6 +530,9 @@
         const titleScreen = document.getElementById('title-screen');
         const lobbyScreen = document.getElementById('lobby-screen');
         const gameUi = document.getElementById('game-ui');
+        const resultOverlay = document.getElementById('result-overlay');
+        const resultMessage = document.getElementById('result-message');
+        const dangerIndicator = document.getElementById('danger-indicator');
         
         const inputName = document.getElementById('input-name');
         const inputRoom = document.getElementById('input-room');
@@ -484,7 +547,6 @@
         const codeModal = document.getElementById('code-modal');
 
         const redMemberList = document.getElementById('red-member-list');
-        const blueMemberList = document.getElementById('blue-member-list');
 
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
@@ -502,7 +564,7 @@
         resize();
 
         let myId = null;
-        let myTeam = null;
+        let myTeam = 'red';
         let currentRoomCode = '';
         let players = {};
         let ships = {};
@@ -543,6 +605,13 @@
         }
         function closeCodeModal() {
             codeModal.style.display = 'none';
+        }
+
+        function returnToLobby() {
+            resultOverlay.style.display = 'none';
+            gameUi.classList.add('hidden');
+            titleScreen.classList.remove('hidden');
+            roomCodeBadge.style.display = 'none';
         }
 
         function drawPigCharacterLarge(context, x, y, bodyColor, name) {
@@ -737,22 +806,12 @@
             roomCodeBadge.style.display = 'block';
 
             let redHtml = '';
-            let blueHtml = '';
-
             for (let id in players) {
                 let p = players[id];
                 let readyText = p.ready ? '✅ 準備OK' : '⏳ 待機中...';
-                let itemHtml = `<div class="member-item"><div><b>${p.name}</b></div><div style="font-size:12px; color:#a0aec0;">${readyText}</div></div>`;
-                
-                if (p.team === 'red') {
-                    redHtml += itemHtml;
-                } else {
-                    blueHtml += itemHtml;
-                }
+                redHtml += `<div class="member-item"><div><b>${p.name}</b></div><div style="font-size:12px; color:#a0aec0;">${readyText}</div></div>`;
             }
-
             redMemberList.innerHTML = redHtml || '<div style="color:#7f8c8d; text-align:center; padding:12px;">メンバーなし</div>';
-            blueMemberList.innerHTML = blueHtml || '<div style="color:#7f8c8d; text-align:center; padding:12px;">メンバーなし</div>';
         });
 
         socket.on('gameStart', (data) => {
@@ -765,13 +824,8 @@
             badgeCode.innerText = currentRoomCode;
             roomCodeBadge.style.display = 'block';
 
-            if (players[myId]) {
-                myTeam = players[myId].team;
-            } else {
-                myTeam = Object.values(players).find(p => p.id === myId)?.team || Object.values(players)[0].team;
-            }
-
             lobbyScreen.classList.add('hidden');
+            resultOverlay.style.display = 'none';
             gameUi.classList.remove('hidden');
             resize();
         });
@@ -791,14 +845,14 @@
                     if (!keys.r) {
                         keys.r = true;
                         const me = players[myId];
-                        const ship = ships[myTeam];
+                        const ship = ships['red'];
                         if (me && ship && me.role === 'free') {
                             if (ship.wood < 2) {
                                 alert('木材が足りません！（修理には木材2個以上必要です）');
                                 return;
                             }
-                            const rx = ship.x + Math.cos(ship.angle) * 140;
-                            const ry = ship.y + Math.sin(ship.angle) * 140;
+                            const rx = ship.x + Math.cos(ship.angle) * 110;
+                            const ry = ship.y + Math.sin(ship.angle) * 110;
                             if (Math.hypot(me.x - rx, me.y - ry) < 50) {
                                 repairing = true;
                                 repairStartTime = Date.now();
@@ -902,12 +956,33 @@
             }
             cannonBalls = data.cannonBalls || [];
             updateUIValues();
+            checkEnemyProximity();
         });
 
+        // 敵が近づいてきたら分かるようにする判定
+        function checkEnemyProximity() {
+            if (!ships['red']) return;
+            const redShip = ships['red'];
+            let closeEnemy = false;
+
+            for (let sId in ships) {
+                let s = ships[sId];
+                if (s.isCpu && s.hp > 0) {
+                    if (Math.hypot(s.x - redShip.x, s.y - redShip.y) < 1200) {
+                        closeEnemy = true;
+                        break;
+                    }
+                }
+            }
+
+            if (dangerIndicator) {
+                dangerIndicator.style.display = closeEnemy ? 'block' : 'none';
+            }
+        }
+
         function updateUIValues() {
-            if (!myTeam || !ships || !ships[myTeam]) return;
-            const ship = ships[myTeam];
-            if (document.getElementById('team-name')) document.getElementById('team-name').innerText = myTeam === 'red' ? '🔴 赤チーム' : '🔵 青チーム';
+            if (!ships || !ships['red']) return;
+            const ship = ships['red'];
             if (document.getElementById('team-hp')) document.getElementById('team-hp').innerText = ship.hp;
             if (document.getElementById('team-wood')) document.getElementById('team-wood').innerText = ship.wood;
             
@@ -993,17 +1068,18 @@
             }
         });
 
-        socket.on('gameOver', (msg) => {
-            alert(msg);
-            location.reload();
+        // 勝敗結果の画面表示
+        socket.on('gameOver', (data) => {
+            resultMessage.innerText = data.message;
+            resultOverlay.style.display = 'flex';
         });
 
         function update() {
             if (gameUi.classList.contains('hidden')) return;
             if (!myId || !players || !players[myId]) return;
             const p = players[myId];
-            if (!ships || !ships[p.team]) return;
-            const ship = ships[p.team];
+            if (!ships || !ships['red']) return;
+            const ship = ships['red'];
 
             if (p.role === 'free') {
                 let speed = 6.0;
@@ -1029,7 +1105,7 @@
                     const relY = p.y - ship.y;
                     const localX = relX * cos - relY * sin;
                     const localY = relX * sin + relY * cos;
-                    if (localX >= -110 && localX <= 140 && localY >= -50 && localY <= 50) {
+                    if (localX >= -90 && localX <= 110 && localY >= -40 && localY <= 40) {
                         onShip = true;
                     }
 
@@ -1076,10 +1152,10 @@
                         }
                     } else {
                         interactTarget = null;
-                        const helmX = ship.x - Math.cos(ship.angle) * 140;
-                        const helmY = ship.y - Math.sin(ship.angle) * 140;
-                        const rx = ship.x + Math.cos(ship.angle) * 140;
-                        const ry = ship.y + Math.sin(ship.angle) * 140;
+                        const helmX = ship.x - Math.cos(ship.angle) * 110;
+                        const helmY = ship.y - Math.sin(ship.angle) * 110;
+                        const rx = ship.x + Math.cos(ship.angle) * 110;
+                        const ry = ship.y + Math.sin(ship.angle) * 110;
 
                         let nearIsland = false;
                         islands.forEach(isl => {
@@ -1091,10 +1167,10 @@
                         });
 
                         if (!nearIsland) {
-                            if (Math.hypot(p.x - rx, p.y - ry) < 50) {
+                            if (Math.hypot(p.x - rx, p.y - ry) < 45) {
                                 promptEl.innerText = '【Rキー長押し】船先端の赤い修理ポイントで修理 (木材2個必要)';
                                 promptEl.style.display = 'block';
-                            } else if (Math.hypot(p.x - helmX, p.y - helmY) < 55 && !ship.helmsman) {
+                            } else if (Math.hypot(p.x - helmX, p.y - helmY) < 50 && !ship.helmsman) {
                                 interactTarget = { type: 'helm' };
                                 promptEl.innerText = '【Eキー】舵を取る | 【K:左大砲 / O:右大砲】';
                                 promptEl.style.display = 'block';
@@ -1107,14 +1183,14 @@
                                 ship.cannons.forEach(c => {
                                     const cx = ship.x + Math.cos(ship.angle) * c.offsetRelX - Math.sin(ship.angle) * c.offsetRelY;
                                     const cy = ship.y + Math.sin(ship.angle) * c.offsetRelX + Math.cos(ship.angle) * c.offsetRelY;
-                                    if (Math.hypot(p.x - cx, p.y - cy) < 50 && !c.gunner) {
+                                    if (Math.hypot(p.x - cx, p.y - cy) < 45 && !c.gunner) {
                                         interactTarget = { type: 'cannon', cannonId: c.id };
                                         promptEl.innerText = '【Eキー】大砲に乗り込む';
                                         promptEl.style.display = 'block';
                                         nearCannon = true;
                                     }
                                 });
-                                if (!nearCannon && !interactTarget && Math.hypot(p.x - rx, p.y - ry) >= 50) {
+                                if (!nearCannon && !interactTarget && Math.hypot(p.x - rx, p.y - ry) >= 45) {
                                     promptEl.style.display = 'none';
                                 }
                             }
@@ -1153,7 +1229,7 @@
                             let testShip = { ...ship, x: nextX, y: nextY };
                             let collided = false;
                             islands.forEach(isl => {
-                                if (Math.hypot(nextX - isl.x, nextY - isl.y) < isl.radius + 130) {
+                                if (Math.hypot(nextX - isl.x, nextY - isl.y) < isl.radius + 110) {
                                     collided = true;
                                     ship.speed = 0;
                                 }
@@ -1162,7 +1238,7 @@
                             for (let otherId in ships) {
                                 if (otherId !== ship.id) {
                                     let otherShip = ships[otherId];
-                                    if (Math.hypot(nextX - otherShip.x, nextY - otherShip.y) < 320) {
+                                    if (Math.hypot(nextX - otherShip.x, nextY - otherShip.y) < 260) {
                                         collided = true;
                                         ship.speed = 0;
                                     }
@@ -1189,7 +1265,7 @@
                 }
 
                 potatoes.forEach(pot => {
-                    if (!pot.collected && Math.hypot(ship.x - pot.x, ship.y - pot.y) < 140) {
+                    if (!pot.collected && Math.hypot(ship.x - pot.x, ship.y - pot.y) < 120) {
                         socket.emit('collectPotato', pot.id);
                     }
                 });
@@ -1199,10 +1275,10 @@
         function draw() {
             if (gameUi.classList.contains('hidden')) return;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            if (!myId || !players || !players[myId] || !ships || !ships[myTeam]) return;
+            if (!myId || !players || !players[myId] || !ships || !ships['red']) return;
 
             const me = players[myId];
-            const myShip = ships[myTeam];
+            const myShip = ships['red'];
 
             let targetX = me.role === 'watcher' ? myShip.x : (me.role === 'helmsman' || me.role === 'cannon') ? myShip.x : me.x;
             let targetY = me.role === 'watcher' ? myShip.y : (me.role === 'helmsman' || me.role === 'cannon') ? myShip.y : me.y;
@@ -1276,94 +1352,100 @@
                 }
             });
 
+            // すべての船（プレイヤー＋一回り小さくなった5隻のCPU船）を描画
             for (let sId in ships) {
                 let s = ships[sId];
+                if (s.hp <= 0) continue; // 沈没した船は描画しない
+
                 ctx.save();
                 ctx.translate(s.x, s.y);
                 ctx.rotate(s.angle);
                 
-                ctx.translate(60, 0);
+                ctx.translate(50, 0);
 
-                ctx.fillStyle = sId === 'red' ? '#78281f' : '#154360';
-                ctx.fillRect(-130, -65, 260, 130);
-                ctx.lineWidth = 5;
+                // 一回り小さいサイズ（長さ200、幅100）
+                ctx.fillStyle = s.isCpu ? '#154360' : '#78281f';
+                ctx.fillRect(-100, -50, 200, 100);
+                ctx.lineWidth = 4;
                 ctx.strokeStyle = '#111';
-                ctx.strokeRect(-130, -65, 260, 130);
+                ctx.strokeRect(-100, -50, 200, 100);
 
                 ctx.beginPath();
-                ctx.moveTo(130, -65);
-                ctx.lineTo(180, 0);
-                ctx.lineTo(130, 65);
+                ctx.moveTo(100, -50);
+                ctx.lineTo(140, 0);
+                ctx.lineTo(100, 50);
                 ctx.closePath();
-                ctx.fillStyle = sId === 'red' ? '#922b21' : '#1f618d';
+                ctx.fillStyle = s.isCpu ? '#1f618d' : '#922b21';
                 ctx.fill();
                 ctx.stroke();
 
                 ctx.fillStyle = '#d4ac0d';
-                ctx.fillRect(-90, -45, 180, 90);
-                ctx.strokeRect(-90, -45, 180, 90);
+                ctx.fillRect(-70, -35, 140, 70);
+                ctx.strokeRect(-70, -35, 140, 70);
 
                 ctx.fillStyle = '#5d4037';
-                ctx.fillRect(-15, -15, 30, 30);
+                ctx.fillRect(-12, -12, 24, 24);
                 ctx.beginPath();
-                ctx.arc(0, 0, 22, 0, Math.PI * 2);
+                ctx.arc(0, 0, 18, 0, Math.PI * 2);
                 ctx.fillStyle = '#8d6e63';
                 ctx.fill();
                 ctx.stroke();
 
                 s.cannons.forEach(c => {
                     ctx.fillStyle = '#2c3e50';
-                    ctx.fillRect(c.offsetRelX - 12, c.offsetRelY - 10, 24, 20);
+                    ctx.fillRect(c.offsetRelX - 10, c.offsetRelY - 8, 20, 16);
                     ctx.strokeStyle = '#000';
-                    ctx.strokeRect(c.offsetRelX - 12, c.offsetRelY - 10, 24, 20);
+                    ctx.strokeRect(c.offsetRelX - 10, c.offsetRelY - 8, 20, 16);
                 });
 
                 ctx.fillStyle = '#e67e22';
-                ctx.fillRect(-145, -15, 15, 30);
+                ctx.fillRect(-115, -12, 12, 24);
                 ctx.strokeStyle = '#d35400';
-                ctx.strokeRect(-145, -15, 15, 30);
+                ctx.strokeRect(-115, -12, 12, 24);
 
-                // 先頭に修理スポット（赤い点）を配置
-                ctx.save();
-                ctx.translate(140, 0);
-                ctx.fillStyle = '#e74c3c';
-                ctx.beginPath();
-                ctx.arc(0, 0, 12, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.lineWidth = 3;
-                ctx.strokeStyle = '#fff';
-                ctx.stroke();
-                ctx.fillStyle = '#fff';
-                ctx.font = 'bold 10px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText('🛠️', 0, 0);
+                // プレイヤー船にのみ先端の修理スポットを表示
+                if (!s.isCpu) {
+                    ctx.save();
+                    ctx.translate(110, 0);
+                    ctx.fillStyle = '#e74c3c';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 10, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.lineWidth = 2.5;
+                    ctx.strokeStyle = '#fff';
+                    ctx.stroke();
+                    ctx.fillStyle = '#fff';
+                    ctx.font = 'bold 9px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('🛠️', 0, 0);
+                    ctx.restore();
+                }
+
                 ctx.restore();
 
-                ctx.restore();
-
                 ctx.fillStyle = '#fff';
-                ctx.font = 'bold 18px sans-serif';
+                ctx.font = 'bold 15px sans-serif';
                 ctx.textAlign = 'center';
                 ctx.shadowColor = '#000';
                 ctx.shadowBlur = 6;
-                ctx.fillText(`${s.name} (HP: ${s.hp}/100)`, s.x, s.y - 105);
+                ctx.fillText(`${s.name} (HP: ${s.hp}/${s.maxHp})`, s.x, s.y - 85);
                 ctx.shadowBlur = 0;
             }
 
             cannonBalls.forEach(b => {
                 ctx.fillStyle = b.ammoType === 2 ? '#e74c3c' : '#f39c12';
                 ctx.beginPath();
-                ctx.arc(b.x, b.y, b.ammoType === 2 ? 16 : 13, 0, Math.PI * 2);
+                ctx.arc(b.x, b.y, b.ammoType === 2 ? 14 : 11, 0, Math.PI * 2);
                 ctx.fill();
-                ctx.lineWidth = 3;
+                ctx.lineWidth = 2.5;
                 ctx.strokeStyle = '#555';
                 ctx.stroke();
             });
 
             for (let id in players) {
                 let p = players[id];
-                if (p.role === 'free' && ships[p.team]) {
+                if (p.role === 'free' && ships['red']) {
                     drawPigCharacter(ctx, p.x, p.y, p.bodyColor || '#e67e22', p.name);
                 }
             }
@@ -1386,22 +1468,20 @@
                 mCtx.fill();
             });
 
-            if (myTeam && ships[myTeam]) {
-                const myShip = ships[myTeam];
-                mCtx.fillStyle = myTeam === 'red' ? '#e74c3c' : '#3498db';
+            for (let sId in ships) {
+                let s = ships[sId];
+                if (s.hp <= 0) continue;
+                mCtx.fillStyle = s.isCpu ? '#3498db' : '#e74c3c';
                 mCtx.beginPath();
-                mCtx.arc(myShip.x * scaleX, myShip.y * scaleY, 6, 0, Math.PI * 2);
+                mCtx.arc(s.x * scaleX, s.y * scaleY, s.isCpu ? 4 : 6, 0, Math.PI * 2);
                 mCtx.fill();
-                mCtx.strokeStyle = '#fff';
-                mCtx.lineWidth = 2;
-                mCtx.stroke();
             }
 
             if (myId && players[myId]) {
                 const me = players[myId];
                 mCtx.fillStyle = '#2ecc71';
                 mCtx.beginPath();
-                mCtx.arc(me.x * scaleX, me.y * scaleY, 4, 0, Math.PI * 2);
+                mCtx.arc(me.x * scaleX, me.y * scaleY, 3, 0, Math.PI * 2);
                 mCtx.fill();
             }
         }
