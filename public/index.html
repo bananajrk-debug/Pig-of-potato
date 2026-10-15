@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pig of Potato - Ultimate Features</title>
+    <title>Pig of Potato - Ready Toggle & Start</title>
     <style>
         body {
             margin: 0;
@@ -83,6 +83,7 @@
         }
         .btn-cpu:hover { background: #2ecc71; }
 
+        /* 準備ボタン（未準備＝赤、準備完了＝緑で切り替え） */
         .btn-ready {
             background: #e74c3c;
             color: #fff;
@@ -92,6 +93,15 @@
             background: #2ecc71;
             box-shadow: 0 4px 0 #1e8449;
         }
+
+        /* 出航ボタン */
+        .btn-start {
+            background: #f39c12;
+            color: #fff;
+            box-shadow: 0 4px 0 #d35400;
+            margin-top: 5px;
+        }
+        .btn-start:hover { background: #e67e22; }
 
         #lobby-screen { display: none; }
         #game-ui { display: none; }
@@ -133,13 +143,12 @@
             background: #2c3e50;
             padding: 10px;
             border-radius: 8px;
-            max-height: 140px;
+            max-height: 120px;
             overflow-y: auto;
             font-size: 13px;
             border: 1px solid #4e6d8c;
         }
 
-        /* 右上のコードバッジ */
         #room-code-badge {
             position: absolute;
             top: 15px;
@@ -158,7 +167,6 @@
         }
         #room-code-badge:hover { transform: scale(1.05); background: #2c3e50; }
 
-        /* コード拡大モーダル */
         #code-modal {
             position: fixed;
             top: 0;
@@ -228,14 +236,13 @@
     </style>
 </head>
 <body>
-    <!-- 1. ホーム＆コード入力画面 -->
     <div id="title-screen" class="screen">
         <h1>🐷 Pig of Potato 🥔</h1>
         <div class="menu-box">
             <label>船長名:</label>
             <input type="text" id="input-name" value="ポテト海賊団" placeholder="名前">
             
-            <label>4桁のルームコード (自動ランダム可):</label>
+            <label>4桁のルームコード:</label>
             <div style="display: flex; gap: 8px;">
                 <input type="text" id="input-room" maxlength="4" placeholder="1234" style="flex: 1;">
                 <button class="btn" id="btn-random" style="padding: 10px 15px; font-size: 14px;">🎲 乱数</button>
@@ -246,7 +253,6 @@
         </div>
     </div>
 
-    <!-- 2. ブロスタ風ロビー画面 -->
     <div id="lobby-screen" class="screen">
         <h1>⭐ チームロビー ⭐</h1>
         <div class="brawl-home-container">
@@ -268,12 +274,15 @@
                 <label>乗組員メンバー:</label>
                 <div class="player-list" id="lobby-player-list">読み込み中...</div>
                 
-                <button class="btn btn-ready" id="btn-ready">出航準備完了！ (READY)</button>
+                <!-- 準備完了 / 解除の切り替えボタン -->
+                <button class="btn btn-ready" id="btn-ready">準備OK！ (クリックで完了)</button>
+                
+                <!-- 確実にゲームを開始できる出航ボタン -->
+                <button class="btn btn-start" id="btn-start">🚀 ゲームに出航する！</button>
             </div>
         </div>
     </div>
 
-    <!-- 3. ゲームプレイ画面 -->
     <div id="game-ui">
         <div id="ui">
             <h2>🐷 Pig of Potato 🥔</h2>
@@ -283,10 +292,8 @@
             <p>左大砲: <span id="left-cooldown" style="color:#2ecc71;">READY</span> | 右大砲: <span id="right-cooldown" style="color:#2ecc71;">READY</span></p>
         </div>
 
-        <!-- 右上のコードバッジ（タップで拡大） -->
         <div id="room-code-badge" onclick="openCodeModal()">コード: <span id="badge-code">----</span></div>
 
-        <!-- コード拡大モーダル -->
         <div id="code-modal" onclick="closeCodeModal()">
             <div class="modal-content" onclick="event.stopPropagation()">
                 <h3>ルームコード (タップして閉じる)</h3>
@@ -301,7 +308,7 @@
             <b>操作方法:</b><br>
             - <b>移動:</b> W / A / S / D （船の上または島の上）<br>
             - <b>舵・大砲・見張り台:</b> 近くで <b>[ Eキー ]</b><br>
-            - <b>大砲発射:</b> 操舵中でも自由行動中でも <b>[Kキー]で左大砲</b>、<b>[Oキー]で右大砲</b> が撃てます！（個別クールタイム）<br>
+            - <b>大砲発射:</b> 操舵中でも自由行動中でも <b>[Kキー]で左大砲</b>、<b>[Oキー]で右大砲</b> （個別クールタイム）<br>
             - <b>島での採取:</b> <b>[Eキー長押し (3秒)]</b> で木や特殊弾をゲット！<br>
             - <b>修理:</b> <b>[Rキー]</b>で木材2つ消費して船を修理！
         </div>
@@ -323,6 +330,7 @@
         const btnCpu = document.getElementById('btn-cpu');
         const btnRandom = document.getElementById('btn-random');
         const btnReady = document.getElementById('btn-ready');
+        const btnStart = document.getElementById('btn-start');
         const lobbyPlayerList = document.getElementById('lobby-player-list');
         const badgeCode = document.getElementById('badge-code');
         const modalBigCode = document.getElementById('modal-big-code');
@@ -363,7 +371,6 @@
         const keys = { w: false, s: false, a: false, d: false, e: false };
         let lastSendTime = 0;
 
-        // 4桁のランダム数字コードを生成
         function generateRandomCode() {
             return Math.floor(1000 + Math.random() * 9000).toString();
         }
@@ -371,11 +378,8 @@
         btnRandom.addEventListener('click', () => {
             inputRoom.value = generateRandomCode();
         });
-
-        // 初期状態でランダムコードを設定しておく
         inputRoom.value = generateRandomCode();
 
-        // コード拡大モーダルの制御
         function openCodeModal() {
             modalBigCode.innerText = currentRoomCode;
             codeModal.style.display = 'flex';
@@ -463,15 +467,8 @@
             socket.emit('changeColor', color);
         }
 
-        // オンライン対戦入室
-        btnJoin.addEventListener('click', () => {
-            joinGame(false);
-        });
-
-        // CPU戦入室
-        btnCpu.addEventListener('click', () => {
-            joinGame(true);
-        });
+        btnJoin.addEventListener('click', () => { joinGame(false); });
+        btnCpu.addEventListener('click', () => { joinGame(true); });
 
         function joinGame(isCpu) {
             const playerName = inputName.value.trim() || '名無しの豚';
@@ -490,16 +487,22 @@
             socket.emit('joinRoom', { roomCode, playerName, bodyColor: myBodyColor, isCpu });
         }
 
+        // 準備ボタン（トグル式：準備OK ⇄ 準備解除）
         btnReady.addEventListener('click', () => {
             isReady = !isReady;
             if (isReady) {
                 btnReady.classList.add('is-ready');
-                btnReady.innerText = '出航準備完了！ (READY)';
+                btnReady.innerText = '✅ 準備完了 (クリックで解除)';
             } else {
                 btnReady.classList.remove('is-ready');
-                btnReady.innerText = '出航準備完了！ (READY)';
+                btnReady.innerText = '準備OK！ (クリックで完了)';
             }
             socket.emit('toggleReady');
+        });
+
+        // 出航ボタン（確実にゲームスタート）
+        btnStart.addEventListener('click', () => {
+            socket.emit('startGame');
         });
 
         socket.on('lobbyUpdate', (data) => {
@@ -571,21 +574,15 @@
                 }
             }
 
-            // Kキー：左大砲発射（舵を握っていても自由行動中でも発射可能）
             if (e.key === 'k' || e.key === 'K') {
-                if (myId && players[myId]) {
-                    if (leftReady) {
-                        socket.emit('fireSideCannon', { side: 'left', ammoType: selectedAmmo });
-                    }
+                if (myId && players[myId] && leftReady) {
+                    socket.emit('fireSideCannon', { side: 'left', ammoType: selectedAmmo });
                 }
             }
 
-            // Oキー：右大砲発射（舵を握っていても自由行動中でも発射可能）
             if (e.key === 'o' || e.key === 'O') {
-                if (myId && players[myId]) {
-                    if (rightReady) {
-                        socket.emit('fireSideCannon', { side: 'right', ammoType: selectedAmmo });
-                    }
+                if (myId && players[myId] && rightReady) {
+                    socket.emit('fireSideCannon', { side: 'right', ammoType: selectedAmmo });
                 }
             }
         });
@@ -622,7 +619,7 @@
             if(players[myId]) {
                 const role = players[myId].role;
                 let roleTxt = '自由行動';
-                if(role === 'helmsman') roleTxt = '舵手 (操舵中 - 左右大砲発射可能！)';
+                if(role === 'helmsman') roleTxt = '舵手 (操舵中 - K/Oで大砲発射可能！)';
                 if(role === 'cannon') roleTxt = '砲手 (大砲操作中)';
                 if(role === 'watcher') roleTxt = '見張り台 (索敵中)';
                 document.getElementById('role-name').innerText = roleTxt;
@@ -673,7 +670,6 @@
             }
         });
 
-        // 左右個別大砲のクールタイム処理
         socket.on('sideCooldownStarted', ({ side, duration }) => {
             let el = document.getElementById(side === 'left' ? 'left-cooldown' : 'right-cooldown');
             if (side === 'left') leftReady = false;
@@ -822,7 +818,7 @@
                     if (!nearIsland) {
                         if (Math.hypot(p.x - helmX, p.y - helmY) < 55 && !ship.helmsman) {
                             interactTarget = { type: 'helm' };
-                            promptEl.innerText = '【Eキー】舵を取る（船の一番後ろ） | 【K:左大砲 / O:右大砲】';
+                            promptEl.innerText = '【Eキー】舵を取る | 【K:左大砲 / O:右大砲】';
                             promptEl.style.display = 'block';
                         } else if (ship.watcher === null && Math.hypot(p.x - ship.x, p.y - ship.y) < 50) {
                             interactTarget = { type: 'watcher' };
@@ -857,7 +853,7 @@
                 const promptEl = document.getElementById('prompt');
                 promptEl.style.display = 'block';
                 if (p.role === 'helmsman') {
-                    promptEl.innerText = '【Eキー】舵から離れる | 【Rキー】船修理 | 【Kキー】左大砲発射 | 【Oキー】右大砲発射';
+                    promptEl.innerText = '【Eキー】舵から離れる | 【R】船修理 | 【K】左大砲 | 【O】右大砲';
                     interactTarget = { type: 'helm' };
 
                     let rotSpeed = 0.05;
