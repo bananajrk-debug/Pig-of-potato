@@ -15,12 +15,13 @@ const WORLD_HEIGHT = 4500;
 const rooms = {};
 
 function createInitialRoomState() {
+  // 小島を2.5倍に拡大 (元のradius 180~260 ⇒ 450~650)
   const islands = [
-    { id: 1, x: 1500, y: 1200, radius: 220, wood: 5, hasSpecialAmmo: true, ammoType: 2 },
-    { id: 2, x: 4500, y: 1200, radius: 220, wood: 5, hasSpecialAmmo: true, ammoType: 3 },
-    { id: 3, x: 3000, y: 3300, radius: 260, wood: 8, hasSpecialAmmo: true, ammoType: 2 },
-    { id: 4, x: 1200, y: 3200, radius: 200, wood: 4, hasSpecialAmmo: false },
-    { id: 5, x: 4800, y: 3200, radius: 200, wood: 4, hasSpecialAmmo: false }
+    { id: 1, x: 1500, y: 1200, radius: 550, wood: 5, hasSpecialAmmo: true, ammoType: 2 },
+    { id: 2, x: 4500, y: 1200, radius: 550, wood: 5, hasSpecialAmmo: true, ammoType: 3 },
+    { id: 3, x: 3000, y: 3300, radius: 650, wood: 8, hasSpecialAmmo: true, ammoType: 2 },
+    { id: 4, x: 1200, y: 3200, radius: 500, wood: 4, hasSpecialAmmo: false },
+    { id: 5, x: 4800, y: 3200, radius: 500, wood: 4, hasSpecialAmmo: false }
   ];
 
   return {
@@ -84,7 +85,7 @@ function createInitialRoomState() {
 }
 
 io.on('connection', (socket) => {
-  socket.on('joinRoom', ({ roomCode, playerName }) => {
+  socket.on('joinRoom', ({ roomCode, playerName, bodyColor }) => {
     if (!roomCode || roomCode.length !== 4) return;
     socket.join(roomCode);
     socket.roomCode = roomCode;
@@ -107,10 +108,20 @@ io.on('connection', (socket) => {
       role: 'free',
       activeCannonId: null,
       name: playerName || `${team === 'red' ? '赤' : '青'}乗組員`,
+      bodyColor: bodyColor || '#e67e22',
       ready: false
     };
 
     io.to(roomCode).emit('lobbyUpdate', { players: room.players, status: room.status });
+  });
+
+  // 体の色変更
+  socket.on('changeColor', (color) => {
+    const room = rooms[socket.roomCode];
+    if (room && room.players[socket.id]) {
+      room.players[socket.id].bodyColor = color;
+      io.to(socket.roomCode).emit('lobbyUpdate', { players: room.players, status: room.status });
+    }
   });
 
   socket.on('toggleReady', () => {
@@ -118,11 +129,9 @@ io.on('connection', (socket) => {
     if (room && room.status === 'waiting' && room.players[socket.id]) {
       room.players[socket.id].ready = !room.players[socket.id].ready;
 
-      // 誰か1人でもReadyを押した、または全員がReadyになったらゲームスタートできるようにする
       const playerList = Object.values(room.players);
       const readyCount = playerList.filter(p => p.ready).length;
 
-      // 1人なら即スタート、複数人の場合は全員がReadyになるか、または誰かが押せばスムーズに始まるよう調整
       if (readyCount > 0 && (playerList.length === 1 || readyCount === playerList.length)) {
         room.status = 'playing';
         io.to(roomCode).emit('gameStart', { 
@@ -369,5 +378,5 @@ setInterval(() => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`✨ Pig of Potato v10 サーバー起動: http://localhost:${PORT}`);
+  console.log(`✨ Pig of Potato v11 サーバー起動: http://localhost:${PORT}`);
 });
