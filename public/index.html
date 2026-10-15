@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pig of Potato - Ultimate Brawl Lobby</title>
+    <title>Pig of Potato - Fixed Screen Toggle</title>
     <style>
         body {
             margin: 0;
@@ -27,6 +27,11 @@
             align-items: center;
             z-index: 100;
         }
+        /* 確実な非表示用クラス */
+        .screen.hidden {
+            display: none !important;
+        }
+
         h1 {
             font-size: 52px;
             color: #f1c40f;
@@ -103,17 +108,12 @@
         }
         .btn-start:hover { background: #e67e22; }
 
-        #lobby-screen { display: none; }
-        #game-ui { display: none; }
-
-        /* ブロスタ風ロビー全体レイアウト */
         .brawl-lobby-container {
             display: flex;
             gap: 30px;
             align-items: center;
             justify-content: center;
         }
-        /* 自分の豚プレビュー（さらに大きく表示） */
         .preview-panel {
             background: rgba(13, 27, 42, 0.9);
             border: 3px solid #415a77;
@@ -142,7 +142,6 @@
         }
         .color-btn:hover { transform: scale(1.25); }
 
-        /* 赤・青チームの横並びボックス */
         .teams-container {
             display: flex;
             gap: 20px;
@@ -172,7 +171,6 @@
         .red-team .team-title { color: #e74c3c; }
         .blue-team .team-title { color: #3498db; }
 
-        /* メンバーを縦方向に並べるリスト */
         .member-list {
             display: flex;
             flex-direction: column;
@@ -192,7 +190,6 @@
             box-shadow: 0 4px 10px rgba(0,0,0,0.4);
         }
 
-        /* 右上のルームコードバッジ（ロビーに入ってから表示） */
         #room-code-badge {
             position: absolute;
             top: 20px;
@@ -211,7 +208,6 @@
         }
         #room-code-badge:hover { transform: scale(1.1); background: #1b263b; }
 
-        /* ルームコード拡大モーダル */
         #code-modal {
             position: fixed;
             top: 0;
@@ -247,7 +243,7 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.6);
             border: 2px solid #f39c12;
         }
-        h2 { margin: 0 0 5px 0; font-size: 20px; color: #f39c12; }
+        h2 { margin: 0 0 5px 0; font-size: 20px; color: #f1c40f; }
         p { margin: 4px 0; font-size: 14px; }
         #prompt {
             position: absolute;
@@ -298,10 +294,8 @@
     </style>
 </head>
 <body>
-    <!-- ロビー・ゲーム中共通の右上ルームコードバッジ -->
     <div id="room-code-badge" onclick="openCodeModal()" style="display:none;">コード: <span id="badge-code">----</span></div>
 
-    <!-- ルームコード拡大モーダル -->
     <div id="code-modal" onclick="closeCodeModal()">
         <div class="modal-content" onclick="event.stopPropagation()">
             <h3>ルームコード (タップして閉じる)</h3>
@@ -328,11 +322,10 @@
         </div>
     </div>
 
-    <!-- チームロビー画面（ブロスタ風・左右チーム＆縦リスト） -->
-    <div id="lobby-screen" class="screen">
+    <!-- ロビー画面（最初はhiddenクラスで非表示） -->
+    <div id="lobby-screen" class="screen hidden">
         <h1>⭐ チームロビー ⭐</h1>
         <div class="brawl-lobby-container">
-            <!-- 自分の豚プレビュー（大きく表示） -->
             <div class="preview-panel">
                 <label>あなたの豚:</label>
                 <canvas id="previewCanvas" width="160" height="160" style="background:#112d4e; border-radius:14px; border:3px solid #f1c40f; box-shadow: inset 0 0 15px rgba(0,0,0,0.5);"></canvas>
@@ -347,7 +340,6 @@
                 </div>
             </div>
 
-            <!-- 赤チーム＆青チームの横並びボックス -->
             <div class="teams-container">
                 <div class="team-box red-team">
                     <div class="team-title">🔴 赤チーム</div>
@@ -360,7 +352,6 @@
                 </div>
             </div>
 
-            <!-- 操作パネル（準備＆出航） -->
             <div class="menu-box" style="width: 260px;">
                 <label>ロビー操作:</label>
                 <button class="btn btn-ready" id="btn-ready">準備OK！ (クリックで完了)</button>
@@ -370,7 +361,7 @@
     </div>
 
     <!-- ゲームプレイ画面 -->
-    <div id="game-ui">
+    <div id="game-ui" class="hidden" style="position: absolute; top:0; left:0; width:100vw; height:100vh;">
         <div id="ui">
             <h2>🐷 Pig of Potato 🥔</h2>
             <p>チーム: <span id="team-name">-</span> | HP: <span id="team-hp">100</span> | 木材: <span id="team-wood">0</span>個</p>
@@ -390,7 +381,6 @@
             - <b>修理:</b> <b>[Rキー]</b>で木材2つ消費して船を修理！
         </div>
 
-        <!-- ミニマップ（敵船は映らない仕様） -->
         <div id="minimap-container">
             <canvas id="minimapCanvas" width="200" height="150"></canvas>
         </div>
@@ -476,7 +466,6 @@
             codeModal.style.display = 'none';
         }
 
-        // ロビー用の大迫力・大サイズ豚キャラクター描画
         function drawPigCharacterLarge(context, x, y, bodyColor, name) {
             context.save();
             context.translate(x, y);
@@ -638,8 +627,9 @@
             badgeCode.innerText = roomCode;
             roomCodeBadge.style.display = 'block';
 
-            titleScreen.style.display = 'none';
-            lobbyScreen.style.display = 'flex';
+            // クラス切り替えで確実に画面を切り替える
+            titleScreen.classList.add('hidden');
+            lobbyScreen.classList.remove('hidden');
 
             socket.emit('joinRoom', { roomCode, playerName, bodyColor: myBodyColor, isCpu });
         }
@@ -662,9 +652,628 @@
             socket.emit('startGame', { roomCode: currentRoomCode });
         });
 
-        // ロビー更新：赤・青チームごとに縦に並ぶメンバーリスト
         socket.on('lobbyUpdate', (data) => {
             players = data.players;
             currentRoomCode = data.roomCode;
             badgeCode.innerText = currentRoomCode;
-            roomCodeBadge.style.display
+            roomCodeBadge.style.display = 'block';
+
+            let redHtml = '';
+            let blueHtml = '';
+
+            for (let id in players) {
+                let p = players[id];
+                let readyText = p.ready ? '✅ 準備OK' : '⏳ 待機中...';
+                let itemHtml = `<div class="member-item"><div><b>${p.name}</b></div><div style="font-size:12px; color:#a0aec0;">${readyText}</div></div>`;
+                
+                if (p.team === 'red') {
+                    redHtml += itemHtml;
+                } else {
+                    blueHtml += itemHtml;
+                }
+            }
+
+            redMemberList.innerHTML = redHtml || '<div style="color:#7f8c8d; text-align:center; padding:12px;">メンバーなし</div>';
+            blueMemberList.innerHTML = blueHtml || '<div style="color:#7f8c8d; text-align:center; padding:12px;">メンバーなし</div>';
+        });
+
+        socket.on('gameStart', (data) => {
+            myId = socket.id;
+            players = data.players;
+            ships = data.ships;
+            islands = data.islands;
+            potatoes = data.potatoes;
+            currentRoomCode = data.roomCode;
+            badgeCode.innerText = currentRoomCode;
+            roomCodeBadge.style.display = 'block';
+
+            if (players[myId]) {
+                myTeam = players[myId].team;
+            } else {
+                myTeam = Object.values(players).find(p => p.id === myId)?.team || Object.values(players)[0].team;
+            }
+
+            lobbyScreen.classList.add('hidden');
+            gameUi.classList.remove('hidden');
+            resize();
+        });
+
+        window.addEventListener('keydown', (e) => {
+            if (!gameUi.classList.contains('hidden')) {
+                if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') keys.w = true;
+                if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') keys.s = true;
+                if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') keys.a = true;
+                if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') keys.d = true;
+
+                if (e.key === '1') { selectedAmmo = 1; updateAmmoDisplay(); }
+                if (e.key === '2') { selectedAmmo = 2; updateAmmoDisplay(); }
+                if (e.key === '3') { selectedAmmo = 3; updateAmmoDisplay(); }
+
+                if (e.key === 'r' || e.key === 'R') {
+                    socket.emit('repairShip');
+                }
+
+                if (e.key === 'e' || e.key === 'E') {
+                    if (!keys.e) {
+                        keys.e = true;
+                        if (interactTarget) {
+                            socket.emit('interact', interactTarget);
+                        } else {
+                            const me = players[myId];
+                            if (me && me.role === 'free') {
+                                islands.forEach(isl => {
+                                    if (Math.hypot(me.x - isl.x, me.y - isl.y) < isl.radius + 30) {
+                                        gatheringIslandId = isl.id;
+                                        gatherStartTime = Date.now();
+                                    }
+                                });
+                            }
+                        }
+                    }
+                }
+
+                if (e.key === 'k' || e.key === 'K') {
+                    if (myId && players[myId] && leftReady) {
+                        socket.emit('fireSideCannon', { side: 'left', ammoType: selectedAmmo });
+                    }
+                }
+
+                if (e.key === 'o' || e.key === 'O') {
+                    if (myId && players[myId] && rightReady) {
+                        socket.emit('fireSideCannon', { side: 'right', ammoType: selectedAmmo });
+                    }
+                }
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') keys.w = false;
+            if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') keys.s = false;
+            if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') keys.a = false;
+            if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') keys.d = false;
+
+            if (e.key === 'e' || e.key === 'E') {
+                keys.e = false;
+                gatheringIslandId = null;
+            }
+        });
+
+        function updateAmmoDisplay() {
+            const names = { 1: '1: 通常弾', 2: '2: 爆発弾', 3: '3: 特製弾' };
+            document.getElementById('current-ammo-type').innerText = names[selectedAmmo];
+        }
+
+        socket.on('newPlayer', (p) => { players[p.id] = p; });
+        socket.on('playerMoved', (p) => {
+            if (players[p.id] && p.id !== myId) {
+                players[p.id].x = p.x;
+                players[p.id].y = p.y;
+            }
+        });
+        socket.on('playerDisconnected', (id) => { delete players[id]; });
+
+        socket.on('gameStateUpdate', (data) => {
+            players = data.players;
+            ships = data.ships;
+            if (players && players[myId]) {
+                updateUIValues();
+            }
+        });
+
+        socket.on('serverTick', (data) => {
+            if (!data || !data.ships) return;
+            for (let id in data.ships) {
+                if (ships && ships[id]) {
+                    const s = ships[id];
+                    if (s.helmsman !== myId) {
+                        s.x = data.ships[id].x;
+                        s.y = data.ships[id].y;
+                        s.angle = data.ships[id].angle;
+                    }
+                    s.speed = data.ships[id].speed;
+                    s.hp = data.ships[id].hp;
+                    s.wood = data.ships[id].wood;
+                    s.ammo = data.ships[id].ammo;
+                }
+            }
+            cannonBalls = data.cannonBalls || [];
+            updateUIValues();
+        });
+
+        function updateUIValues() {
+            if (!myTeam || !ships || !ships[myTeam]) return;
+            const ship = ships[myTeam];
+            if (document.getElementById('team-name')) document.getElementById('team-name').innerText = myTeam === 'red' ? '🔴 赤チーム' : '🔵 青チーム';
+            if (document.getElementById('team-hp')) document.getElementById('team-hp').innerText = ship.hp;
+            if (document.getElementById('team-wood')) document.getElementById('team-wood').innerText = ship.wood;
+            if (document.getElementById('ammo-1')) document.getElementById('ammo-1').innerText = ship.ammo[1] || 0;
+            if (document.getElementById('ammo-2')) document.getElementById('ammo-2').innerText = ship.ammo[2] || 0;
+            if (document.getElementById('ammo-3')) document.getElementById('ammo-3').innerText = ship.ammo[3] || 0;
+        }
+
+        socket.on('shipMoved', (updatedShip) => {
+            if (ships && ships[updatedShip.id] && ships[updatedShip.id].helmsman !== myId) {
+                ships[updatedShip.id].x = updatedShip.x;
+                ships[updatedShip.id].y = updatedShip.y;
+                ships[updatedShip.id].angle = updatedShip.angle;
+            }
+        });
+
+        socket.on('cannonFired', (ball) => {
+            if (cannonBalls && !cannonBalls.some(b => b.id === ball.id)) {
+                cannonBalls.push(ball);
+            }
+        });
+
+        socket.on('sideCooldownStarted', ({ side, duration }) => {
+            let el = document.getElementById(side === 'left' ? 'left-cooldown' : 'right-cooldown');
+            if (!el) return;
+            if (side === 'left') leftReady = false;
+            if (side === 'right') rightReady = false;
+
+            el.style.color = '#e74c3c';
+            el.innerText = 'RELOADING...';
+
+            let startTime = Date.now();
+            let interval = setInterval(() => {
+                let elapsed = Date.now() - startTime;
+                let left = Math.max(0, ((duration - elapsed) / 1000).toFixed(1));
+                if (left > 0) {
+                    el.innerText = `(${left}s)`;
+                } else {
+                    if (side === 'left') leftReady = true;
+                    if (side === 'right') rightReady = true;
+                    el.style.color = '#2ecc71';
+                    el.innerText = 'READY';
+                    clearInterval(interval);
+                }
+            }, 100);
+        });
+
+        socket.on('potatoCollected', (data) => {
+            const p = potatoes.find(pt => pt.id === data.potatoId);
+            if(p) p.collected = true;
+        });
+
+        socket.on('potatoRespawned', (np) => {
+            const p = potatoes.find(pt => pt.id === np.id);
+            if(p) { p.x = np.x; p.y = np.y; p.collected = false; }
+        });
+
+        socket.on('islandGathered', (data) => {
+            const isl = islands.find(i => i.id === data.islandId);
+            if (isl) {
+                isl.wood = data.shipWood;
+                isl.hasSpecialAmmo = false;
+            }
+        });
+
+        socket.on('islandRespawned', (newIsl) => {
+            const isl = islands.find(i => i.id === newIsl.id);
+            if (isl) {
+                isl.wood = newIsl.wood;
+                isl.hasSpecialAmmo = newIsl.hasSpecialAmmo;
+            }
+        });
+
+        socket.on('shipHit', (data) => {
+            if(ships && ships[data.shipId]) ships[data.shipId].hp = data.hp;
+        });
+
+        socket.on('shipRepaired', (data) => {
+            if(ships && ships[data.team]) {
+                ships[data.team].hp = data.hp;
+                ships[data.team].wood = data.wood;
+            }
+        });
+
+        socket.on('gameOver', (msg) => {
+            alert(msg);
+            location.reload();
+        });
+
+        function update() {
+            if (gameUi.classList.contains('hidden')) return;
+            if (!myId || !players || !players[myId]) return;
+            const p = players[myId];
+            if (!ships || !ships[p.team]) return;
+            const ship = ships[p.team];
+
+            if (p.role === 'free') {
+                let speed = 6.0;
+                let dx = 0, dy = 0;
+                if (keys.w) dy -= speed;
+                if (keys.s) dy += speed;
+                if (keys.a) dx -= speed;
+                if (keys.d) dx += speed;
+
+                if (dx !== 0 && dy !== 0) {
+                    dx *= 0.7071;
+                    dy *= 0.7071;
+                }
+
+                if (dx !== 0 || dy !== 0) {
+                    p.x += dx;
+                    p.y += dy;
+
+                    let onShip = false;
+                    const cos = Math.cos(-ship.angle);
+                    const sin = Math.sin(-ship.angle);
+                    const relX = p.x - ship.x;
+                    const relY = p.y - ship.y;
+                    const localX = relX * cos - relY * sin;
+                    const localY = relX * sin + relY * cos;
+                    if (localX >= -110 && localX <= 140 && localY >= -50 && localY <= 50) {
+                        onShip = true;
+                    }
+
+                    let onIsland = false;
+                    islands.forEach(isl => {
+                        if (Math.hypot(p.x - isl.x, p.y - isl.y) <= isl.radius) {
+                            onIsland = true;
+                        }
+                    });
+
+                    if (!onShip && !onIsland) {
+                        p.x -= dx;
+                        p.y -= dy;
+                    }
+
+                    const now = Date.now();
+                    if (now - lastSendTime > 25) {
+                        socket.emit('playerMove', { x: p.x, y: p.y });
+                        lastSendTime = now;
+                    }
+                }
+
+                const promptEl = document.getElementById('prompt');
+                if (promptEl) {
+                    if (gatheringIslandId !== null) {
+                        let elapsed = Date.now() - gatherStartTime;
+                        let percent = Math.min(100, Math.floor((elapsed / gatheringDuration) * 100));
+                        promptEl.innerText = `🌲 木を採集中... [ ${percent}% ] (Eキー長押し)`;
+                        promptEl.style.display = 'block';
+
+                        if (elapsed >= gatheringDuration) {
+                            socket.emit('gatherIsland', gatheringIslandId);
+                            gatheringIslandId = null;
+                        }
+                    } else {
+                        interactTarget = null;
+                        const helmX = ship.x - Math.cos(ship.angle) * 140;
+                        const helmY = ship.y - Math.sin(ship.angle) * 140;
+
+                        let nearIsland = false;
+                        islands.forEach(isl => {
+                            if (Math.hypot(p.x - isl.x, p.y - isl.y) < isl.radius + 20) {
+                                promptEl.innerText = '【Eキー長押し】島で木や効果付き砲弾を採集';
+                                promptEl.style.display = 'block';
+                                nearIsland = true;
+                            }
+                        });
+
+                        if (!nearIsland) {
+                            if (Math.hypot(p.x - helmX, p.y - helmY) < 55 && !ship.helmsman) {
+                                interactTarget = { type: 'helm' };
+                                promptEl.innerText = '【Eキー】舵を取る | 【K:左大砲 / O:右大砲】';
+                                promptEl.style.display = 'block';
+                            } else if (ship.watcher === null && Math.hypot(p.x - ship.x, p.y - ship.y) < 50) {
+                                interactTarget = { type: 'watcher' };
+                                promptEl.innerText = '【Eキー】見張り台に登る';
+                                promptEl.style.display = 'block';
+                            } else {
+                                let nearCannon = false;
+                                ship.cannons.forEach(c => {
+                                    const cx = ship.x + Math.cos(ship.angle) * c.offsetRelX - Math.sin(ship.angle) * c.offsetRelY;
+                                    const cy = ship.y + Math.sin(ship.angle) * c.offsetRelX + Math.cos(ship.angle) * c.offsetRelY;
+                                    if (Math.hypot(p.x - cx, p.y - cy) < 50 && !c.gunner) {
+                                        interactTarget = { type: 'cannon', cannonId: c.id };
+                                        promptEl.innerText = '【Eキー】大砲に乗り込む';
+                                        promptEl.style.display = 'block';
+                                        nearCannon = true;
+                                    }
+                                });
+                                if (!nearCannon && !interactTarget) {
+                                    promptEl.style.display = 'none';
+                                }
+                            }
+                        }
+                    }
+                }
+
+                potatoes.forEach(pot => {
+                    if (!pot.collected && Math.hypot(p.x - pot.x, p.y - pot.y) < 45) {
+                        socket.emit('collectPotato', pot.id);
+                    }
+                });
+
+            } else {
+                const promptEl = document.getElementById('prompt');
+                if (promptEl) {
+                    promptEl.style.display = 'block';
+                    if (p.role === 'helmsman') {
+                        promptEl.innerText = '【Eキー】舵から離れる | 【R】船修理 | 【K】左大砲 | 【O】右大砲';
+                        interactTarget = { type: 'helm' };
+
+                        let rotSpeed = 0.05;
+                        let targetSpeed = 0;
+                        if (keys.a) ship.angle -= rotSpeed;
+                        if (keys.d) ship.angle += rotSpeed;
+                        
+                        if (keys.w) targetSpeed = ship.maxSpeed;
+                        if (keys.s) targetSpeed = -3.0;
+
+                        ship.speed += (targetSpeed - ship.speed) * 0.1;
+
+                        if (Math.abs(ship.speed) > 0.01) {
+                            let nextX = ship.x + Math.cos(ship.angle) * ship.speed;
+                            let nextY = ship.y + Math.sin(ship.angle) * ship.speed;
+
+                            let collided = false;
+                            islands.forEach(isl => {
+                                if (Math.hypot(nextX - isl.x, nextY - isl.y) < isl.radius + 130) {
+                                    collided = true;
+                                    ship.speed = 0;
+                                }
+                            });
+
+                            for (let otherId in ships) {
+                                if (otherId !== ship.id) {
+                                    let otherShip = ships[otherId];
+                                    if (Math.hypot(nextX - otherShip.x, nextY - otherShip.y) < 320) {
+                                        collided = true;
+                                        ship.speed = 0;
+                                    }
+                                }
+                            }
+
+                            if (!collided) {
+                                ship.x = nextX;
+                                ship.y = nextY;
+                                ship.x = Math.max(300, Math.min(15000 - 300, ship.x));
+                                ship.y = Math.max(300, Math.min(11250 - 300, ship.y));
+                            }
+                        }
+
+                        socket.emit('shipControl', { x: ship.x, y: ship.y, angle: ship.angle, speed: ship.speed });
+
+                    } else if (p.role === 'cannon') {
+                        promptEl.innerText = '【Eキー】大砲から離れる | 【1,2,3】弾種変更 | 【K/O】発射';
+                        interactTarget = { type: 'cannon', cannonId: p.activeCannonId };
+                    } else if (p.role === 'watcher') {
+                        promptEl.innerText = '【Eキー】見張り台から降りる';
+                        interactTarget = { type: 'watcher' };
+                    }
+                }
+
+                potatoes.forEach(pot => {
+                    if (!pot.collected && Math.hypot(ship.x - pot.x, ship.y - pot.y) < 140) {
+                        socket.emit('collectPotato', pot.id);
+                    }
+                });
+            }
+        }
+
+        function draw() {
+            if (gameUi.classList.contains('hidden')) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (!myId || !players || !players[myId] || !ships || !ships[myTeam]) return;
+
+            const me = players[myId];
+            const myShip = ships[myTeam];
+
+            let targetX = me.role === 'watcher' ? myShip.x : (me.role === 'helmsman' || me.role === 'cannon') ? myShip.x : me.x;
+            let targetY = me.role === 'watcher' ? myShip.y : (me.role === 'helmsman' || me.role === 'cannon') ? myShip.y : me.y;
+
+            ctx.save();
+            ctx.translate(canvas.width / 2, canvas.height / 2);
+            let zoom = me.role === 'watcher' ? 0.35 : 1.1;
+            ctx.scale(zoom, zoom);
+            ctx.translate(-targetX, -targetY);
+
+            ctx.fillStyle = '#2980b9';
+            ctx.fillRect(0, 0, 15000, 11250);
+
+            ctx.strokeStyle = '#1b4f72';
+            ctx.lineWidth = 14;
+            ctx.strokeRect(0, 0, 15000, 11250);
+
+            ctx.fillStyle = '#3498db';
+            for (let x = 300; x < 15000; x += 600) {
+                for (let y = 300; y < 11250; y += 600) {
+                    ctx.beginPath();
+                    ctx.arc(x, y, 10, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+
+            islands.forEach(isl => {
+                ctx.save();
+                ctx.translate(isl.x, isl.y);
+                ctx.fillStyle = 'rgba(0,0,0,0.25)';
+                ctx.beginPath();
+                ctx.arc(15, 15, isl.radius, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#f1c40f';
+                ctx.beginPath();
+                ctx.arc(0, 0, isl.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.lineWidth = 10;
+                ctx.strokeStyle = '#d4ac0d';
+                ctx.stroke();
+
+                ctx.fillStyle = '#27ae60';
+                ctx.beginPath();
+                ctx.arc(0, 0, isl.radius * 0.75, 0, Math.PI * 2);
+                ctx.fill();
+
+                if (isl.hasSpecialAmmo) {
+                    ctx.fillStyle = '#e74c3c';
+                    ctx.fillRect(-25, -25, 50, 50);
+                    ctx.lineWidth = 3;
+                    ctx.strokeStyle = '#fff';
+                    ctx.strokeRect(-25, -25, 50, 50);
+                }
+
+                ctx.restore();
+            });
+
+            potatoes.forEach(pot => {
+                if (!pot.collected) {
+                    ctx.save();
+                    ctx.translate(pot.x, pot.y);
+                    ctx.fillStyle = '#f1c40f';
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, 24, 18, Math.PI / 4, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#7d6608';
+                    ctx.lineWidth = 3;
+                    ctx.stroke();
+                    ctx.restore();
+                }
+            });
+
+            for (let sId in ships) {
+                let s = ships[sId];
+                ctx.save();
+                ctx.translate(s.x, s.y);
+                ctx.rotate(s.angle);
+                
+                ctx.translate(60, 0);
+
+                ctx.fillStyle = sId === 'red' ? '#78281f' : '#154360';
+                ctx.fillRect(-130, -65, 260, 130);
+                ctx.lineWidth = 5;
+                ctx.strokeStyle = '#111';
+                ctx.strokeRect(-130, -65, 260, 130);
+
+                ctx.beginPath();
+                ctx.moveTo(130, -65);
+                ctx.lineTo(180, 0);
+                ctx.lineTo(130, 65);
+                ctx.closePath();
+                ctx.fillStyle = sId === 'red' ? '#922b21' : '#1f618d';
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.fillStyle = '#d4ac0d';
+                ctx.fillRect(-90, -45, 180, 90);
+                ctx.strokeRect(-90, -45, 180, 90);
+
+                ctx.fillStyle = '#5d4037';
+                ctx.fillRect(-15, -15, 30, 30);
+                ctx.beginPath();
+                ctx.arc(0, 0, 22, 0, Math.PI * 2);
+                ctx.fillStyle = '#8d6e63';
+                ctx.fill();
+                ctx.stroke();
+
+                s.cannons.forEach(c => {
+                    ctx.fillStyle = '#2c3e50';
+                    ctx.fillRect(c.offsetRelX - 12, c.offsetRelY - 10, 24, 20);
+                    ctx.strokeStyle = '#000';
+                    ctx.strokeRect(c.offsetRelX - 12, c.offsetRelY - 10, 24, 20);
+                });
+
+                ctx.fillStyle = '#e67e22';
+                ctx.fillRect(-145, -15, 15, 30);
+                ctx.strokeStyle = '#d35400';
+                ctx.strokeRect(-145, -15, 15, 30);
+
+                ctx.restore();
+
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 18px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.shadowColor = '#000';
+                ctx.shadowBlur = 6;
+                ctx.fillText(`${s.name} (HP: ${s.hp}/100)`, s.x, s.y - 105);
+                ctx.shadowBlur = 0;
+            }
+
+            cannonBalls.forEach(b => {
+                ctx.fillStyle = b.ammoType === 2 ? '#e74c3c' : '#f39c12';
+                ctx.beginPath();
+                ctx.arc(b.x, b.y, b.ammoType === 2 ? 16 : 13, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = '#555';
+                ctx.stroke();
+            });
+
+            for (let id in players) {
+                let p = players[id];
+                if (p.role === 'free' && ships[p.team]) {
+                    drawPigCharacter(ctx, p.x, p.y, p.bodyColor || '#e67e22', p.name);
+                }
+            }
+
+            ctx.restore();
+
+            drawMinimap();
+        }
+
+        function drawMinimap() {
+            mCtx.clearRect(0, 0, minimapCanvas.width, minimapCanvas.height);
+            
+            const scaleX = minimapCanvas.width / 15000;
+            const scaleY = minimapCanvas.height / 11250;
+
+            islands.forEach(isl => {
+                mCtx.fillStyle = '#f1c40f';
+                mCtx.beginPath();
+                mCtx.arc(isl.x * scaleX, isl.y * scaleY, isl.radius * scaleX, 0, Math.PI * 2);
+                mCtx.fill();
+            });
+
+            if (myTeam && ships[myTeam]) {
+                const myShip = ships[myTeam];
+                mCtx.fillStyle = myTeam === 'red' ? '#e74c3c' : '#3498db';
+                mCtx.beginPath();
+                mCtx.arc(myShip.x * scaleX, myShip.y * scaleY, 6, 0, Math.PI * 2);
+                mCtx.fill();
+                mCtx.strokeStyle = '#fff';
+                mCtx.lineWidth = 2;
+                mCtx.stroke();
+            }
+
+            if (myId && players[myId]) {
+                const me = players[myId];
+                mCtx.fillStyle = '#2ecc71';
+                mCtx.beginPath();
+                mCtx.arc(me.x * scaleX, me.y * scaleY, 4, 0, Math.PI * 2);
+                mCtx.fill();
+            }
+        }
+
+        function loop() {
+            update();
+            draw();
+            requestAnimationFrame(loop);
+        }
+
+        loop();
+    </script>
+</body>
+</html>
