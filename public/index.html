@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pig of Potato - Islands & 3s Gather</title>
+    <title>Pig of Potato - Lobby & Ready System</title>
     <style>
         body {
             margin: 0;
@@ -14,7 +14,8 @@
             overflow: hidden;
             user-select: none;
         }
-        #title-screen {
+        /* 共通画面スタイル */
+        .screen {
             position: absolute;
             top: 0;
             left: 0;
@@ -27,21 +28,21 @@
             align-items: center;
             z-index: 100;
         }
-        #title-screen h1 {
+        h1 {
             font-size: 48px;
             color: #f39c12;
             margin-bottom: 20px;
             text-shadow: 2px 2px 8px rgba(0,0,0,0.7);
         }
         .menu-box {
-            background: rgba(0, 0, 0, 0.8);
+            background: rgba(0, 0, 0, 0.85);
             padding: 30px 40px;
             border-radius: 12px;
             box-shadow: 0 8px 24px rgba(0,0,0,0.6);
             display: flex;
             flex-direction: column;
             gap: 15px;
-            width: 320px;
+            width: 350px;
             border: 2px solid #f39c12;
         }
         .menu-box label {
@@ -59,7 +60,7 @@
             text-align: center;
             letter-spacing: 4px;
         }
-        .menu-box button {
+        .btn {
             padding: 12px;
             font-size: 18px;
             font-weight: bold;
@@ -69,13 +70,28 @@
             border-radius: 6px;
             cursor: pointer;
             transition: background 0.2s;
+            text-align: center;
         }
-        .menu-box button:hover {
-            background: #d68910;
+        .btn:hover { background: #d68910; }
+        .btn-ready {
+            background: #e74c3c;
         }
-        #game-ui {
-            display: none;
+        .btn-ready.is-ready {
+            background: #2ecc71;
         }
+
+        #lobby-screen { display: none; }
+        #game-ui { display: none; }
+
+        .player-list {
+            background: #2c3e50;
+            padding: 10px;
+            border-radius: 6px;
+            max-height: 150px;
+            overflow-y: auto;
+            font-size: 14px;
+        }
+
         #ui {
             position: absolute;
             top: 15px;
@@ -119,19 +135,32 @@
     </style>
 </head>
 <body>
-    <div id="title-screen">
+    <!-- 1. コード入力画面 -->
+    <div id="title-screen" class="screen">
         <h1>🐷 Pig of Potato 🥔</h1>
         <div class="menu-box">
             <label>船長名:</label>
             <input type="text" id="input-name" value="ポテト海賊団" placeholder="名前">
             
             <label>4桁のルームコード:</label>
-            <input type="text" id="input-room" maxlength="4" value="1234" placeholder="例: 1234">
+            <input type="text" id="input-room" maxlength="4" value="1234" placeholder="1234">
             
-            <button id="btn-join">ロビーに参加する</button>
+            <button class="btn" id="btn-join">ロビーに入る</button>
         </div>
     </div>
 
+    <!-- 2. ブロスタ風・フォートナイト風 待機ロビー画面 -->
+    <div id="lobby-screen" class="screen">
+        <h1>🎮 待機ロビー (コード: <span id="display-room-code">----</span>)</h1>
+        <div class="menu-box" style="width: 400px;">
+            <label>参加メンバー一覧:</label>
+            <div class="player-list" id="lobby-player-list">読み込み中...</div>
+            
+            <button class="btn btn-ready" id="btn-ready">準備OK！ (READY)</button>
+        </div>
+    </div>
+
+    <!-- 3. ゲームプレイ画面 -->
     <div id="game-ui">
         <div id="ui">
             <h2>🐷 Pig of Potato 🥔</h2>
@@ -144,9 +173,9 @@
 
         <div id="instructions">
             <b>操作方法:</b><br>
-            - <b>移動:</b> W / A / S / D （船の上または島の上を自由に歩けます）<br>
+            - <b>移動:</b> W / A / S / D （船の上または島の上）<br>
             - <b>舵・大砲・見張り台:</b> 近くで <b>[ Eキー ]</b><br>
-            - <b>島での採取:</b> 島の上で <b>[ Eキー長押し (3秒) ]</b> して木や効果付き砲弾をゲット！<br>
+            - <b>島での採取:</b> 島の上で <b>[ Eキー長押し (3秒) ]</b> で木や特殊弾をゲット！<br>
             - <b>修理:</b> <b>[Rキー]</b>で木材を消費して船を修理！
         </div>
 
@@ -158,10 +187,15 @@
         const socket = io();
 
         const titleScreen = document.getElementById('title-screen');
+        const lobbyScreen = document.getElementById('lobby-screen');
         const gameUi = document.getElementById('game-ui');
+        
         const inputName = document.getElementById('input-name');
         const inputRoom = document.getElementById('input-room');
         const btnJoin = document.getElementById('btn-join');
+        const btnReady = document.getElementById('btn-ready');
+        const displayRoomCode = document.getElementById('display-room-code');
+        const lobbyPlayerList = document.getElementById('lobby-player-list');
 
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
@@ -183,15 +217,16 @@
         let interactTarget = null;
         let canFire = true;
         let selectedAmmo = 1;
+        let isReady = false;
 
-        // 3秒間の採集管理
         let gatheringIslandId = null;
         let gatherStartTime = 0;
-        let gatheringDuration = 3000; // 3秒
+        let gatheringDuration = 3000;
 
         const keys = { w: false, s: false, a: false, d: false, e: false };
         let lastSendTime = 0;
 
+        // 1. ロビーに参加
         btnJoin.addEventListener('click', () => {
             const playerName = inputName.value.trim() || '名無しの豚';
             const roomCode = inputRoom.value.trim();
@@ -201,14 +236,47 @@
                 return;
             }
 
+            displayRoomCode.innerText = roomCode;
             titleScreen.style.display = 'none';
-            gameUi.style.display = 'block';
-            resize();
+            lobbyScreen.style.display = 'flex';
 
             socket.emit('joinRoom', { roomCode, playerName });
         });
 
+        // 2. 準備OKボタンのクリック
+        btnReady.addEventListener('click', () => {
+            socket.emit('toggleReady');
+        });
+
+        // サーバーからのロビー情報更新（メンバー一覧表示）
+        socket.on('lobbyUpdate', (data) => {
+            players = data.players;
+            let html = '';
+            for (let id in players) {
+                let p = players[id];
+                let readyText = p.ready ? '✅ 準備OK' : '⏳ 待機中...';
+                let teamColor = p.team === 'red' ? '🔴 赤チーム' : '🔵 青チーム';
+                html += `<div><b>${p.name}</b> (${teamColor}) : ${readyText}</div>`;
+            }
+            lobbyPlayerList.innerHTML = html;
+        });
+
+        // 3. 全員準備完了でゲームスタート！
+        socket.on('gameStart', (data) => {
+            players = data.players;
+            ships = data.ships;
+            islands = data.islands;
+            potatoes = data.potatoes;
+            myTeam = players[socket.id].team;
+
+            lobbyScreen.style.display = 'none';
+            gameUi.style.display = 'block';
+            resize();
+        });
+
         window.addEventListener('keydown', (e) => {
+            if (gameUi.style.display !== 'block') return;
+
             if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') keys.w = true;
             if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') keys.s = true;
             if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') keys.a = true;
@@ -228,7 +296,6 @@
                     if (interactTarget) {
                         socket.emit('interact', interactTarget);
                     } else {
-                        // 島にいたら3秒採集スタート
                         const me = players[myId];
                         if (me && me.role === 'free') {
                             islands.forEach(isl => {
@@ -266,7 +333,7 @@
 
             if (e.key === 'e' || e.key === 'E') {
                 keys.e = false;
-                gatheringIslandId = null; // 離したらキャンセル
+                gatheringIslandId = null;
             }
         });
 
@@ -283,7 +350,6 @@
             potatoes = data.potatoes;
             cannonBalls = data.cannonBalls || [];
             myTeam = players[myId].team;
-            document.getElementById('team-name').innerText = myTeam === 'red' ? '赤チーム' : '青チーム';
         });
 
         socket.on('newPlayer', (p) => { players[p.id] = p; });
@@ -412,10 +478,11 @@
 
         socket.on('gameOver', (msg) => {
             alert(msg);
-            window.location.reload();
+            location.reload(); // ゲーム終了時はリロードしてロビーに戻る
         });
 
         function update() {
+            if (gameUi.style.display !== 'block') return;
             if (!myId || !players[myId]) return;
             const p = players[myId];
             if (!ships[p.team]) return;
@@ -438,7 +505,6 @@
                     p.x += dx;
                     p.y += dy;
 
-                    // プレイヤーの移動制限：船の上、または島の上を歩けるようにする
                     let onShip = false;
                     const cos = Math.cos(-ship.angle);
                     const sin = Math.sin(-ship.angle);
@@ -457,7 +523,6 @@
                         }
                     });
 
-                    // 船や島から外れた場合は押し戻す（海には落ちない）
                     if (!onShip && !onIsland) {
                         p.x -= dx;
                         p.y -= dy;
@@ -470,7 +535,6 @@
                     }
                 }
 
-                // 3秒間の木採集プログレス処理
                 const promptEl = document.getElementById('prompt');
                 if (gatheringIslandId !== null) {
                     let elapsed = Date.now() - gatherStartTime;
@@ -480,7 +544,7 @@
 
                     if (elapsed >= gatheringDuration) {
                         socket.emit('gatherIsland', gatheringIslandId);
-                        gatheringIslandId = null; // 完了
+                        gatheringIslandId = null;
                     }
                 } else {
                     interactTarget = null;
@@ -524,7 +588,6 @@
                     }
                 }
 
-                // ポテト回収はすぐ（即時）
                 potatoes.forEach(pot => {
                     if (!pot.collected && Math.hypot(p.x - pot.x, p.y - pot.y) < 45) {
                         socket.emit('collectPotato', pot.id);
@@ -573,6 +636,7 @@
         }
 
         function draw() {
+            if (gameUi.style.display !== 'block') return;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             if (!myId || !players[myId] || !ships[myTeam]) return;
 
