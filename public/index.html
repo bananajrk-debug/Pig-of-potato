@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pig of Potato - Ultimate Naval Battle</title>
+    <title>Pig of Potato - Ultimate Inventory & Combat</title>
     <style>
         body {
             margin: 0;
@@ -244,9 +244,64 @@
         }
         h2 { margin: 0 0 5px 0; font-size: 20px; color: #f1c40f; }
         p { margin: 4px 0; font-size: 14px; }
+
+        /* わかりやすい持ち物スロット（インベントリUI） */
+        #inventory-bar {
+            position: absolute;
+            bottom: 25px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 12px;
+            z-index: 25;
+            background: rgba(13, 27, 42, 0.85);
+            padding: 10px 18px;
+            border-radius: 16px;
+            border: 2px solid #f39c12;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.7);
+            pointer-events: none;
+        }
+        .inv-slot {
+            width: 70px;
+            height: 70px;
+            background: #1b263b;
+            border: 2px solid #415a77;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            box-shadow: inset 0 0 8px rgba(0,0,0,0.6);
+        }
+        .inv-slot.active {
+            border-color: #f1c40f;
+            box-shadow: 0 0 12px rgba(241, 196, 15, 0.6), inset 0 0 8px rgba(0,0,0,0.6);
+        }
+        .inv-icon { font-size: 22px; }
+        .inv-count {
+            position: absolute;
+            bottom: 4px;
+            right: 6px;
+            font-size: 13px;
+            font-weight: bold;
+            color: #f1c40f;
+            background: rgba(0,0,0,0.6);
+            padding: 1px 5px;
+            border-radius: 6px;
+        }
+        .inv-key {
+            position: absolute;
+            top: 4px;
+            left: 6px;
+            font-size: 10px;
+            color: #a0aec0;
+            font-weight: bold;
+        }
+
         #prompt {
             position: absolute;
-            bottom: 85px;
+            bottom: 115px;
             left: 50%;
             transform: translateX(-50%);
             background: rgba(0, 0, 0, 0.9);
@@ -364,9 +419,32 @@
         <div id="ui">
             <h2>🐷 Pig of Potato 🥔</h2>
             <p>チーム: <span id="team-name">-</span> | HP: <span id="team-hp">100</span> | 木材: <span id="team-wood">0</span>個</p>
-            <p>弾切替: <b>[1]</b> 通常(<span id="ammo-1">15</span>) | <b>[2]</b> 爆発(<span id="ammo-2">5</span>) | <b>[3]</b> 特製(<span id="ammo-3">5</span>)</p>
-            <p>選択中: <b id="current-ammo-type" style="color:#f1c40f;">1: 通常弾</b></p>
+            <p>選択中弾: <b id="current-ammo-type" style="color:#f1c40f;">1: 通常弾</b></p>
             <p>左大砲: <span id="left-cooldown" style="color:#2ecc71;">READY</span> | 右大砲: <span id="right-cooldown" style="color:#2ecc71;">READY</span></p>
+        </div>
+
+        <!-- わかりやすい持ち物スロット（インベントリ） -->
+        <div id="inventory-bar">
+            <div class="inv-slot active" id="slot-1">
+                <span class="inv-key">[1]</span>
+                <span class="inv-icon">💣</span>
+                <span class="inv-count" id="inv-ammo-1">15</span>
+            </div>
+            <div class="inv-slot" id="slot-2">
+                <span class="inv-key">[2]</span>
+                <span class="inv-icon">🔥</span>
+                <span class="inv-count" id="inv-ammo-2">5</span>
+            </div>
+            <div class="inv-slot" id="slot-3">
+                <span class="inv-key">[3]</span>
+                <span class="inv-icon">⭐</span>
+                <span class="inv-count" id="inv-ammo-3">5</span>
+            </div>
+            <div class="inv-slot" id="slot-wood" style="border-color: #27ae60;">
+                <span class="inv-key">木材</span>
+                <span class="inv-icon">🪵</span>
+                <span class="inv-count" id="inv-wood">0</span>
+            </div>
         </div>
 
         <div id="prompt">【Eキー】インタラクト</div>
@@ -377,7 +455,7 @@
             - <b>舵・大砲・見張り台:</b> 近くで <b>[ Eキー ]</b><br>
             - <b>大砲発射:</b> <b>[Kキー]で左大砲</b>、<b>[Oキー]で右大砲</b> （個別クールタイム）<br>
             - <b>島での採取:</b> <b>[Eキー長押し (3秒)]</b> で木や特殊弾をゲット！<br>
-            - <b>修理:</b> 船の<b>赤い修理スポット付近で[Rキー長押し (2秒)]</b>して木材2つ消費して修理！
+            - <b>修理:</b> 船の<b>先頭にある赤い修理ポイント</b>で <b>[Rキー長押し (2秒)]</b> （木材2個以上必要、0個では不可）
         </div>
 
         <div id="minimap-container">
@@ -717,10 +795,15 @@
                         const me = players[myId];
                         const ship = ships[myTeam];
                         if (me && ship && me.role === 'free') {
-                            // 赤い修理スポットの位置 (ローカル x = -50, y = 0)
-                            const rx = ship.x + Math.cos(ship.angle) * (-50);
-                            const ry = ship.y + Math.sin(ship.angle) * (-50);
-                            if (Math.hypot(me.x - rx, me.y - ry) < 45) {
+                            // 木材が0の時は修理できないように制御
+                            if (ship.wood < 2) {
+                                alert('木材が足りません！（修理には木材2個以上必要です）');
+                                return;
+                            }
+                            // 修理ポイントを船の先端に設定 (ローカル x = 140, y = 0)
+                            const rx = ship.x + Math.cos(ship.angle) * 140;
+                            const ry = ship.y + Math.sin(ship.angle) * 140;
+                            if (Math.hypot(me.x - rx, me.y - ry) < 50) {
                                 repairing = true;
                                 repairStartTime = Date.now();
                             }
@@ -781,6 +864,12 @@
         function updateAmmoDisplay() {
             const names = { 1: '1: 通常弾', 2: '2: 爆発弾', 3: '3: 特製弾' };
             document.getElementById('current-ammo-type').innerText = names[selectedAmmo];
+
+            // インベントリスロットのアクティブ表示更新
+            document.querySelectorAll('.inv-slot').forEach(el => el.classList.remove('active'));
+            if (selectedAmmo === 1) document.getElementById('slot-1').classList.add('active');
+            if (selectedAmmo === 2) document.getElementById('slot-2').classList.add('active');
+            if (selectedAmmo === 3) document.getElementById('slot-3').classList.add('active');
         }
 
         socket.on('newPlayer', (p) => { players[p.id] = p; });
@@ -826,9 +915,12 @@
             if (document.getElementById('team-name')) document.getElementById('team-name').innerText = myTeam === 'red' ? '🔴 赤チーム' : '🔵 青チーム';
             if (document.getElementById('team-hp')) document.getElementById('team-hp').innerText = ship.hp;
             if (document.getElementById('team-wood')) document.getElementById('team-wood').innerText = ship.wood;
-            if (document.getElementById('ammo-1')) document.getElementById('ammo-1').innerText = ship.ammo[1] || 0;
-            if (document.getElementById('ammo-2')) document.getElementById('ammo-2').innerText = ship.ammo[2] || 0;
-            if (document.getElementById('ammo-3')) document.getElementById('ammo-3').innerText = ship.ammo[3] || 0;
+            
+            // インベントリスロットの数量表示を更新
+            if (document.getElementById('inv-ammo-1')) document.getElementById('inv-ammo-1').innerText = ship.ammo[1] || 0;
+            if (document.getElementById('inv-ammo-2')) document.getElementById('inv-ammo-2').innerText = ship.ammo[2] || 0;
+            if (document.getElementById('inv-ammo-3')) document.getElementById('inv-ammo-3').innerText = ship.ammo[3] || 0;
+            if (document.getElementById('inv-wood')) document.getElementById('inv-wood').innerText = ship.wood || 0;
         }
 
         socket.on('shipMoved', (updatedShip) => {
@@ -992,8 +1084,9 @@
                         interactTarget = null;
                         const helmX = ship.x - Math.cos(ship.angle) * 140;
                         const helmY = ship.y - Math.sin(ship.angle) * 140;
-                        const rx = ship.x + Math.cos(ship.angle) * (-50);
-                        const ry = ship.y + Math.sin(ship.angle) * (-50);
+                        // 修理ポイントを先端に設定
+                        const rx = ship.x + Math.cos(ship.angle) * 140;
+                        const ry = ship.y + Math.sin(ship.angle) * 140;
 
                         let nearIsland = false;
                         islands.forEach(isl => {
@@ -1005,8 +1098,8 @@
                         });
 
                         if (!nearIsland) {
-                            if (Math.hypot(p.x - rx, p.y - ry) < 45) {
-                                promptEl.innerText = '【Rキー長押し】赤い修理ポイントで船を修理 (木材2個)';
+                            if (Math.hypot(p.x - rx, p.y - ry) < 50) {
+                                promptEl.innerText = '【Rキー長押し】船先端の赤い修理ポイントで修理 (木材2個必要)';
                                 promptEl.style.display = 'block';
                             } else if (Math.hypot(p.x - helmX, p.y - helmY) < 55 && !ship.helmsman) {
                                 interactTarget = { type: 'helm' };
@@ -1028,7 +1121,7 @@
                                         nearCannon = true;
                                     }
                                 });
-                                if (!nearCannon && !interactTarget && Math.hypot(p.x - rx, p.y - ry) >= 45) {
+                                if (!nearCannon && !interactTarget && Math.hypot(p.x - rx, p.y - ry) >= 50) {
                                     promptEl.style.display = 'none';
                                 }
                             }
@@ -1047,7 +1140,7 @@
                 if (promptEl) {
                     promptEl.style.display = 'block';
                     if (p.role === 'helmsman') {
-                        promptEl.innerText = '【Eキー】舵から離れる | 【R長押し(赤い点)】船修理 | 【K】左大砲 | 【O】右大砲';
+                        promptEl.innerText = '【Eキー】舵から離れる | 【R長押し(先端の赤い点)】船修理 | 【K】左大砲 | 【O】右大砲';
                         interactTarget = { type: 'helm' };
 
                         let rotSpeed = 0.05;
@@ -1237,9 +1330,9 @@
                 ctx.strokeStyle = '#d35400';
                 ctx.strokeRect(-145, -15, 15, 30);
 
-                // 修理スポット（赤い点）を船の上に表示
+                // 修理スポット（赤い点）を船の先端に配置
                 ctx.save();
-                ctx.translate(-110, 0);
+                ctx.translate(140, 0);
                 ctx.fillStyle = '#e74c3c';
                 ctx.beginPath();
                 ctx.arc(0, 0, 12, 0, Math.PI * 2);
@@ -1315,7 +1408,9 @@
                 const me = players[myId];
                 mCtx.fillStyle = '#2ecc71';
                 mCtx.beginPath();
-                mCtx.arc(me.x * scaleX, me.y * scaleY, 4, 0, Math.PI * 2);
+                mIdxX = me.x * scaleX;
+                mIdxY = me.y * scaleY;
+                mCtx.arc(mIdxX, mIdxY, 4, 0, Math.PI * 2);
                 mCtx.fill();
             }
         }
