@@ -50,7 +50,6 @@ function checkShipShipCollision(shipA, shipB) {
 }
 
 function createInitialRoomState(isCpuMode = false) {
-  // 島（コジマ）のサイズを小さめのサイズに戻す
   const islands = [
     { id: 1, x: 3500, y: 3000, radius: 600, wood: 6, hasSpecialAmmo: true, ammoType: 2 },
     { id: 2, x: 11500, y: 3000, radius: 600, wood: 6, hasSpecialAmmo: true, ammoType: 3 },
@@ -99,7 +98,7 @@ function createInitialRoomState(isCpuMode = false) {
         hp: 100,
         maxHp: 100,
         wood: 0,
-        ammo: { 1: 15, 2: 5, 3: 5 },
+        ammo: { 1: 99, 2: 10, 3: 10 },
         leftCooldown: 0,
         rightCooldown: 0,
         helmsman: null,
@@ -132,10 +131,8 @@ io.on('connection', (socket) => {
 
     if (!rooms[roomCode]) {
       rooms[roomCode] = createInitialRoomState(isCpu);
-    } else {
-      if (isCpu) {
-        rooms[roomCode].isCpuMode = true;
-      }
+    } else if (isCpu) {
+      rooms[roomCode].isCpuMode = true;
     }
     const room = rooms[roomCode];
 
@@ -267,7 +264,6 @@ io.on('connection', (socket) => {
     if (!room || room.status !== 'playing') return;
     const p = room.players[socket.id];
     const ship = room.ships[p.team];
-    // 木材が0の時は修理できないようにする条件を確実にチェック
     if (ship.wood >= 2 && ship.hp < ship.maxHp) {
       ship.wood -= 2;
       ship.hp = Math.min(ship.maxHp, ship.hp + 25);
@@ -428,7 +424,7 @@ io.on('connection', (socket) => {
   });
 });
 
-// CPUAI挙動：船の横幅の4倍（距離約520）を保ち、側面を向いて大砲を撃つ
+// 改良版CPUのAI挙動（プレイヤーへ真っ直ぐ追尾し、ちょうど良い距離で狙撃）
 setInterval(() => {
   for (let roomCode in rooms) {
     const room = rooms[roomCode];
@@ -442,16 +438,27 @@ setInterval(() => {
       let dy = redShip.y - blueShip.y;
       let dist = Math.hypot(dx, dy);
 
-      let targetDist = 520;
-      let toPlayerAngle = Math.atan2(dy, dx);
-      let targetAngle = toPlayerAngle + Math.PI / 2;
-      let angleDiff = targetAngle - blueShip.angle;
-      while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-      while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-      blueShip.angle += angleDiff * 0.04;
+      // プレイヤーへの角度
+      let angleToPlayer = Math.atan2(dy, dx);
 
-      let distDiff = dist - targetDist;
-      blueShip.speed = Math.max(-3.0, Math.min(blueShip.maxSpeed, distDiff * 0.02));
+      // 距離が遠い（350以上）ならプレイヤーに向かって全速力で移動
+      if (dist > 350) {
+        let angleDiff = angleToPlayer - blueShip.angle;
+        while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+        while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+        
+        blueShip.angle += angleDiff * 0.05;
+        blueShip.speed = blueShip.maxSpeed;
+      } else {
+        // ちょうど良い戦闘距離（350以内）に入ったら、大砲（側面）を向けて旋回
+        let sideAngle = angleToPlayer + Math.PI / 2;
+        let angleDiff = sideAngle - blueShip.angle;
+        while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+        while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+
+        blueShip.angle += angleDiff * 0.08;
+        blueShip.speed = 1.5; // 狙撃しやすい微速旋回
+      }
 
       let nextX = blueShip.x + Math.cos(blueShip.angle) * blueShip.speed;
       let nextY = blueShip.y + Math.sin(blueShip.angle) * blueShip.speed;
@@ -470,10 +477,10 @@ setInterval(() => {
       blueShip.x = Math.max(300, Math.min(WORLD_WIDTH - 300, blueShip.x));
       blueShip.y = Math.max(300, Math.min(WORLD_HEIGHT - 300, blueShip.y));
 
+      // ちょうど良い距離（1200以内）で自動射撃
       const now = Date.now();
-      if (dist < 1800 && blueShip.ammo[1] > 0 && blueShip.leftCooldown < now) {
-        blueShip.leftCooldown = now + 1800;
-        blueShip.ammo[1]--;
+      if (dist < 1200 && blueShip.leftCooldown < now) {
+        blueShip.leftCooldown = now + 1600;
         room.cannonBalls.push({
           id: Math.random().toString(),
           team: 'blue',
@@ -525,5 +532,5 @@ setInterval(() => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`✨ Pig of Potato v22 サーバー起動: http://localhost:${PORT}`);
+  console.log(`✨ Pig of Potato v23 サーバー起動: http://localhost:${PORT}`);
 });
