@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pig of Potato 2v2 - Smooth & K/O Cannon</title>
+    <title>Pig of Potato 2v2 - Ultra Smooth</title>
     <style>
         body {
             margin: 0;
@@ -57,7 +57,7 @@
 </head>
 <body>
     <div id="ui">
-        <h1>🐷 Pig of Potato 🥔 [Smooth Edition]</h1>
+        <h1>🐷 Pig of Potato 🥔 [Ultra Smooth Edition]</h1>
         <p>チーム: <span id="team-name">-</span> | 役割: <span id="role-name">自由行動</span></p>
         <p>赤チームHP: <span id="red-hp">100</span> | 青チームHP: <span id="blue-hp">100</span></p>
         <p>チーム大砲弾薬: <span id="team-ammo">15</span>発</p>
@@ -67,10 +67,10 @@
 
     <div id="instructions">
         <b>操作方法:</b><br>
-        - <b>移動:</b> W / A / S / D （なめらかに移動）<br>
+        - <b>移動:</b> W / A / S / D （なめらか移動）<br>
         - <b>舵(船の一番後ろ)・大砲・見張り台:</b> 近くで <b>[ Eキー ]</b><br>
         - <b>操舵中:</b> A/Dで旋回、W/Sで前進・後退<br>
-        - <b>大砲操作中:</b> <b>[ Kキー ]</b> または <b>[ Oキー ]</b> でジャガイモ弾を発射！<br>
+        - <b>大砲操作中:</b> <b>[ Kキー ]</b> または <b>[ Oキー ]</b> でジャガイモ弾を発射！（球がハッキリ見えます）<br>
         - 浮かんでいるジャガイモを拾って弾薬補給！
     </div>
 
@@ -98,6 +98,7 @@
         let interactTarget = null;
 
         const keys = { w: false, s: false, a: false, d: false };
+        let lastSendTime = 0;
 
         window.addEventListener('keydown', (e) => {
             if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') keys.w = true;
@@ -137,13 +138,20 @@
             players = data.players;
             ships = data.ships;
             potatoes = data.potatoes;
+            cannonBalls = data.cannonBalls || [];
             myTeam = players[myId].team;
             document.getElementById('team-name').innerText = myTeam === 'red' ? '赤チーム (レッドポテト号)' : '青チーム (ブルーマッシュ号)';
         });
 
         socket.on('newPlayer', (p) => { players[p.id] = p; });
-        socket.on('playerMoved', (p) => { if(players[p.id]) players[p.id] = p; });
+        socket.on('playerMoved', (p) => {
+            if (players[p.id] && p.id !== myId) {
+                players[p.id].targetX = p.x;
+                players[p.id].targetY = p.y;
+            }
+        });
         socket.on('playerDisconnected', (id) => { delete players[id]; });
+
         socket.on('gameStateUpdate', (data) => {
             players = data.players;
             ships = data.ships;
@@ -159,12 +167,28 @@
         });
 
         socket.on('serverTick', (data) => {
-            ships = data.ships;
+            for (let id in data.ships) {
+                if (ships[id]) {
+                    ships[id].targetX = data.ships[id].x;
+                    ships[id].targetY = data.ships[id].y;
+                    ships[id].targetAngle = data.ships[id].angle;
+                    ships[id].speed = data.ships[id].speed;
+                    ships[id].hp = data.ships[id].hp;
+                    ships[id].cannonAmmo = data.ships[id].cannonAmmo;
+                }
+            }
             cannonBalls = data.cannonBalls;
             document.getElementById('red-hp').innerText = ships.red.hp;
             document.getElementById('blue-hp').innerText = ships.blue.hp;
             if(ships[myTeam]) {
                 document.getElementById('team-ammo').innerText = ships[myTeam].cannonAmmo;
+            }
+        });
+
+        // 大砲が撃たれた瞬間に確実に弾を追加して即時表示
+        socket.on('cannonFired', (ball) => {
+            if (!cannonBalls.some(b => b.id === ball.id)) {
+                cannonBalls.push(ball);
             }
         });
 
@@ -195,8 +219,31 @@
             const p = players[myId];
             const ship = ships[p.team];
 
+            // 船や他プレイヤーの滑らかな補間移動 (Lerp)
+            for (let id in ships) {
+                let s = ships[id];
+                if (s.targetX !== undefined) {
+                    s.x += (s.targetX - s.x) * 0.25;
+                    s.y += (s.targetY - s.y) * 0.25;
+                    if (s.targetAngle !== undefined) {
+                        let diff = s.targetAngle - s.angle;
+                        while (diff < -Math.PI) diff += Math.PI * 2;
+                        while (diff > Math.PI) diff -= Math.PI * 2;
+                        s.angle += diff * 0.25;
+                    }
+                }
+            }
+
+            for (let id in players) {
+                let pl = players[id];
+                if (id !== myId && pl.targetX !== undefined) {
+                    pl.x += (pl.targetX - pl.x) * 0.25;
+                    pl.y += (pl.targetY - pl.y) * 0.25;
+                }
+            }
+
             if (p.role === 'free') {
-                let speed = 5.0; // 滑らかでスムーズな移動速度
+                let speed = 5.5;
                 let dx = 0, dy = 0;
                 if (keys.w) dy -= speed;
                 if (keys.s) dy += speed;
@@ -204,7 +251,6 @@
                 if (keys.d) dx += speed;
 
                 if (dx !== 0 && dy !== 0) {
-                    // 斜め移動時の速度正規化で均一なめらかな動きに
                     dx *= 0.7071;
                     dy *= 0.7071;
                 }
@@ -212,7 +258,13 @@
                 if (dx !== 0 || dy !== 0) {
                     p.x += dx;
                     p.y += dy;
-                    socket.emit('playerMove', { x: p.x, y: p.y });
+
+                    // 送信頻度を最適化してカクつきを防止
+                    const now = Date.now();
+                    if (now - lastSendTime > 30) {
+                        socket.emit('playerMove', { x: p.x, y: p.y });
+                        lastSendTime = now;
+                    }
                 }
 
                 interactTarget = null;
@@ -381,13 +433,14 @@
                 ctx.fillText(`${s.name} (HP: ${s.hp})`, s.x, s.y - 95);
             }
 
+            // 発射されたジャガイモ弾（ハッキリ見えるようにサイズと色を強調）
             cannonBalls.forEach(b => {
-                ctx.fillStyle = '#d35400';
+                ctx.fillStyle = '#f39c12';
                 ctx.beginPath();
-                ctx.arc(b.x, b.y, 9, 0, Math.PI * 2);
+                ctx.arc(b.x, b.y, 12, 0, Math.PI * 2);
                 ctx.fill();
-                ctx.strokeStyle = '#000';
-                ctx.lineWidth = 2;
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = '#7d6608';
                 ctx.stroke();
             });
 
