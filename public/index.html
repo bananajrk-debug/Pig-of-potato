@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pig of Potato - Lobby Fix</title>
+    <title>Pig of Potato - Brawl Style Home</title>
     <style>
         body {
             margin: 0;
@@ -20,7 +20,7 @@
             left: 0;
             width: 100vw;
             height: 100vh;
-            background: linear-gradient(135deg, #1b4f72, #78281f);
+            background: radial-gradient(circle, #2471a3, #1b4f72, #154360);
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -28,30 +28,31 @@
             z-index: 100;
         }
         h1 {
-            font-size: 48px;
+            font-size: 46px;
             color: #f39c12;
-            margin-bottom: 20px;
-            text-shadow: 2px 2px 8px rgba(0,0,0,0.7);
+            margin-bottom: 15px;
+            text-shadow: 3px 3px 10px rgba(0,0,0,0.8);
         }
         .menu-box {
             background: rgba(0, 0, 0, 0.85);
-            padding: 30px 40px;
-            border-radius: 12px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+            padding: 25px 35px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.7);
             display: flex;
             flex-direction: column;
-            gap: 15px;
-            width: 350px;
-            border: 2px solid #f39c12;
+            gap: 12px;
+            width: 360px;
+            border: 3px solid #f39c12;
         }
         .menu-box label {
-            font-size: 14px;
+            font-size: 13px;
             color: #f1c40f;
+            font-weight: bold;
         }
         .menu-box input {
             padding: 10px;
             font-size: 18px;
-            border-radius: 6px;
+            border-radius: 8px;
             border: none;
             outline: none;
             background: #2c3e50;
@@ -63,32 +64,73 @@
             padding: 12px;
             font-size: 18px;
             font-weight: bold;
-            background: #f39c12;
-            color: #fff;
+            background: #f1c40f;
+            color: #7d6608;
             border: none;
-            border-radius: 6px;
+            border-radius: 8px;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: transform 0.1s, background 0.2s;
+            box-shadow: 0 4px 0 #b7950b;
             text-align: center;
         }
-        .btn:hover { background: #d68910; }
+        .btn:hover { background: #f39c12; transform: translateY(-2px); }
+        .btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #b7950b; }
+
         .btn-ready {
             background: #e74c3c;
+            color: #fff;
+            box-shadow: 0 4px 0 #922b21;
         }
         .btn-ready.is-ready {
             background: #2ecc71;
+            box-shadow: 0 4px 0 #1e8449;
         }
 
         #lobby-screen { display: none; }
         #game-ui { display: none; }
 
+        /* ブロスタ風ホーム画面のレイアウト */
+        .brawl-home-container {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            justify-content: center;
+        }
+        .preview-panel {
+            background: rgba(0,0,0,0.6);
+            border: 2px solid #34495e;
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            width: 200px;
+        }
+        .color-palette {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .color-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 2px solid #fff;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .color-btn:hover { transform: scale(1.15); }
+
         .player-list {
             background: #2c3e50;
             padding: 10px;
-            border-radius: 6px;
-            max-height: 150px;
+            border-radius: 8px;
+            max-height: 140px;
             overflow-y: auto;
-            font-size: 14px;
+            font-size: 13px;
+            border: 1px solid #4e6d8c;
         }
 
         #ui {
@@ -101,6 +143,7 @@
             pointer-events: none;
             z-index: 10;
             box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+            border: 1px solid #f39c12;
         }
         h2 { margin: 0 0 5px 0; font-size: 20px; color: #f39c12; }
         p { margin: 4px 0; font-size: 14px; }
@@ -111,13 +154,14 @@
             transform: translateX(-50%);
             background: rgba(0, 0, 0, 0.9);
             padding: 12px 24px;
-            border-radius: 6px;
+            border-radius: 8px;
             font-size: 16px;
             color: #f1c40f;
             display: none;
             z-index: 20;
             border: 2px solid #f39c12;
             text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
         }
         #instructions {
             position: absolute;
@@ -129,11 +173,13 @@
             font-size: 13px;
             pointer-events: none;
             line-height: 1.5;
+            border: 1px solid #34495e;
         }
         canvas { display: block; background: #2980b9; }
     </style>
 </head>
 <body>
+    <!-- 1. コード入力画面 -->
     <div id="title-screen" class="screen">
         <h1>🐷 Pig of Potato 🥔</h1>
         <div class="menu-box">
@@ -143,20 +189,40 @@
             <label>4桁のルームコード:</label>
             <input type="text" id="input-room" maxlength="4" value="1234" placeholder="1234">
             
-            <button class="btn" id="btn-join">ロビーに入る</button>
+            <button class="btn" id="btn-join">ロビーへ移動</button>
         </div>
     </div>
 
+    <!-- 2. ブロスタ風ホーム画面（キャラクタープレビュー ＆ カラー変更） -->
     <div id="lobby-screen" class="screen">
-        <h1>🎮 待機ロビー (コード: <span id="display-room-code">----</span>)</h1>
-        <div class="menu-box" style="width: 400px;">
-            <label>参加メンバー一覧:</label>
-            <div class="player-list" id="lobby-player-list">読み込み中...</div>
-            
-            <button class="btn btn-ready" id="btn-ready">準備OK！ (READY)</button>
+        <h1>⭐ チームロビー (コード: <span id="display-room-code">----</span>) ⭐</h1>
+        <div class="brawl-home-container">
+            <!-- キャラプレビュー＆カラーパレット -->
+            <div class="preview-panel">
+                <label>あなたの豚:</label>
+                <canvas id="previewCanvas" width="100" height="100" style="background:#1b4f72; border-radius:8px;"></canvas>
+                <label>体のカラー変更:</label>
+                <div class="color-palette">
+                    <div class="color-btn" style="background:#e67e22;" onclick="changeBodyColor('#e67e22')"></div>
+                    <div class="color-btn" style="background:#e74c3c;" onclick="changeBodyColor('#e74c3c')"></div>
+                    <div class="color-btn" style="background:#9b59b6;" onclick="changeBodyColor('#9b59b6')"></div>
+                    <div class="color-btn" style="background:#2ecc71;" onclick="changeBodyColor('#2ecc71')"></div>
+                    <div class="color-btn" style="background:#3498db;" onclick="changeBodyColor('#3498db')"></div>
+                    <div class="color-btn" style="background:#f1c40f;" onclick="changeBodyColor('#f1c40f')"></div>
+                </div>
+            </div>
+
+            <!-- メンバー＆準備ボタン -->
+            <div class="menu-box" style="width: 320px;">
+                <label>乗組員メンバー:</label>
+                <div class="player-list" id="lobby-player-list">読み込み中...</div>
+                
+                <button class="btn btn-ready" id="btn-ready">出航準備完了！ (READY)</button>
+            </div>
         </div>
     </div>
 
+    <!-- 3. ゲームプレイ画面 -->
     <div id="game-ui">
         <div id="ui">
             <h2>🐷 Pig of Potato 🥔</h2>
@@ -169,9 +235,9 @@
 
         <div id="instructions">
             <b>操作方法:</b><br>
-            - <b>移動:</b> W / A / S / D （船の上または島の上）<br>
+            - <b>移動:</b> W / A / S / D （船の上または拡大された島の上）<br>
             - <b>舵・大砲・見張り台:</b> 近くで <b>[ Eキー ]</b><br>
-            - <b>島での採取:</b> 島の上で <b>[ Eキー長押し (3秒) ]</b> で木や特殊弾をゲット！<br>
+            - <b>島での採取:</b> 島の上で <b>[ Eキー長押し (3秒) ]</b> で木や効果付き砲弾をゲット！<br>
             - <b>修理:</b> <b>[Rキー]</b>で木材を消費して船を修理！
         </div>
 
@@ -196,6 +262,10 @@
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
+        // プレビュー用キャンバス
+        const previewCanvas = document.getElementById('previewCanvas');
+        const pCtx = previewCanvas.getContext('2d');
+
         function resize() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
@@ -214,6 +284,7 @@
         let canFire = true;
         let selectedAmmo = 1;
         let isReady = false;
+        let myBodyColor = '#e67e22';
 
         let gatheringIslandId = null;
         let gatherStartTime = 0;
@@ -221,6 +292,94 @@
 
         const keys = { w: false, s: false, a: false, d: false, e: false };
         let lastSendTime = 0;
+
+        // 豚の顔と長方形の体を描画する共通関数（高グラフィック化対応）
+        function drawPigCharacter(context, x, y, bodyColor, name) {
+            context.save();
+            context.translate(x, y);
+
+            // 影の表現
+            context.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            context.beginPath();
+            context.ellipse(0, 15, 18, 10, 0, 0, Math.PI * 2);
+            context.fill();
+
+            // 長方形の体
+            context.fillStyle = bodyColor;
+            context.fillRect(-16, -10, 32, 22);
+            context.lineWidth = 2;
+            context.strokeStyle = '#2c3e50';
+            context.strokeRect(-16, -10, 32, 22);
+
+            // 豚の顔（丸）
+            context.fillStyle = '#ff9ff3';
+            context.beginPath();
+            context.arc(0, -16, 14, 0, Math.PI * 2);
+            context.fill();
+            context.stroke();
+
+            // 耳
+            context.beginPath();
+            context.moveTo(-10, -25);
+            context.lineTo(-14, -32);
+            context.lineTo(-5, -27);
+            context.closePath();
+            context.fill();
+            context.stroke();
+
+            context.beginPath();
+            context.moveTo(10, -25);
+            context.lineTo(14, -32);
+            context.lineTo(5, -27);
+            context.closePath();
+            context.fill();
+            context.stroke();
+
+            // 鼻（マズル）
+            context.fillStyle = '#f368e0';
+            context.beginPath();
+            context.ellipse(0, -14, 6, 4, 0, 0, Math.PI * 2);
+            context.fill();
+            context.stroke();
+
+            // 鼻の穴
+            context.fillStyle = '#b33939';
+            context.beginPath();
+            context.arc(-2, -14, 1.2, 0, Math.PI * 2);
+            context.arc(2, -14, 1.2, 0, Math.PI * 2);
+            context.fill();
+
+            // 目
+            context.fillStyle = '#2c3e50';
+            context.beginPath();
+            context.arc(-5, -19, 1.8, 0, Math.PI * 2);
+            context.arc(5, -19, 1.8, 0, Math.PI * 2);
+            context.fill();
+
+            if (name) {
+                context.fillStyle = '#fff';
+                context.font = 'bold 12px sans-serif';
+                context.textAlign = 'center';
+                context.shadowColor = '#000';
+                context.shadowBlur = 4;
+                context.fillText(name, 0, -38);
+            }
+
+            context.restore();
+        }
+
+        // ホーム画面のプレビュー描画ループ
+        function drawPreview() {
+            pCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+            drawPigCharacter(pCtx, previewCanvas.width / 2, previewCanvas.height / 2 + 10, myBodyColor, null);
+            requestAnimationFrame(drawPreview);
+        }
+        drawPreview();
+
+        function changeBodyColor(color) {
+            myBodyColor = color;
+            socket.emit('changeColor', color);
+        }
 
         btnJoin.addEventListener('click', () => {
             const playerName = inputName.value.trim() || '名無しの豚';
@@ -235,17 +394,17 @@
             titleScreen.style.display = 'none';
             lobbyScreen.style.display = 'flex';
 
-            socket.emit('joinRoom', { roomCode, playerName });
+            socket.emit('joinRoom', { roomCode, playerName, bodyColor: myBodyColor });
         });
 
         btnReady.addEventListener('click', () => {
             isReady = !isReady;
             if (isReady) {
                 btnReady.classList.add('is-ready');
-                btnReady.innerText = '準備完了！ (READY)';
+                btnReady.innerText = '出航準備完了！ (READY)';
             } else {
                 btnReady.classList.remove('is-ready');
-                btnReady.innerText = '準備OK！ (READY)';
+                btnReady.innerText = '出航準備完了！ (READY)';
             }
             socket.emit('toggleReady');
         });
@@ -271,7 +430,6 @@
             if (players[myId]) {
                 myTeam = players[myId].team;
             } else {
-                // 万が一キーが一致しない場合のフォールバック
                 myTeam = Object.values(players).find(p => p.id === myId)?.team || Object.values(players)[0].team;
             }
 
@@ -644,44 +802,60 @@
 
             ctx.save();
             ctx.translate(canvas.width / 2, canvas.height / 2);
-            let zoom = me.role === 'watcher' ? 0.3 : 0.5;
+            // 画面のズームをもっとアップ（見張り台は0.5、通常は1.1）
+            let zoom = me.role === 'watcher' ? 0.5 : 1.1;
             ctx.scale(zoom, zoom);
             ctx.translate(-targetX, -targetY);
 
+            // 海の背景グラフィック強化
+            ctx.fillStyle = '#2980b9';
+            ctx.fillRect(0, 0, 6000, 4500);
+
             ctx.strokeStyle = '#1b4f72';
-            ctx.lineWidth = 10;
+            ctx.lineWidth = 14;
             ctx.strokeRect(0, 0, 6000, 4500);
 
-            ctx.fillStyle = '#2471a3';
-            for (let x = 300; x < 6000; x += 500) {
-                for (let y = 300; y < 4500; y += 500) {
+            // リッチな波のドット
+            ctx.fillStyle = '#3498db';
+            for (let x = 200; x < 6000; x += 350) {
+                for (let y = 200; y < 4500; y += 350) {
                     ctx.beginPath();
-                    ctx.arc(x, y, 7, 0, Math.PI * 2);
+                    ctx.arc(x, y, 10, 0, Math.PI * 2);
                     ctx.fill();
                 }
             }
 
+            // 2.5倍に拡大された小島の描画
             islands.forEach(isl => {
                 ctx.save();
                 ctx.translate(isl.x, isl.y);
-                ctx.fillStyle = '#d4ac0d';
+                // 島の影
+                ctx.fillStyle = 'rgba(0,0,0,0.25)';
+                ctx.beginPath();
+                ctx.arc(15, 15, isl.radius, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 砂浜（外縁）
+                ctx.fillStyle = '#f1c40f';
                 ctx.beginPath();
                 ctx.arc(0, 0, isl.radius, 0, Math.PI * 2);
                 ctx.fill();
-                ctx.lineWidth = 6;
-                ctx.strokeStyle = '#b7950b';
+                ctx.lineWidth = 10;
+                ctx.strokeStyle = '#d4ac0d';
                 ctx.stroke();
 
+                // 島内部（草地）
                 ctx.fillStyle = '#27ae60';
                 ctx.beginPath();
-                ctx.arc(0, 0, isl.radius * 0.6, 0, Math.PI * 2);
+                ctx.arc(0, 0, isl.radius * 0.75, 0, Math.PI * 2);
                 ctx.fill();
 
                 if (isl.hasSpecialAmmo) {
                     ctx.fillStyle = '#e74c3c';
-                    ctx.fillRect(-15, -15, 30, 30);
+                    ctx.fillRect(-25, -25, 50, 50);
+                    ctx.lineWidth = 3;
                     ctx.strokeStyle = '#fff';
-                    ctx.strokeRect(-15, -15, 30, 30);
+                    ctx.strokeRect(-25, -25, 50, 50);
                 }
 
                 ctx.restore();
@@ -696,7 +870,7 @@
                     ctx.ellipse(0, 0, 24, 18, Math.PI / 4, 0, Math.PI * 2);
                     ctx.fill();
                     ctx.strokeStyle = '#7d6608';
-                    ctx.lineWidth = 2;
+                    ctx.lineWidth = 3;
                     ctx.stroke();
                     ctx.restore();
                 }
@@ -708,25 +882,29 @@
                 ctx.translate(s.x, s.y);
                 ctx.rotate(s.angle);
 
+                // 船の本体
                 ctx.fillStyle = sId === 'red' ? '#78281f' : '#154360';
                 ctx.fillRect(-130, -65, 260, 130);
-                ctx.lineWidth = 4;
-                ctx.strokeStyle = '#273746';
+                ctx.lineWidth = 5;
+                ctx.strokeStyle = '#111';
                 ctx.strokeRect(-130, -65, 260, 130);
 
+                // 船首
                 ctx.beginPath();
                 ctx.moveTo(130, -65);
                 ctx.lineTo(180, 0);
                 ctx.lineTo(130, 65);
                 ctx.closePath();
-                ctx.fillStyle = sId === 'red' ? '#922b21' : '#154360';
+                ctx.fillStyle = sId === 'red' ? '#922b21' : '#1f618d';
                 ctx.fill();
                 ctx.stroke();
 
+                // 甲板
                 ctx.fillStyle = '#d4ac0d';
                 ctx.fillRect(-90, -45, 180, 90);
                 ctx.strokeRect(-90, -45, 180, 90);
 
+                // マスト
                 ctx.fillStyle = '#5d4037';
                 ctx.fillRect(-15, -15, 30, 30);
                 ctx.beginPath();
@@ -742,6 +920,7 @@
                     ctx.strokeRect(c.offsetRelX - 12, c.offsetRelY - 10, 24, 20);
                 });
 
+                // 舵
                 ctx.fillStyle = '#e67e22';
                 ctx.fillRect(-145, -15, 15, 30);
                 ctx.strokeStyle = '#d35400';
@@ -750,39 +929,29 @@
                 ctx.restore();
 
                 ctx.fillStyle = '#fff';
-                ctx.font = 'bold 16px sans-serif';
+                ctx.font = 'bold 18px sans-serif';
                 ctx.textAlign = 'center';
-                ctx.fillText(`${s.name} (HP: ${s.hp}/100)`, s.x, s.y - 95);
+                ctx.shadowColor = '#000';
+                ctx.shadowBlur = 6;
+                ctx.fillText(`${s.name} (HP: ${s.hp}/100)`, s.x, s.y - 105);
+                ctx.shadowBlur = 0;
             }
 
             cannonBalls.forEach(b => {
                 ctx.fillStyle = b.ammoType === 2 ? '#e74c3c' : '#f39c12';
                 ctx.beginPath();
-                ctx.arc(b.x, b.y, b.ammoType === 2 ? 15 : 12, 0, Math.PI * 2);
+                ctx.arc(b.x, b.y, b.ammoType === 2 ? 16 : 13, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.lineWidth = 3;
-                ctx.strokeStyle = '#7d6608';
+                ctx.strokeStyle = '#555';
                 ctx.stroke();
             });
 
+            // プレイヤー描画（豚の顔＋長方形の体、カスタマイズ色）
             for (let id in players) {
                 let p = players[id];
                 if (p.role === 'free' && ships[p.team]) {
-                    ctx.save();
-                    ctx.translate(p.x, p.y);
-                    ctx.fillStyle = p.team === 'red' ? '#f1948a' : '#85c1e9';
-                    ctx.beginPath();
-                    ctx.arc(0, 0, 15, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.lineWidth = 2;
-                    ctx.strokeStyle = '#922b21';
-                    ctx.stroke();
-
-                    ctx.fillStyle = '#fff';
-                    ctx.font = '12px sans-serif';
-                    ctx.textAlign = 'center';
-                    ctx.fillText(p.name, 0, -24);
-                    ctx.restore();
+                    drawPigCharacter(ctx, p.x, p.y, p.bodyColor || '#e67e22', p.name);
                 }
             }
 
