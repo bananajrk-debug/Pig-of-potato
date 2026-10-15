@@ -609,6 +609,21 @@
             context.restore();
         }
 
+        function drawPigCharacter(context, x, y, bodyColor, name) {
+            context.save();
+            context.translate(x, y);
+            context.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            context.beginPath(); context.ellipse(0, 15, 18, 10, 0, 0, Math.PI * 2); context.fill();
+            context.fillStyle = bodyColor; context.fillRect(-16, -10, 32, 22);
+            context.lineWidth = 2; context.strokeStyle = '#2c3e50'; context.strokeRect(-16, -10, 32, 22);
+            context.fillStyle = '#ff9ff3'; context.beginPath(); context.arc(0, -16, 14, 0, Math.PI * 2); context.fill(); context.stroke();
+            if (name) {
+                context.fillStyle = '#fff'; context.font = 'bold 12px sans-serif'; context.textAlign = 'center';
+                context.fillText(name, 0, -38);
+            }
+            context.restore();
+        }
+
         function drawPreview() {
             pCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
             drawPigCharacterLarge(pCtx, previewCanvas.width / 2, previewCanvas.height / 2 + 15, myBodyColor, null);
@@ -691,7 +706,7 @@
                         if (ship.wood < 2) { alert('木材が足りません！（修理には2個必要）'); return; }
                         const rx = ship.x + Math.cos(ship.angle) * 110;
                         const ry = ship.y + Math.sin(ship.angle) * 110;
-                        if (Math.hypot(me.x - rx, me.y - ry) < 50) { repairing = true; repairStartTime = Date.now(); }
+                        if (Math.hypot(me.x - rx, me.y - ry) < 60) { repairing = true; repairStartTime = Date.now(); }
                     }
                 }
                 if (['e','E'].includes(e.key) && !keys.e) {
@@ -796,9 +811,19 @@
 
                 if (dx !== 0 || dy !== 0) {
                     p.x += dx; p.y += dy;
-                    let onShip = (Math.abs(p.x - ship.x) < 110 && Math.abs(p.y - ship.y) < 50);
+
+                    // 船の回転を考慮したローカル座標判定により「動けないバグ」を完全解消
+                    const cos = Math.cos(-ship.angle);
+                    const sin = Math.sin(-ship.angle);
+                    const relX = p.x - ship.x;
+                    const relY = p.y - ship.y;
+                    const localX = relX * cos - relY * sin;
+                    const localY = relX * sin + relY * cos;
+                    let onShip = (localX >= -120 && localX <= 130 && localY >= -60 && localY <= 60);
+
                     let onIsland = false;
                     islands.forEach(isl => { if (Math.hypot(p.x - isl.x, p.y - isl.y) <= isl.radius) onIsland = true; });
+
                     if (!onShip && !onIsland) { p.x -= dx; p.y -= dy; }
                     if (Date.now() - lastSendTime > 25) { socket.emit('playerMove', { x: p.x, y: p.y }); lastSendTime = Date.now(); }
                 }
@@ -812,7 +837,7 @@
                     });
 
                     if (inTown) {
-                        promptEl.innerHTML = `🥔 <b>ポテト港町</b> | <button onclick="socket.emit('portAction','sellWood')">木材売却(20G)</button> <button onclick="socket.emit('portAction','upgradeHp')">HP強化(50G)</button> <button onclick="socket.emit('portAction','upgradeSpeed')">速度強化(80G)</button>`;
+                        promptEl.innerHTML = `🥔 <b>ポテト港町</b> | <button class="btn" style="padding:4px 10px; font-size:14px;" onclick="socket.emit('portAction','sellWood')">木材売却(20G)</button> <button class="btn" style="padding:4px 10px; font-size:14px;" onclick="socket.emit('portAction','upgradeHp')">HP強化(50G)</button> <button class="btn" style="padding:4px 10px; font-size:14px;" onclick="socket.emit('portAction','upgradeSpeed')">速度強化(80G)</button>`;
                         promptEl.style.display = 'block';
                     } else {
                         const helmX = ship.x - Math.cos(ship.angle) * 110;
@@ -820,10 +845,10 @@
                         const rx = ship.x + Math.cos(ship.angle) * 110;
                         const ry = ship.y + Math.sin(ship.angle) * 110;
 
-                        if (Math.hypot(p.x - rx, p.y - ry) < 45) {
+                        if (Math.hypot(p.x - rx, p.y - ry) < 50) {
                             promptEl.innerText = '【Rキー長押し】船の先端で修理 (木材2個必要)';
                             promptEl.style.display = 'block';
-                        } else if (Math.hypot(p.x - helmX, p.y - helmY) < 50 && !ship.helmsman) {
+                        } else if (Math.hypot(p.x - helmX, p.y - helmY) < 55 && !ship.helmsman) {
                             interactTarget = { type: 'helm' };
                             promptEl.innerText = '【Eキー】舵を取る';
                             promptEl.style.display = 'block';
@@ -854,37 +879,129 @@
             const me = players[myId];
             const myShip = ships['red'];
 
+            let targetX = me.role === 'helmsman' ? myShip.x : me.x;
+            let targetY = me.role === 'helmsman' ? myShip.y : me.y;
+
             ctx.save();
             ctx.translate(canvas.width / 2, canvas.height / 2);
             ctx.scale(1.1, 1.1);
-            ctx.translate(-myShip.x, -myShip.y);
+            ctx.translate(-targetX, -targetY);
 
-            ctx.fillStyle = '#2980b9'; ctx.fillRect(0, 0, 15000, 11250);
+            ctx.fillStyle = '#2980b9'; 
+            ctx.fillRect(0, 0, 15000, 11250);
 
+            // 島と港町の美しい描画
             islands.forEach(isl => {
-                ctx.save(); ctx.translate(isl.x, isl.y);
-                ctx.fillStyle = isl.isTown ? '#d4ac0d' : '#f1c40f';
+                ctx.save(); 
+                ctx.translate(isl.x, isl.y);
+                ctx.fillStyle = 'rgba(0,0,0,0.3)';
+                ctx.beginPath(); ctx.arc(15, 15, isl.radius, 0, Math.PI * 2); ctx.fill();
+
+                ctx.fillStyle = isl.isTown ? '#f1c40f' : '#f39c12';
                 ctx.beginPath(); ctx.arc(0, 0, isl.radius, 0, Math.PI * 2); ctx.fill();
-                ctx.fillStyle = isl.isTown ? '#f39c12' : '#27ae60';
-                ctx.beginPath(); ctx.arc(0, 0, isl.radius * 0.8, 0, Math.PI * 2); ctx.fill();
-                ctx.fillStyle = '#fff'; ctx.font = 'bold 24px sans-serif'; ctx.textAlign = 'center';
+                ctx.lineWidth = 10; ctx.strokeStyle = isl.isTown ? '#d4ac0d' : '#e67e22'; ctx.stroke();
+
+                ctx.fillStyle = isl.isTown ? '#27ae60' : '#2ecc71';
+                ctx.beginPath(); ctx.arc(0, 0, isl.radius * 0.75, 0, Math.PI * 2); ctx.fill();
+
+                ctx.fillStyle = '#fff'; ctx.font = 'bold 26px sans-serif'; ctx.textAlign = 'center';
+                ctx.shadowColor = '#000'; ctx.shadowBlur = 6;
                 ctx.fillText(isl.name || '島', 0, 0);
                 ctx.restore();
             });
 
+            // ポテト資源の描画
+            potatoes.forEach(pot => {
+                if (!pot.collected) {
+                    ctx.save();
+                    ctx.translate(pot.x, pot.y);
+                    ctx.fillStyle = '#f1c40f';
+                    ctx.beginPath(); ctx.ellipse(0, 0, 24, 18, Math.PI / 4, 0, Math.PI * 2); ctx.fill();
+                    ctx.strokeStyle = '#7d6608'; ctx.lineWidth = 3; ctx.stroke();
+                    ctx.restore();
+                }
+            });
+
+            // 立体感のある美しい船のグラフィック描画の修復
             for (let sId in ships) {
                 let s = ships[sId];
                 if (s.hp <= 0) continue;
-                ctx.save(); ctx.translate(s.x, s.y); ctx.rotate(s.angle);
+
+                ctx.save();
+                ctx.translate(s.x, s.y);
+                ctx.rotate(s.angle);
+                ctx.translate(50, 0);
+
+                // 船体ベース
                 ctx.fillStyle = s.isCpu ? '#154360' : '#78281f';
                 ctx.fillRect(-100, -50, 200, 100);
+                ctx.lineWidth = 4; ctx.strokeStyle = '#111';
+                ctx.strokeRect(-100, -50, 200, 100);
+
+                // 船首（尖った三角形）
+                ctx.beginPath();
+                ctx.moveTo(100, -50); ctx.lineTo(140, 0); ctx.lineTo(100, 50);
+                ctx.closePath();
+                ctx.fillStyle = s.isCpu ? '#1f618d' : '#922b21';
+                ctx.fill(); ctx.stroke();
+
+                // 甲板
+                ctx.fillStyle = '#d4ac0d';
+                ctx.fillRect(-70, -35, 140, 70);
+                ctx.strokeRect(-70, -35, 140, 70);
+
+                // 操舵席・キャビン
+                ctx.fillStyle = '#5d4037';
+                ctx.fillRect(-12, -12, 24, 24);
+                ctx.beginPath(); ctx.arc(0, 0, 18, 0, Math.PI * 2);
+                ctx.fillStyle = '#8d6e63'; ctx.fill(); ctx.stroke();
+
+                // 大砲の描画
+                if (s.cannons) {
+                    s.cannons.forEach(c => {
+                        ctx.fillStyle = '#2c3e50';
+                        ctx.fillRect(c.offsetRelX - 10, c.offsetRelY - 8, 20, 16);
+                        ctx.strokeStyle = '#000';
+                        ctx.strokeRect(c.offsetRelX - 10, c.offsetRelY - 8, 20, 16);
+                    });
+                }
+
+                // プレイヤー船の修理ポイント
+                if (!s.isCpu) {
+                    ctx.save();
+                    ctx.translate(110, 0);
+                    ctx.fillStyle = '#e74c3c';
+                    ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI * 2); ctx.fill();
+                    ctx.lineWidth = 2.5; ctx.strokeStyle = '#fff'; ctx.stroke();
+                    ctx.fillStyle = '#fff'; ctx.font = 'bold 9px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                    ctx.fillText('🛠️', 0, 0);
+                    ctx.restore();
+                }
+
                 ctx.restore();
+
+                // 船名 & HP
+                ctx.fillStyle = '#fff'; ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'center';
+                ctx.shadowColor = '#000'; ctx.shadowBlur = 6;
+                ctx.fillText(`${s.name} (HP: ${s.hp}/${s.maxHp})`, s.x, s.y - 85);
+                ctx.shadowBlur = 0;
             }
 
+            // 砲弾の描画
+            cannonBalls.forEach(b => {
+                ctx.fillStyle = b.ammoType === 2 ? '#e74c3c' : '#f39c12';
+                ctx.beginPath(); ctx.arc(b.x, b.y, 12, 0, Math.PI * 2); ctx.fill();
+                ctx.lineWidth = 2; ctx.strokeStyle = '#000'; ctx.stroke();
+            });
+
+            // プレイヤー（豚）の描画
             for (let id in players) {
                 let p = players[id];
-                if (p.role === 'free') drawPigCharacter(ctx, p.x, p.y, p.bodyColor, p.name);
+                if (p.role === 'free') {
+                    drawPigCharacter(ctx, p.x, p.y, p.bodyColor || '#e67e22', p.name);
+                }
             }
+
             ctx.restore();
             drawMinimap();
         }
@@ -896,9 +1013,16 @@
                 mCtx.fillStyle = isl.isTown ? '#f1c40f' : '#27ae60';
                 mCtx.beginPath(); mCtx.arc(isl.x * scaleX, isl.y * scaleY, isl.radius * scaleX, 0, Math.PI * 2); mCtx.fill();
             });
-            if (ships['red']) {
-                mCtx.fillStyle = '#e74c3c';
-                mCtx.beginPath(); mCtx.arc(ships['red'].x * scaleX, ships['red'].y * scaleY, 5, 0, Math.PI * 2); mCtx.fill();
+            for (let sId in ships) {
+                let s = ships[sId];
+                if (s.hp <= 0) continue;
+                mCtx.fillStyle = s.isCpu ? '#3498db' : '#e74c3c';
+                mCtx.beginPath(); mCtx.arc(s.x * scaleX, s.y * scaleY, s.isCpu ? 4 : 6, 0, Math.PI * 2); mCtx.fill();
+            }
+            if (myId && players[myId]) {
+                const me = players[myId];
+                mCtx.fillStyle = '#2ecc71';
+                mCtx.beginPath(); mCtx.arc(me.x * scaleX, me.y * scaleY, 3, 0, Math.PI * 2); mCtx.fill();
             }
         }
 
