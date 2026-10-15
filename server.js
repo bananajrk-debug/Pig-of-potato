@@ -24,6 +24,7 @@ function createInitialRoomState() {
   ];
 
   return {
+    status: 'waiting', // 'waiting' (ロビー待機中) または 'playing' (ゲーム中)
     ships: {
       red: {
         id: 'red',
@@ -105,23 +106,41 @@ io.on('connection', (socket) => {
       y: ship.y,
       role: 'free',
       activeCannonId: null,
-      name: playerName || `${team === 'red' ? '赤' : '青'}乗組員`
+      name: playerName || `${team === 'red' ? '赤' : '青'}乗組員`,
+      ready: false // 準備OK状態
     };
 
-    socket.emit('init', { 
-      id: socket.id, 
-      players: room.players, 
-      ships: room.ships, 
-      islands: room.islands, 
-      potatoes: room.potatoes, 
-      cannonBalls: room.cannonBalls 
-    });
-    socket.to(roomCode).emit('newPlayer', room.players[socket.id]);
+    // ルーム内の全員にロビーのプレイヤー情報を同期
+    io.to(roomCode).emit('lobbyUpdate', { players: room.players, status: room.status });
+  });
+
+  // 準備OKボタンの切り替え
+  socket.on('toggleReady', () => {
+    const room = rooms[socket.roomCode];
+    if (room && room.status === 'waiting' && room.players[socket.id]) {
+      room.players[socket.id].ready = !room.players[socket.id].ready;
+
+      // 全員（1人以上かつ全員がready）揃ったらゲームスタート！
+      const playerList = Object.values(room.players);
+      const allReady = playerList.length > 0 && playerList.every(p => p.ready);
+
+      if (allReady) {
+        room.status = 'playing';
+        io.to(socket.roomCode).emit('gameStart', { 
+          players: room.players, 
+          ships: room.ships, 
+          islands: room.islands, 
+          potatoes: room.potatoes 
+        });
+      } else {
+        io.to(socket.roomCode).emit('lobbyUpdate', { players: room.players, status: room.status });
+      }
+    }
   });
 
   socket.on('playerMove', (data) => {
     const room = rooms[socket.roomCode];
-    if (room && room.players[socket.id]) {
+    if (room && room.status === 'playing' && room.players[socket.id]) {
       const p = room.players[socket.id];
       if (p.role === 'free') {
         p.x = data.x;
@@ -133,7 +152,7 @@ io.on('connection', (socket) => {
 
   socket.on('interact', (actionData) => {
     const room = rooms[socket.roomCode];
-    if (!room) return;
+    if (!room || room.status !== 'playing') return;
     const p = room.players[socket.id];
     const ship = room.ships[p.team];
 
@@ -179,7 +198,7 @@ io.on('connection', (socket) => {
 
   socket.on('repairShip', () => {
     const room = rooms[socket.roomCode];
-    if (!room) return;
+    if (!room || room.status !== 'playing') return;
     const p = room.players[socket.id];
     const ship = room.ships[p.team];
     if (ship.wood >= 2 && ship.hp < ship.maxHp) {
@@ -191,7 +210,7 @@ io.on('connection', (socket) => {
 
   socket.on('shipControl', (controlData) => {
     const room = rooms[socket.roomCode];
-    if (!room) return;
+    if (!room || room.status !== 'playing') return;
     const p = room.players[socket.id];
     if (p && p.role === 'helmsman') {
       const s = room.ships[p.team];
@@ -205,7 +224,7 @@ io.on('connection', (socket) => {
 
   socket.on('fireCannon', (data) => {
     const room = rooms[socket.roomCode];
-    if (!room) return;
+    if (!room || room.status !== 'playing') return;
     const p = room.players[socket.id];
     const ship = room.ships[p.team];
     const ammoType = data.ammoType || 1;
@@ -235,7 +254,7 @@ io.on('connection', (socket) => {
 
   socket.on('collectPotato', (potatoId) => {
     const room = rooms[socket.roomCode];
-    if (!room) return;
+    if (!room || room.status !== 'playing') return;
     const p = room.players[socket.id];
     const potato = room.potatoes.find(pt => pt.id === potatoId);
     if (potato && !potato.collected) {
@@ -258,7 +277,7 @@ io.on('connection', (socket) => {
 
   socket.on('gatherIsland', (islandId) => {
     const room = rooms[socket.roomCode];
-    if (!room) return;
+    if (!room || room.status !== 'playing') return;
     const p = room.players[socket.id];
     const island = room.islands.find(isl => isl.id === islandId);
     const ship = room.ships[p.team];
@@ -290,13 +309,19 @@ io.on('connection', (socket) => {
       const room = rooms[roomCode];
       const p = room.players[socket.id];
       if (p) {
-        const ship = room.ships[p.team];
-        if (ship.helmsman === socket.id) ship.helmsman = null;
-        if (ship.watcher === socket.id) ship.watcher = null;
-        ship.cannons.forEach(c => { if (c.gunner === socket.id) c.gunner = null; });
+        if (room.status === 'playing') {
+          const ship = room.ships[p.team];
+          if (ship.helmsman === socket.id) ship.helmsman = null;
+          if (ship.watcher === socket.id) ship.watcher = null;
+          ship.cannons.forEach(c => { if (c.gunner === socket.id) c.gunner = null; });
+        }
         delete room.players[socket.id];
         io.to(roomCode).emit('playerDisconnected', socket.id);
-        io.to(roomCode).emit('gameStateUpdate', { players: room.players, ships: room.ships });
+        if (room.status === 'playing') {
+          io.to(roomCode).emit('gameStateUpdate', { players: room.players, ships: room.ships });
+        } else {
+          io.to(roomCode).emit('lobbyUpdate', { players: room.players, status: room.status });
+        }
       }
     }
   });
@@ -305,6 +330,7 @@ io.on('connection', (socket) => {
 setInterval(() => {
   for (let roomCode in rooms) {
     const room = rooms[roomCode];
+    if (room.status !== 'playing') continue;
 
     for (let i = room.cannonBalls.length - 1; i >= 0; i--) {
       let ball = room.cannonBalls[i];
@@ -329,6 +355,7 @@ setInterval(() => {
 
             if (ship.hp <= 0) {
               io.to(roomCode).emit('gameOver', `${ball.team === 'red' ? '赤チーム' : '青チーム'}の勝利！`);
+              ship.status = 'waiting';
               ship.hp = 100;
             }
             break;
@@ -343,5 +370,5 @@ setInterval(() => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`✨ Pig of Potato v8 サーバー起動: http://localhost:${PORT}`);
+  console.log(`✨ Pig of Potato v9 サーバー起動: http://localhost:${PORT}`);
 });
