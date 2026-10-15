@@ -78,7 +78,7 @@
             box-shadow: 0 5px 0 #b7950b;
             text-align: center;
         }
-        .btn:hover { background: #f39c12; transform: translateY(-2px); }
+        .btn:hover { background: #f1c40f; transform: translateY(-2px); }
         .btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #b7950b; }
 
         .btn-cpu {
@@ -704,8 +704,8 @@
                     const ship = ships['red'];
                     if (me && ship && me.role === 'free') {
                         if (ship.wood < 2) { alert('木材が足りません！（修理には2個必要）'); return; }
-                        const rx = ship.x + Math.cos(ship.angle) * 110;
-                        const ry = ship.y + Math.sin(ship.angle) * 110;
+                        const rx = ship.x + 110;
+                        const ry = ship.y;
                         if (Math.hypot(me.x - rx, me.y - ry) < 60) { repairing = true; repairStartTime = Date.now(); }
                     }
                 }
@@ -812,14 +812,10 @@
                 if (dx !== 0 || dy !== 0) {
                     p.x += dx; p.y += dy;
 
-                    // 船の回転を考慮したローカル座標判定により「動けないバグ」を完全解消
-                    const cos = Math.cos(-ship.angle);
-                    const sin = Math.sin(-ship.angle);
+                    // 船上判定の緩和（しっかり船の上を歩けるように調整）
                     const relX = p.x - ship.x;
                     const relY = p.y - ship.y;
-                    const localX = relX * cos - relY * sin;
-                    const localY = relX * sin + relY * cos;
-                    let onShip = (localX >= -120 && localX <= 130 && localY >= -60 && localY <= 60);
+                    let onShip = (relX >= -130 && relX <= 140 && relY >= -70 && relY <= 70);
 
                     let onIsland = false;
                     islands.forEach(isl => { if (Math.hypot(p.x - isl.x, p.y - isl.y) <= isl.radius) onIsland = true; });
@@ -840,15 +836,16 @@
                         promptEl.innerHTML = `🥔 <b>ポテト港町</b> | <button class="btn" style="padding:4px 10px; font-size:14px;" onclick="socket.emit('portAction','sellWood')">木材売却(20G)</button> <button class="btn" style="padding:4px 10px; font-size:14px;" onclick="socket.emit('portAction','upgradeHp')">HP強化(50G)</button> <button class="btn" style="padding:4px 10px; font-size:14px;" onclick="socket.emit('portAction','upgradeSpeed')">速度強化(80G)</button>`;
                         promptEl.style.display = 'block';
                     } else {
-                        const helmX = ship.x - Math.cos(ship.angle) * 110;
-                        const helmY = ship.y - Math.sin(ship.angle) * 110;
-                        const rx = ship.x + Math.cos(ship.angle) * 110;
-                        const ry = ship.y + Math.sin(ship.angle) * 110;
+                        // 舵の位置（船の左側・後方）と修理ポイントの判定を調整
+                        const helmX = ship.x - 80;
+                        const helmY = ship.y;
+                        const rx = ship.x + 110;
+                        const ry = ship.y;
 
-                        if (Math.hypot(p.x - rx, p.y - ry) < 50) {
+                        if (Math.hypot(p.x - rx, p.y - ry) < 60) {
                             promptEl.innerText = '【Rキー長押し】船の先端で修理 (木材2個必要)';
                             promptEl.style.display = 'block';
-                        } else if (Math.hypot(p.x - helmX, p.y - helmY) < 55 && !ship.helmsman) {
+                        } else if (Math.hypot(p.x - helmX, p.y - helmY) < 60 && !ship.helmsman) {
                             interactTarget = { type: 'helm' };
                             promptEl.innerText = '【Eキー】舵を取る';
                             promptEl.style.display = 'block';
@@ -890,7 +887,6 @@
             ctx.fillStyle = '#2980b9'; 
             ctx.fillRect(0, 0, 15000, 11250);
 
-            // 島と港町の美しい描画
             islands.forEach(isl => {
                 ctx.save(); 
                 ctx.translate(isl.x, isl.y);
@@ -910,7 +906,6 @@
                 ctx.restore();
             });
 
-            // ポテト資源の描画
             potatoes.forEach(pot => {
                 if (!pot.collected) {
                     ctx.save();
@@ -922,7 +917,6 @@
                 }
             });
 
-            // 立体感のある美しい船のグラフィック描画の修復
             for (let sId in ships) {
                 let s = ships[sId];
                 if (s.hp <= 0) continue;
@@ -930,7 +924,6 @@
                 ctx.save();
                 ctx.translate(s.x, s.y);
                 ctx.rotate(s.angle);
-                ctx.translate(50, 0);
 
                 // 船体ベース
                 ctx.fillStyle = s.isCpu ? '#154360' : '#78281f';
@@ -956,7 +949,12 @@
                 ctx.beginPath(); ctx.arc(0, 0, 18, 0, Math.PI * 2);
                 ctx.fillStyle = '#8d6e63'; ctx.fill(); ctx.stroke();
 
-                // 大砲の描画
+                // 舵（オレンジ色のハンドル）の描画を追加
+                ctx.fillStyle = '#e67e22';
+                ctx.fillRect(-90, -12, 14, 24);
+                ctx.strokeStyle = '#d35400';
+                ctx.strokeRect(-90, -12, 14, 24);
+
                 if (s.cannons) {
                     s.cannons.forEach(c => {
                         ctx.fillStyle = '#2c3e50';
@@ -966,7 +964,6 @@
                     });
                 }
 
-                // プレイヤー船の修理ポイント
                 if (!s.isCpu) {
                     ctx.save();
                     ctx.translate(110, 0);
@@ -980,21 +977,18 @@
 
                 ctx.restore();
 
-                // 船名 & HP
                 ctx.fillStyle = '#fff'; ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'center';
                 ctx.shadowColor = '#000'; ctx.shadowBlur = 6;
                 ctx.fillText(`${s.name} (HP: ${s.hp}/${s.maxHp})`, s.x, s.y - 85);
                 ctx.shadowBlur = 0;
             }
 
-            // 砲弾の描画
             cannonBalls.forEach(b => {
                 ctx.fillStyle = b.ammoType === 2 ? '#e74c3c' : '#f39c12';
                 ctx.beginPath(); ctx.arc(b.x, b.y, 12, 0, Math.PI * 2); ctx.fill();
                 ctx.lineWidth = 2; ctx.strokeStyle = '#000'; ctx.stroke();
             });
 
-            // プレイヤー（豚）の描画
             for (let id in players) {
                 let p = players[id];
                 if (p.role === 'free') {
