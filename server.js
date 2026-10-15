@@ -40,8 +40,8 @@ function createInitialRoomState(isCpuMode = false) {
         maxHp: 100,
         wood: 0,
         ammo: { 1: 15, 2: 5, 3: 5 },
-        leftCooldown: 0,   // 左大砲のクールタイム管理
-        rightCooldown: 0,  // 右大砲のクールタイム管理
+        leftCooldown: 0,
+        rightCooldown: 0,
         helmsman: null,
         cannons: [
           { id: 'red_l1', side: 'left', offsetRelX: 0, offsetRelY: -65, gunner: null },
@@ -102,7 +102,6 @@ io.on('connection', (socket) => {
     const redCount = Object.values(room.players).filter(p => p.team === 'red').length;
     const blueCount = Object.values(room.players).filter(p => p.team === 'blue').length;
     
-    // CPUモードの場合、プレイヤーは強制的に赤チームに配属
     let team = 'red';
     if (!room.isCpuMode) {
       team = redCount <= blueCount ? 'red' : 'blue';
@@ -133,26 +132,27 @@ io.on('connection', (socket) => {
     }
   });
 
+  // 準備完了・解除の切り替え
   socket.on('toggleReady', () => {
     const room = rooms[socket.roomCode];
     if (room && room.status === 'waiting' && room.players[socket.id]) {
       room.players[socket.id].ready = !room.players[socket.id].ready;
+      io.to(roomCode).emit('lobbyUpdate', { players: room.players, status: room.status, roomCode: socket.roomCode });
+    }
+  });
 
-      const playerList = Object.values(room.players);
-      const readyCount = playerList.filter(p => p.ready).length;
-
-      if (readyCount > 0 && (playerList.length === 1 || readyCount === playerList.length)) {
-        room.status = 'playing';
-        io.to(roomCode).emit('gameStart', { 
-          players: room.players, 
-          ships: room.ships, 
-          islands: room.islands, 
-          potatoes: room.potatoes,
-          roomCode: socket.roomCode
-        });
-      } else {
-        io.to(roomCode).emit('lobbyUpdate', { players: room.players, status: room.status, roomCode: socket.roomCode });
-      }
+  // 出航ボタンが押されたら確実にゲーム開始
+  socket.on('startGame', () => {
+    const room = rooms[socket.roomCode];
+    if (room && room.status === 'waiting') {
+      room.status = 'playing';
+      io.to(roomCode).emit('gameStart', { 
+        players: room.players, 
+        ships: room.ships, 
+        islands: room.islands, 
+        potatoes: room.potatoes,
+        roomCode: socket.roomCode
+      });
     }
   });
 
@@ -240,7 +240,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // 左右個別の大砲発射処理（Kキー＝左, Oキー＝右、個別クールタイム付き）
   socket.on('fireSideCannon', ({ side, ammoType }) => {
     const room = rooms[socket.roomCode];
     if (!room || room.status !== 'playing') return;
@@ -253,17 +252,16 @@ io.on('connection', (socket) => {
     if (ship.ammo[type] > 0) {
       if (side === 'left') {
         if (ship.leftCooldown > now) return;
-        ship.leftCooldown = now + 1500; // 左大砲のクールタイム1.5秒
+        ship.leftCooldown = now + 1500;
       } else if (side === 'right') {
         if (ship.rightCooldown > now) return;
-        ship.rightCooldown = now + 1500; // 右大砲のクールタイム1.5秒
+        ship.rightCooldown = now + 1500;
       } else {
         return;
       }
 
       ship.ammo[type]--;
 
-      // 該当サイドの基準位置から発射
       const offsetRelX = -40;
       const offsetRelY = side === 'left' ? -65 : 65;
       const wx = ship.x + Math.cos(ship.angle) * offsetRelX - Math.sin(ship.angle) * offsetRelY;
@@ -362,18 +360,15 @@ io.on('connection', (socket) => {
   });
 });
 
-// サーバーゲームループ（CPUの動き＆弾の物理演算）
 setInterval(() => {
   for (let roomCode in rooms) {
     const room = rooms[roomCode];
     if (room.status !== 'playing') continue;
 
-    // CPUモードの場合の簡易AI制御
     if (room.isCpuMode) {
       const blueShip = room.ships.blue;
       const redShip = room.ships.red;
 
-      // 赤船に向かって移動＆旋回
       let targetAngle = Math.atan2(redShip.y - blueShip.y, redShip.x - blueShip.x);
       let angleDiff = targetAngle - blueShip.angle;
       while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
@@ -394,7 +389,6 @@ setInterval(() => {
       blueShip.x = Math.max(200, Math.min(6000 - 200, blueShip.x));
       blueShip.y = Math.max(200, Math.min(4500 - 200, blueShip.y));
 
-      // CPUの自動攻撃
       const now = Date.now();
       if (dist < 1200 && blueShip.ammo[1] > 0 && blueShip.leftCooldown < now) {
         blueShip.leftCooldown = now + 2000;
@@ -412,7 +406,6 @@ setInterval(() => {
       }
     }
 
-    // 砲弾の判定
     for (let i = room.cannonBalls.length - 1; i >= 0; i--) {
       let ball = room.cannonBalls[i];
       ball.x += ball.vx;
@@ -451,5 +444,5 @@ setInterval(() => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`✨ Pig of Potato v12 サーバー起動: http://localhost:${PORT}`);
+  console.log(`✨ Pig of Potato v13 サーバー起動: http://localhost:${PORT}`);
 });
