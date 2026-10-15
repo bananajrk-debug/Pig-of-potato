@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pig of Potato - Islands & Special Ammo</title>
+    <title>Pig of Potato - Islands & 3s Gather</title>
     <style>
         body {
             margin: 0;
@@ -102,6 +102,7 @@
             display: none;
             z-index: 20;
             border: 2px solid #f39c12;
+            text-align: center;
         }
         #instructions {
             position: absolute;
@@ -118,7 +119,6 @@
     </style>
 </head>
 <body>
-    <!-- 4桁のロビー画面 -->
     <div id="title-screen">
         <h1>🐷 Pig of Potato 🥔</h1>
         <div class="menu-box">
@@ -132,7 +132,6 @@
         </div>
     </div>
 
-    <!-- ゲーム画面 -->
     <div id="game-ui">
         <div id="ui">
             <h2>🐷 Pig of Potato 🥔</h2>
@@ -145,10 +144,10 @@
 
         <div id="instructions">
             <b>操作方法:</b><br>
-            - <b>移動:</b> W / A / S / D （甲板の上）<br>
+            - <b>移動:</b> W / A / S / D （船の上または島の上を自由に歩けます）<br>
             - <b>舵・大砲・見張り台:</b> 近くで <b>[ Eキー ]</b><br>
-            - <b>大砲中:</b> <b>[1][2][3]キー</b>で弾種変更、<b>[K or O]キー</b>で発射！<br>
-            - <b>島・修理:</b> 小島に近づいて木（木材）や効果付き砲弾を回収！ <b>[Rキー]</b>で木材を消費して船を修理！
+            - <b>島での採取:</b> 島の上で <b>[ Eキー長押し (3秒) ]</b> して木や効果付き砲弾をゲット！<br>
+            - <b>修理:</b> <b>[Rキー]</b>で木材を消費して船を修理！
         </div>
 
         <canvas id="gameCanvas"></canvas>
@@ -183,9 +182,14 @@
         let cannonBalls = [];
         let interactTarget = null;
         let canFire = true;
-        let selectedAmmo = 1; // 1: 通常弾, 2: 爆発弾, 3: 特製弾
+        let selectedAmmo = 1;
 
-        const keys = { w: false, s: false, a: false, d: false };
+        // 3秒間の採集管理
+        let gatheringIslandId = null;
+        let gatherStartTime = 0;
+        let gatheringDuration = 3000; // 3秒
+
+        const keys = { w: false, s: false, a: false, d: false, e: false };
         let lastSendTime = 0;
 
         btnJoin.addEventListener('click', () => {
@@ -210,29 +214,30 @@
             if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') keys.a = true;
             if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') keys.d = true;
 
-            // 弾の切り替え (1, 2, 3)
             if (e.key === '1') { selectedAmmo = 1; updateAmmoDisplay(); }
             if (e.key === '2') { selectedAmmo = 2; updateAmmoDisplay(); }
             if (e.key === '3') { selectedAmmo = 3; updateAmmoDisplay(); }
 
-            // 修理キー [R]
             if (e.key === 'r' || e.key === 'R') {
                 socket.emit('repairShip');
             }
 
             if (e.key === 'e' || e.key === 'E') {
-                if (interactTarget) {
-                    socket.emit('interact', interactTarget);
-                } else {
-                    // 島に近ければ島から資材回収
-                    const me = players[myId];
-                    if (me && me.role === 'free') {
-                        const myShip = ships[myTeam];
-                        islands.forEach(isl => {
-                            if (Math.hypot(myShip.x - isl.x, myShip.y - isl.y) < isl.radius + 80) {
-                                socket.emit('gatherIsland', isl.id);
-                            }
-                        });
+                if (!keys.e) {
+                    keys.e = true;
+                    if (interactTarget) {
+                        socket.emit('interact', interactTarget);
+                    } else {
+                        // 島にいたら3秒採集スタート
+                        const me = players[myId];
+                        if (me && me.role === 'free') {
+                            islands.forEach(isl => {
+                                if (Math.hypot(me.x - isl.x, me.y - isl.y) < isl.radius + 30) {
+                                    gatheringIslandId = isl.id;
+                                    gatherStartTime = Date.now();
+                                }
+                            });
+                        }
                     }
                 }
             }
@@ -241,7 +246,7 @@
                 if (myId && players[myId] && players[myId].role === 'cannon') {
                     if (!canFire) return;
                     const ship = ships[myTeam];
-                    if (ship.ammo[selectedAmmo] <= 0) return; // 弾切れ
+                    if (ship.ammo[selectedAmmo] <= 0) return;
                     
                     const cannon = ship.cannons.find(c => c.id === players[myId].activeCannonId);
                     if (cannon) {
@@ -258,6 +263,11 @@
             if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') keys.s = false;
             if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') keys.a = false;
             if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') keys.d = false;
+
+            if (e.key === 'e' || e.key === 'E') {
+                keys.e = false;
+                gatheringIslandId = null; // 離したらキャンセル
+            }
         });
 
         function updateAmmoDisplay() {
@@ -376,7 +386,7 @@
         socket.on('islandGathered', (data) => {
             const isl = islands.find(i => i.id === data.islandId);
             if (isl) {
-                isl.wood = data.islandWood;
+                isl.wood = data.shipWood;
                 isl.hasSpecialAmmo = false;
             }
         });
@@ -413,35 +423,45 @@
 
             if (p.role === 'free') {
                 let speed = 6.0;
-                let ldx = 0, ldy = 0;
-                if (keys.w) ldy -= speed;
-                if (keys.s) ldy += speed;
-                if (keys.a) ldx -= speed;
-                if (keys.d) ldx += speed;
+                let dx = 0, dy = 0;
+                if (keys.w) dy -= speed;
+                if (keys.s) dy += speed;
+                if (keys.a) dx -= speed;
+                if (keys.d) dx += speed;
 
-                if (ldx !== 0 && ldy !== 0) {
-                    ldx *= 0.7071;
-                    ldy *= 0.7071;
+                if (dx !== 0 && dy !== 0) {
+                    dx *= 0.7071;
+                    dy *= 0.7071;
                 }
 
-                if (ldx !== 0 || ldy !== 0) {
+                if (dx !== 0 || dy !== 0) {
+                    p.x += dx;
+                    p.y += dy;
+
+                    // プレイヤーの移動制限：船の上、または島の上を歩けるようにする
+                    let onShip = false;
                     const cos = Math.cos(-ship.angle);
                     const sin = Math.sin(-ship.angle);
                     const relX = p.x - ship.x;
                     const relY = p.y - ship.y;
-                    let localX = relX * cos - relY * sin;
-                    let localY = relX * sin + relY * cos;
+                    const localX = relX * cos - relY * sin;
+                    const localY = relX * sin + relY * cos;
+                    if (localX >= -110 && localX <= 140 && localY >= -50 && localY <= 50) {
+                        onShip = true;
+                    }
 
-                    localX += ldx;
-                    localY += ldy;
+                    let onIsland = false;
+                    islands.forEach(isl => {
+                        if (Math.hypot(p.x - isl.x, p.y - isl.y) <= isl.radius) {
+                            onIsland = true;
+                        }
+                    });
 
-                    localX = Math.max(-110, Math.min(140, localX));
-                    localY = Math.max(-50, Math.min(50, localY));
-
-                    const fCos = Math.cos(ship.angle);
-                    const fSin = Math.sin(ship.angle);
-                    p.x = ship.x + (localX * fCos - localY * fSin);
-                    p.y = ship.y + (localX * fSin + localY * fCos);
+                    // 船や島から外れた場合は押し戻す（海には落ちない）
+                    if (!onShip && !onIsland) {
+                        p.x -= dx;
+                        p.y -= dy;
+                    }
 
                     const now = Date.now();
                     if (now - lastSendTime > 25) {
@@ -450,51 +470,63 @@
                     }
                 }
 
-                interactTarget = null;
+                // 3秒間の木採集プログレス処理
                 const promptEl = document.getElementById('prompt');
+                if (gatheringIslandId !== null) {
+                    let elapsed = Date.now() - gatherStartTime;
+                    let percent = Math.min(100, Math.floor((elapsed / gatheringDuration) * 100));
+                    promptEl.innerText = `🌲 木を採集中... [ ${percent}% ] (Eキー長押し)`;
+                    promptEl.style.display = 'block';
 
-                const helmX = ship.x - Math.cos(ship.angle) * 140;
-                const helmY = ship.y - Math.sin(ship.angle) * 140;
-
-                // 島との近接判定（資材回収プロンプト）
-                let nearIsland = false;
-                islands.forEach(isl => {
-                    if (Math.hypot(ship.x - isl.x, ship.y - isl.y) < isl.radius + 80) {
-                        promptEl.innerText = '【Eキー】島から木や効果付き砲弾を採集する';
-                        promptEl.style.display = 'block';
-                        nearIsland = true;
+                    if (elapsed >= gatheringDuration) {
+                        socket.emit('gatherIsland', gatheringIslandId);
+                        gatheringIslandId = null; // 完了
                     }
-                });
+                } else {
+                    interactTarget = null;
+                    const helmX = ship.x - Math.cos(ship.angle) * 140;
+                    const helmY = ship.y - Math.sin(ship.angle) * 140;
 
-                if (!nearIsland) {
-                    if (Math.hypot(p.x - helmX, p.y - helmY) < 55 && !ship.helmsman) {
-                        interactTarget = { type: 'helm' };
-                        promptEl.innerText = '【Eキー】舵を取る（船の一番後ろ）';
-                        promptEl.style.display = 'block';
-                    } else if (ship.watcher === null && Math.hypot(p.x - ship.x, p.y - ship.y) < 50) {
-                        interactTarget = { type: 'watcher' };
-                        promptEl.innerText = '【Eキー】見張り台に登る';
-                        promptEl.style.display = 'block';
-                    } else {
-                        let nearCannon = false;
-                        ship.cannons.forEach(c => {
-                            const cx = ship.x + Math.cos(ship.angle) * c.offsetRelX - Math.sin(ship.angle) * c.offsetRelY;
-                            const cy = ship.y + Math.sin(ship.angle) * c.offsetRelX + Math.cos(ship.angle) * c.offsetRelY;
-                            if (Math.hypot(p.x - cx, p.y - cy) < 50 && !c.gunner) {
-                                interactTarget = { type: 'cannon', cannonId: c.id };
-                                promptEl.innerText = '【Eキー】大砲に乗り込む';
-                                promptEl.style.display = 'block';
-                                nearCannon = true;
+                    let nearIsland = false;
+                    islands.forEach(isl => {
+                        if (Math.hypot(p.x - isl.x, p.y - isl.y) < isl.radius + 20) {
+                            promptEl.innerText = '【Eキー長押し】島で木や効果付き砲弾を採集';
+                            promptEl.style.display = 'block';
+                            nearIsland = true;
+                        }
+                    });
+
+                    if (!nearIsland) {
+                        if (Math.hypot(p.x - helmX, p.y - helmY) < 55 && !ship.helmsman) {
+                            interactTarget = { type: 'helm' };
+                            promptEl.innerText = '【Eキー】舵を取る（船の一番後ろ）';
+                            promptEl.style.display = 'block';
+                        } else if (ship.watcher === null && Math.hypot(p.x - ship.x, p.y - ship.y) < 50) {
+                            interactTarget = { type: 'watcher' };
+                            promptEl.innerText = '【Eキー】見張り台に登る';
+                            promptEl.style.display = 'block';
+                        } else {
+                            let nearCannon = false;
+                            ship.cannons.forEach(c => {
+                                const cx = ship.x + Math.cos(ship.angle) * c.offsetRelX - Math.sin(ship.angle) * c.offsetRelY;
+                                const cy = ship.y + Math.sin(ship.angle) * c.offsetRelX + Math.cos(ship.angle) * c.offsetRelY;
+                                if (Math.hypot(p.x - cx, p.y - cy) < 50 && !c.gunner) {
+                                    interactTarget = { type: 'cannon', cannonId: c.id };
+                                    promptEl.innerText = '【Eキー】大砲に乗り込む';
+                                    promptEl.style.display = 'block';
+                                    nearCannon = true;
+                                }
+                            });
+                            if (!nearCannon && !interactTarget) {
+                                promptEl.style.display = 'none';
                             }
-                        });
-                        if (!nearCannon && !interactTarget) {
-                            promptEl.style.display = 'none';
                         }
                     }
                 }
 
+                // ポテト回収はすぐ（即時）
                 potatoes.forEach(pot => {
-                    if (!pot.collected && Math.hypot(ship.x - pot.x, ship.y - pot.y) < 140) {
+                    if (!pot.collected && Math.hypot(p.x - pot.x, p.y - pot.y) < 45) {
                         socket.emit('collectPotato', pot.id);
                     }
                 });
@@ -556,7 +588,6 @@
             ctx.scale(zoom, zoom);
             ctx.translate(-targetX, -targetY);
 
-            // 海の背景
             ctx.strokeStyle = '#1b4f72';
             ctx.lineWidth = 10;
             ctx.strokeRect(0, 0, 6000, 4500);
@@ -570,11 +601,9 @@
                 }
             }
 
-            // 小島の描画
             islands.forEach(isl => {
                 ctx.save();
                 ctx.translate(isl.x, isl.y);
-                // 島本体（砂浜・土）
                 ctx.fillStyle = '#d4ac0d';
                 ctx.beginPath();
                 ctx.arc(0, 0, isl.radius, 0, Math.PI * 2);
@@ -583,13 +612,11 @@
                 ctx.strokeStyle = '#b7950b';
                 ctx.stroke();
 
-                // 島の中央の木
                 ctx.fillStyle = '#27ae60';
                 ctx.beginPath();
                 ctx.arc(0, 0, isl.radius * 0.6, 0, Math.PI * 2);
                 ctx.fill();
 
-                // 効果付き砲弾宝箱の表示
                 if (isl.hasSpecialAmmo) {
                     ctx.fillStyle = '#e74c3c';
                     ctx.fillRect(-15, -15, 30, 30);
