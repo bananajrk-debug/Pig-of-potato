@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pig of Potato 2v2 - Quick & Ship Only</title>
+    <title>Pig of Potato 2v2 - Quick & Stop Fix</title>
     <style>
         body {
             margin: 0;
@@ -57,7 +57,7 @@
 </head>
 <body>
     <div id="ui">
-        <h1>🐷 Pig of Potato 🥔 [Quick & Ship Only]</h1>
+        <h1>🐷 Pig of Potato 🥔 [No Inertia & Smooth Edition]</h1>
         <p>チーム: <span id="team-name">-</span> | 役割: <span id="role-name">自由行動</span></p>
         <p>赤チームHP: <span id="red-hp">100</span> | 青チームHP: <span id="blue-hp">100</span></p>
         <p>チーム大砲弾薬: <span id="team-ammo">15</span>発</p>
@@ -67,9 +67,9 @@
 
     <div id="instructions">
         <b>操作方法:</b><br>
-        - <b>移動:</b> W / A / S / D （船の上だけをクイックに移動）<br>
-        - <b>舵(船の一番後ろ)・大砲・見張り台:</b> 近くで <b>[ Eキー ]</b>（降りても元の位置に戻りません）<br>
-        - <b>操舵中:</b> A/Dでクイック旋回、W/Sで前進・後退<br>
+        - <b>移動:</b> W / A / S / D （キーを離すとピタッと止まります）<br>
+        - <b>舵(一番後ろ)・大砲・見張り台:</b> 近くで <b>[ Eキー ]</b><br>
+        - <b>操舵中:</b> A/Dでブルブルせずにスムーズ旋回、W/Sを離すと即停止！<br>
         - <b>大砲操作中:</b> <b>[ Kキー ]</b> または <b>[ Oキー ]</b> でジャガイモ弾発射！<br>
         - 浮かんでいるジャガイモを拾って弾薬補給！
     </div>
@@ -168,12 +168,16 @@
         socket.on('serverTick', (data) => {
             for (let id in data.ships) {
                 if (ships[id]) {
-                    ships[id].x = data.ships[id].x;
-                    ships[id].y = data.ships[id].y;
-                    ships[id].angle = data.ships[id].angle;
-                    ships[id].speed = data.ships[id].speed;
-                    ships[id].hp = data.ships[id].hp;
-                    ships[id].cannonAmmo = data.ships[id].cannonAmmo;
+                    const s = ships[id];
+                    // 自分が舵を取っている船の場合は、サーバーからの強制上書きによるブルブルを防ぐため角度は変えない
+                    if (s.helmsman !== myId) {
+                        s.angle = data.ships[id].angle;
+                    }
+                    s.x = data.ships[id].x;
+                    s.y = data.ships[id].y;
+                    s.speed = data.ships[id].speed;
+                    s.hp = data.ships[id].hp;
+                    s.cannonAmmo = data.ships[id].cannonAmmo;
                 }
             }
             cannonBalls = data.cannonBalls;
@@ -218,38 +222,38 @@
             const ship = ships[p.team];
 
             if (p.role === 'free') {
-                let speed = 6.0; // クイックで機敏な移動
-                let dx = 0, dy = 0;
-                if (keys.w) dy -= speed;
-                if (keys.s) dy += speed;
-                if (keys.a) dx -= speed;
-                if (keys.d) dx += speed;
+                let speed = 6.0;
+                let ldx = 0, ldy = 0;
+                if (keys.w) ldy -= speed;
+                if (keys.s) ldy += speed;
+                if (keys.a) ldx -= speed;
+                if (keys.d) ldx += speed;
 
-                if (dx !== 0 && dy !== 0) {
-                    dx *= 0.7071;
-                    dy *= 0.7071;
+                if (ldx !== 0 && ldy !== 0) {
+                    ldx *= 0.7071;
+                    ldy *= 0.7071;
                 }
 
-                if (dx !== 0 || dy !== 0) {
-                    p.x += dx;
-                    p.y += dy;
-
-                    // 【船の上だけを歩ける制限（甲板の外に出れないようにローカル座標でクランプ）】
+                // 船のローカル座標系で移動を計算（船の上だけを歩き、キーを離せばピタッと停止）
+                if (ldx !== 0 || ldy !== 0) {
                     const cos = Math.cos(-ship.angle);
                     const sin = Math.sin(-ship.angle);
                     const relX = p.x - ship.x;
                     const relY = p.y - ship.y;
-                    const localX = relX * cos - relY * sin;
-                    const localY = relX * sin + relY * cos;
+                    let localX = relX * cos - relY * sin;
+                    let localY = relX * sin + relY * cos;
+
+                    localX += ldx;
+                    localY += ldy;
 
                     // 甲板の範囲（X: -110 〜 140, Y: -50 〜 50）
-                    const clampedLocalX = Math.max(-110, Math.min(140, localX));
-                    const clampedLocalY = Math.max(-50, Math.min(50, localY));
+                    localX = Math.max(-110, Math.min(140, localX));
+                    localY = Math.max(-50, Math.min(50, localY));
 
                     const fCos = Math.cos(ship.angle);
                     const fSin = Math.sin(ship.angle);
-                    p.x = ship.x + (clampedLocalX * fCos - clampedLocalY * fSin);
-                    p.y = ship.y + (clampedLocalX * fSin + clampedLocalY * fCos);
+                    p.x = ship.x + (localX * fCos - localY * fSin);
+                    p.y = ship.y + (localX * fSin + localY * fCos);
 
                     const now = Date.now();
                     if (now - lastSendTime > 25) {
@@ -302,13 +306,14 @@
                     promptEl.innerText = '【Eキー】舵から離れる';
                     interactTarget = { type: 'helm' };
 
-                    let rotSpeed = 0.06; // 舵の旋回もクイックに
-                    let currentSpeed = ship.speed;
+                    let rotSpeed = 0.05;
+                    let currentSpeed = 0;
                     if (keys.a) ship.angle -= rotSpeed;
                     if (keys.d) ship.angle += rotSpeed;
-                    if (keys.w) currentSpeed = Math.min(ship.maxSpeed, currentSpeed + 0.2);
-                    if (keys.s) currentSpeed = Math.max(-2.5, currentSpeed - 0.2);
+                    if (keys.w) currentSpeed = ship.maxSpeed;
+                    if (keys.s) currentSpeed = -3.0; // キーを離せば即座に speed = 0 になり滑らなくなる
 
+                    ship.speed = currentSpeed;
                     socket.emit('shipControl', { angle: ship.angle, speed: currentSpeed });
 
                 } else if (p.role === 'cannon') {
@@ -384,7 +389,7 @@
                 ctx.lineTo(180, 0);
                 ctx.lineTo(130, 65);
                 ctx.closePath();
-                ctx.fillStyle = sId === 'red' ? '#922b21' : '#1b4f72';
+                ctx.fillStyle = sId === 'red' ? '#922b21' : '#154360';
                 ctx.fill();
                 ctx.stroke();
 
