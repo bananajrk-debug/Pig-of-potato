@@ -63,7 +63,7 @@ function createInitialRoomState(isCpuMode = false) {
       name: 'レッドポテト号',
       color: '#e74c3c',
       x: 7500,
-      y: 8200, // 港町から十分に離れた安全な海上に配置
+      y: 8200,
       angle: 0,
       speed: 0,
       maxSpeed: 6.5,
@@ -86,10 +86,13 @@ function createInitialRoomState(isCpuMode = false) {
     }
   };
 
+  // CPU船の初期距離を現在の約2倍（マップの端の離れたエリア）に配置
   if (isCpuMode) {
     const cpuPositions = [
-      { x: 3000, y: 3000 }, { x: 12000, y: 3000 },
-      { x: 2500, y: 9500 }, { x: 12500, y: 9500 }
+      { x: 1500, y: 1500 }, 
+      { x: 13500, y: 1500 }, 
+      { x: 1500, y: 9500 }, 
+      { x: 13500, y: 9500 }
     ];
     for (let i = 0; i < 4; i++) {
       const cpuId = `cpu${i + 1}`;
@@ -101,7 +104,7 @@ function createInitialRoomState(isCpuMode = false) {
         y: cpuPositions[i].y,
         angle: Math.PI,
         speed: 0,
-        maxSpeed: 5.6, // プレイヤーより少し遅く設定
+        maxSpeed: 5.6,
         hp: 50,
         maxHp: 50,
         wood: 0,
@@ -150,7 +153,7 @@ io.on('connection', (socket) => {
     room.players[socket.id] = {
       id: socket.id,
       team: 'red',
-      x: ship.x,
+      x: ship.x - 50,
       y: ship.y,
       role: 'free',
       activeCannonId: null,
@@ -186,7 +189,7 @@ io.on('connection', (socket) => {
       for (let id in room.players) {
         let p = room.players[id];
         let ship = room.ships[p.team];
-        p.x = ship.x;
+        p.x = ship.x - 50;
         p.y = ship.y;
         p.role = 'free';
         p.activeCannonId = null;
@@ -227,8 +230,8 @@ io.on('connection', (socket) => {
       } else if (p.role === 'helmsman') {
         ship.helmsman = null;
         p.role = 'free';
-        p.x = ship.x - Math.cos(ship.angle) * 80;
-        p.y = ship.y - Math.sin(ship.angle) * 80;
+        p.x = ship.x - 80;
+        p.y = ship.y;
       }
     } else if (actionData.type === 'cannon') {
       const cannon = ship.cannons.find(c => c.id === actionData.cannonId);
@@ -240,10 +243,10 @@ io.on('connection', (socket) => {
         const currentCannon = ship.cannons.find(c => c.id === p.activeCannonId);
         if (currentCannon) {
           currentCannon.gunner = null;
-          p.x = ship.x + Math.cos(ship.angle) * currentCannon.offsetRelX - Math.sin(ship.angle) * (currentCannon.side === 'left' ? 20 : -20);
-          p.y = ship.y + Math.sin(ship.angle) * currentCannon.offsetRelX + Math.cos(ship.angle) * (currentCannon.side === 'left' ? 20 : -20);
         }
         p.role = 'free';
+        p.x = ship.x;
+        p.y = ship.y;
         p.activeCannonId = null;
       }
     }
