@@ -302,17 +302,22 @@
             left: 50%;
             transform: translateX(-50%);
             background: rgba(0, 0, 0, 0.9);
-            padding: 12px 24px;
-            border-radius: 10px;
-            font-size: 16px;
+            padding: 14px 28px;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: bold;
             color: #f1c40f;
             display: none;
-            z-index: 20;
-            border: 2px solid #f39c12;
+            z-index: 25;
+            border: 3px solid #f39c12;
             text-align: center;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.8);
+            cursor: pointer;
             pointer-events: auto;
+            transition: transform 0.1s, background 0.2s;
         }
+        #prompt:hover { background: #1b263b; transform: translateX(-50%) scale(1.05); }
+
         #instructions {
             position: absolute;
             bottom: 15px;
@@ -497,12 +502,13 @@
             </div>
         </div>
 
-        <div id="prompt">【Eキー】舵を取る</div>
+        <!-- タップ（クリック）でも発動できるようにオンクリックを追加 -->
+        <div id="prompt" onclick="onPromptClick()">【Eキー】舵を取る</div>
 
         <div id="instructions">
             <b>オープンワールド操作:</b><br>
             - <b>移動:</b> W / A / S / D （船の上または島の上）<br>
-            - <b>舵・大砲:</b> 近くで <b>[ Eキー ]</b><br>
+            - <b>舵・大砲:</b> 近くで <b>[ Eキー ]</b> または画面下の表示をタップ！<br>
             - <b>港町（中央の巨大島）:</b> 立ち寄ると木材をコインに換金＆船を強化可能！<br>
             - <b>修理:</b> 船先端の赤い修理ポイントで <b>[Rキー長押し]</b> （木材2個必要）
         </div>
@@ -566,9 +572,6 @@
 
         let leftReady = true;
         let rightReady = true;
-        let gatheringIslandId = null;
-        let gatherStartTime = 0;
-        let gatheringDuration = 3000;
         let repairing = false;
         let repairStartTime = 0;
         let repairDuration = 2000;
@@ -592,6 +595,13 @@
             gameUi.classList.add('hidden');
             titleScreen.classList.remove('hidden');
             roomCodeBadge.style.display = 'none';
+        }
+
+        // プロンプト（案内バナー）をタップした時の処理
+        function onPromptClick() {
+            if (interactTarget) {
+                socket.emit('interact', interactTarget);
+            }
         }
 
         function drawPigCharacterLarge(context, x, y, bodyColor, name) {
@@ -706,9 +716,9 @@
                         if (ship.wood < 2) { alert('木材が足りません！（修理には2個必要）'); return; }
                         const cos = Math.cos(ship.angle);
                         const sin = Math.sin(ship.angle);
-                        const rx = ship.x + cos * 110 - sin * 0;
-                        const ry = ship.y + sin * 110 + cos * 0;
-                        if (Math.hypot(me.x - rx, me.y - ry) < 60) { repairing = true; repairStartTime = Date.now(); }
+                        const rx = ship.x + cos * 110;
+                        const ry = ship.y + sin * 110;
+                        if (Math.hypot(me.x - rx, me.y - ry) < 60) { repairing = true; }
                     }
                 }
                 if (['e','E'].includes(e.key) && !keys.e) {
@@ -839,7 +849,6 @@
                         promptEl.innerHTML = `🥔 <b>ポテト港町</b> | <button class="btn" style="padding:4px 10px; font-size:14px;" onclick="socket.emit('portAction','sellWood')">木材売却(20G)</button> <button class="btn" style="padding:4px 10px; font-size:14px;" onclick="socket.emit('portAction','upgradeHp')">HP強化(50G)</button> <button class="btn" style="padding:4px 10px; font-size:14px;" onclick="socket.emit('portAction','upgradeSpeed')">速度強化(80G)</button>`;
                         promptEl.style.display = 'block';
                     } else {
-                        // 船の回転角度（angle）を考慮した正確な舵の位置計算
                         const cos = Math.cos(ship.angle);
                         const sin = Math.sin(ship.angle);
                         const helmX = ship.x + cos * (-80) - sin * 0;
@@ -852,7 +861,7 @@
                             promptEl.style.display = 'block';
                         } else if (Math.hypot(p.x - helmX, p.y - helmY) < 65 && !ship.helmsman) {
                             interactTarget = { type: 'helm' };
-                            promptEl.innerText = '【Eキー】舵を取る';
+                            promptEl.innerText = '【Eキー または タップ】舵を取る';
                             promptEl.style.display = 'block';
                         } else {
                             promptEl.style.display = 'none';
