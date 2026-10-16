@@ -9,546 +9,421 @@ const io = new Server(server);
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-const WORLD_WIDTH = 15000;
-const WORLD_HEIGHT = 11250;
+// ゲーム内ワールド定数
+const WORLD_WIDTH = 4000;
+const WORLD_HEIGHT = 4000;
 
+// ルーム管理
 const rooms = {};
 
-function getShipCircles(ship) {
-  const cos = Math.cos(ship.angle);
-  const sin = Math.sin(ship.angle);
-  return [
-    { x: ship.x, y: ship.y, r: 60 },
-    { x: ship.x + cos * 70, y: ship.y + sin * 70, r: 50 },
-    { x: ship.x - cos * 70, y: ship.y - sin * 70, r: 50 }
-  ];
-}
+// 島・港・資源の初期データ
+const baseIslands = [
+    { id: 'port_potato', name: '🥔 ポテト港町', x: 2000, y: 2000, radius: 250, type: 'port' },
+    { id: 'island_1', name: 'バナナ島', x: 1000, y: 1000, radius: 150, type: 'resource' },
+    { id: 'island_2', name: 'ソルト島', x: 3000, y: 1000, radius: 150, type: 'resource' },
+    { id: 'island_3', name: 'フライ島', x: 1000, y: 3000, radius: 150, type: 'resource' },
+    { id: 'island_4', name: 'マッシュ島', x: 3000, y: 3000, radius: 150, type: 'resource' }
+];
 
-function checkShipIslandCollision(ship, islands) {
-  const circles = getShipCircles(ship);
-  for (let isl of islands) {
-    for (let c of circles) {
-      if (Math.hypot(c.x - isl.x, c.y - isl.y) < isl.radius + c.r) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
-function checkShipShipCollision(shipA, shipB) {
-  const circlesA = getShipCircles(shipA);
-  const circlesB = getShipCircles(shipB);
-  for (let ca of circlesA) {
-    for (let cb of circlesB) {
-      if (Math.hypot(ca.x - cb.x, ca.y - cb.y) < ca.r + cb.r) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
-function createInitialRoomState(isCpuMode = false) {
-  const islands = [
-    { id: 'town', x: 7500, y: 5625, radius: 1400, isTown: true, name: '🥔 ポテト港町' },
-    { id: 1, x: 3500, y: 3000, radius: 600, wood: 6, hasSpecialAmmo: true, ammoType: 2 },
-    { id: 2, x: 11500, y: 3000, radius: 600, wood: 6, hasSpecialAmmo: true, ammoType: 3 },
-    { id: 3, x: 3500, y: 8500, radius: 750, wood: 8, hasSpecialAmmo: true, ammoType: 2 }
-  ];
-
-  const ships = {
-    red: {
-      id: 'red',
-      name: 'レッドポテト号',
-      color: '#e74c3c',
-      x: 7500,
-      y: 8200, // 港町から十分に離れた安全な海上に配置
-      angle: 0,
-      speed: 0,
-      maxSpeed: 6.5,
-      hp: 100,
-      maxHp: 100,
-      wood: 0,
-      coins: 100,
-      ammo: { 1: 15, 2: 5, 3: 5 },
-      leftCooldown: 0,
-      rightCooldown: 0,
-      helmsman: null,
-      cannons: [
-        { id: 'red_l1', side: 'left', offsetRelX: 0, offsetRelY: -55, gunner: null },
-        { id: 'red_r1', side: 'right', offsetRelX: 0, offsetRelY: 55, gunner: null },
-        { id: 'red_l2', side: 'left', offsetRelX: -60, offsetRelY: -55, gunner: null },
-        { id: 'red_r2', side: 'right', offsetRelX: -60, offsetRelY: 55, gunner: null }
-      ],
-      watcher: null,
-      isCpu: false
-    }
-  };
-
-  if (isCpuMode) {
-    const cpuPositions = [
-      { x: 3000, y: 3000 }, { x: 12000, y: 3000 },
-      { x: 2500, y: 9500 }, { x: 12500, y: 9500 }
-    ];
-    for (let i = 0; i < 4; i++) {
-      const cpuId = `cpu${i + 1}`;
-      ships[cpuId] = {
-        id: cpuId,
-        name: `海賊CPU #${i + 1}`,
-        color: '#3498db',
-        x: cpuPositions[i].x,
-        y: cpuPositions[i].y,
-        angle: Math.PI,
-        speed: 0,
-        maxSpeed: 5.6, // プレイヤーより少し遅く設定
-        hp: 50,
-        maxHp: 50,
-        wood: 0,
-        coins: 0,
-        ammo: { 1: 50, 2: 2, 3: 2 },
-        leftCooldown: 0,
-        rightCooldown: 0,
-        helmsman: null,
-        cannons: [],
-        watcher: null,
-        isCpu: true
-      };
-    }
-  }
-
-  return {
-    status: 'waiting',
-    isCpuMode: isCpuMode,
-    ships: ships,
-    players: {},
-    islands: islands,
-    potatoes: Array.from({ length: 50 }, (_, i) => ({
-      id: i + 1,
-      x: Math.random() * (WORLD_WIDTH - 1000) + 500,
-      y: Math.random() * (WORLD_HEIGHT - 1000) + 500,
-      collected: false
-    })),
-    cannonBalls: []
-  };
-}
+const baseResources = [
+    { id: 'res_1', x: 1000, y: 800, type: 'wood', amount: 5, active: true },
+    { id: 'res_2', x: 800, y: 1000, type: 'wood', amount: 5, active: true },
+    { id: 'res_3', x: 3000, y: 800, type: 'wood', amount: 5, active: true },
+    { id: 'res_4', x: 3200, y: 1000, type: 'wood', amount: 5, active: true },
+    { id: 'res_5', x: 1000, y: 3200, type: 'wood', amount: 5, active: true },
+    { id: 'res_6', x: 800, y: 3000, type: 'wood', amount: 5, active: true },
+    { id: 'res_7', x: 3000, y: 3200, type: 'wood', amount: 5, active: true },
+    { id: 'res_8', x: 3200, y: 3000, type: 'wood', amount: 5, active: true },
+];
 
 io.on('connection', (socket) => {
-  socket.on('joinRoom', ({ roomCode, playerName, bodyColor, isCpu }) => {
-    if (!roomCode || roomCode.length !== 4) return;
-    socket.join(roomCode);
-    socket.roomCode = roomCode;
+    let currentRoom = null;
+    let playerId = socket.id;
 
-    if (!rooms[roomCode]) {
-      rooms[roomCode] = createInitialRoomState(isCpu);
-    } else if (isCpu) {
-      rooms[roomCode].isCpuMode = true;
-    }
-    const room = rooms[roomCode];
-    const ship = room.ships['red'];
+    socket.on('join_room', (data) => {
+        const { roomCode, name, color, mode } = data;
+        currentRoom = roomCode;
 
-    room.players[socket.id] = {
-      id: socket.id,
-      team: 'red',
-      x: ship.x,
-      y: ship.y,
-      role: 'free',
-      activeCannonId: null,
-      name: playerName || 'ポテト船長',
-      bodyColor: bodyColor || '#e67e22',
-      ready: false
-    };
+        if (!rooms[roomCode]) {
+            rooms[roomCode] = {
+                code: roomCode,
+                mode: mode || 'multi', // 'multi' or 'cpu'
+                started: false,
+                players: {},
+                ships: {},
+                projectiles: [],
+                enemies: [],
+                islands: JSON.parse(JSON.stringify(baseIslands)),
+                resources: JSON.parse(JSON.stringify(baseResources))
+            };
 
-    io.to(roomCode).emit('lobbyUpdate', { players: room.players, status: room.status, roomCode });
-  });
-
-  socket.on('changeColor', (color) => {
-    const room = rooms[socket.roomCode];
-    if (room && room.players[socket.id]) {
-      room.players[socket.id].bodyColor = color;
-      io.to(socket.roomCode).emit('lobbyUpdate', { players: room.players, status: room.status, roomCode: socket.roomCode });
-    }
-  });
-
-  socket.on('toggleReady', () => {
-    const room = rooms[socket.roomCode];
-    if (room && room.status === 'waiting' && room.players[socket.id]) {
-      room.players[socket.id].ready = !room.players[socket.id].ready;
-      io.to(socket.roomCode).emit('lobbyUpdate', { players: room.players, status: room.status, roomCode: socket.roomCode });
-    }
-  });
-
-  socket.on('startGame', ({ roomCode }) => {
-    const code = roomCode || socket.roomCode;
-    const room = rooms[code];
-    if (room) {
-      room.status = 'playing';
-      for (let id in room.players) {
-        let p = room.players[id];
-        let ship = room.ships[p.team];
-        p.x = ship.x;
-        p.y = ship.y;
-        p.role = 'free';
-        p.activeCannonId = null;
-      }
-
-      io.to(code).emit('gameStart', { 
-        players: room.players, 
-        ships: room.ships, 
-        islands: room.islands, 
-        potatoes: room.potatoes,
-        roomCode: code
-      });
-    }
-  });
-
-  socket.on('playerMove', (data) => {
-    const room = rooms[socket.roomCode];
-    if (room && room.status === 'playing' && room.players[socket.id]) {
-      const p = room.players[socket.id];
-      if (p.role === 'free') {
-        p.x = data.x;
-        p.y = data.y;
-        socket.to(socket.roomCode).emit('playerMoved', p);
-      }
-    }
-  });
-
-  socket.on('interact', (actionData) => {
-    const room = rooms[socket.roomCode];
-    if (!room || room.status !== 'playing') return;
-    const p = room.players[socket.id];
-    const ship = room.ships[p.team];
-
-    if (actionData.type === 'helm') {
-      if (p.role === 'free' && !ship.helmsman) {
-        ship.helmsman = socket.id;
-        p.role = 'helmsman';
-      } else if (p.role === 'helmsman') {
-        ship.helmsman = null;
-        p.role = 'free';
-        p.x = ship.x - Math.cos(ship.angle) * 80;
-        p.y = ship.y - Math.sin(ship.angle) * 80;
-      }
-    } else if (actionData.type === 'cannon') {
-      const cannon = ship.cannons.find(c => c.id === actionData.cannonId);
-      if (p.role === 'free' && cannon && !cannon.gunner) {
-        cannon.gunner = socket.id;
-        p.role = 'cannon';
-        p.activeCannonId = cannon.id;
-      } else if (p.role === 'cannon') {
-        const currentCannon = ship.cannons.find(c => c.id === p.activeCannonId);
-        if (currentCannon) {
-          currentCannon.gunner = null;
-          p.x = ship.x + Math.cos(ship.angle) * currentCannon.offsetRelX - Math.sin(ship.angle) * (currentCannon.side === 'left' ? 20 : -20);
-          p.y = ship.y + Math.sin(ship.angle) * currentCannon.offsetRelX + Math.cos(ship.angle) * (currentCannon.side === 'left' ? 20 : -20);
+            // CPUモードの場合、初期敵海賊船を生成
+            if (mode === 'cpu') {
+                rooms[roomCode].enemies.push({
+                    id: 'cpu_1',
+                    x: 1500,
+                    y: 1500,
+                    angle: 0,
+                    speed: 2,
+                    hp: 100,
+                    maxHp: 100,
+                    radius: 40
+                });
+            }
         }
-        p.role = 'free';
-        p.activeCannonId = null;
-      }
-    }
-    io.to(socket.roomCode).emit('gameStateUpdate', { players: room.players, ships: room.ships });
-  });
 
-  socket.on('portAction', (actionType) => {
-    const room = rooms[socket.roomCode];
-    if (!room || room.status !== 'playing') return;
-    const ship = room.ships['red'];
+        const room = rooms[roomCode];
+        socket.join(roomCode);
 
-    if (actionType === 'sellWood') {
-      if (ship.wood > 0) {
-        const earnings = ship.wood * 20;
-        ship.coins += earnings;
-        ship.wood = 0;
-        socket.emit('shopMessage', `🪵 木材を売却して ${earnings} コイン獲得！`);
-      } else {
-        socket.emit('shopMessage', '売却する木材がありません。');
-      }
-    } else if (actionType === 'upgradeHp') {
-      if (ship.coins >= 50) {
-        ship.coins -= 50;
-        ship.maxHp += 25;
-        ship.hp = ship.maxHp;
-        socket.emit('shopMessage', '❤️ 最大HPがアップしました！');
-      } else {
-        socket.emit('shopMessage', 'コインが足りません（50コイン必要）');
-      }
-    } else if (actionType === 'upgradeSpeed') {
-      if (ship.coins >= 80) {
-        ship.coins -= 80;
-        ship.maxSpeed += 0.5;
-        socket.emit('shopMessage', '⚡ 船のスピードがアップしました！');
-      } else {
-        socket.emit('shopMessage', 'コインが足りません（80コイン必要）');
-      }
-    }
-    io.to(socket.roomCode).emit('gameStateUpdate', { players: room.players, ships: room.ships });
-  });
+        // プレイヤー初期化
+        room.players[playerId] = {
+            id: playerId,
+            name: name || '名無しの豚',
+            color: color || '#ff99bb',
+            x: 2000 + (Math.random() * 100 - 50),
+            y: 2200 + (Math.random() * 100 - 50),
+            angle: 0,
+            isSteering: false,
+            shipId: null,
+            wood: 0,
+            coins: 100,
+            ammoType: 1, // 1: 通常, 2: 爆発, 3: 特製
+            ready: false
+        };
 
-  socket.on('repairShip', () => {
-    const room = rooms[socket.roomCode];
-    if (!room || room.status !== 'playing') return;
-    const ship = room.ships['red'];
-    if (ship.wood >= 2 && ship.hp < ship.maxHp) {
-      ship.wood -= 2;
-      ship.hp = Math.min(ship.maxHp, ship.hp + 25);
-      io.to(socket.roomCode).emit('shipRepaired', { team: 'red', hp: ship.hp, wood: ship.wood });
-    }
-  });
+        // プレイヤー自身の船を作成
+        const shipId = 'ship_' + playerId;
+        room.ships[shipId] = {
+            id: shipId,
+            ownerId: playerId,
+            x: room.players[playerId].x,
+            y: room.players[playerId].y + 50,
+            angle: 0,
+            speed: 0,
+            maxSpeed: 4,
+            hp: 100,
+            maxHp: 100,
+            speedLevel: 1,
+            radius: 45,
+            leftCooldown: 0,
+            rightCooldown: 0
+        };
 
-  socket.on('shipControl', (controlData) => {
-    const room = rooms[socket.roomCode];
-    if (!room || room.status !== 'playing') return;
-    const p = room.players[socket.id];
-    if (p && p.role === 'helmsman') {
-      const s = room.ships['red'];
-      let testShip = { ...s, x: controlData.x, y: controlData.y, angle: controlData.angle };
-      let collided = false;
-      if (checkShipIslandCollision(testShip, room.islands)) collided = true;
+        room.players[playerId].shipId = shipId;
 
-      for (let otherId in room.ships) {
-        if (otherId !== 'red') {
-          if (checkShipShipCollision(testShip, room.ships[otherId])) collided = true;
+        updateRoomState(roomCode);
+    });
+
+    socket.on('set_ready', (ready) => {
+        if (!currentRoom || !rooms[currentRoom]) return;
+        const room = rooms[currentRoom];
+        if (room.players[playerId]) {
+            room.players[playerId].ready = ready;
+            updateRoomState(currentRoom);
+
+            // 全員準備完了でゲームスタート
+            const playersArr = Object.values(room.players);
+            if (playersArr.length > 0 && playersArr.every(p => p.ready)) {
+                room.started = true;
+                io.to(currentRoom).emit('game_started');
+            }
         }
-      }
+    });
 
-      if (!collided) {
-        s.x = controlData.x;
-        s.y = controlData.y;
-      }
-      s.angle = controlData.angle;
-      s.speed = controlData.speed;
-      socket.to(socket.roomCode).emit('shipMoved', s);
-    }
-  });
+    socket.on('player_input', (input) => {
+        if (!currentRoom || !rooms[currentRoom]) return;
+        const room = rooms[currentRoom];
+        const player = room.players[playerId];
+        if (!player || !room.started) return;
 
-  socket.on('fireSideCannon', ({ side, ammoType }) => {
-    const room = rooms[socket.roomCode];
-    if (!room || room.status !== 'playing') return;
-    const p = room.players[socket.id];
-    if (!p) return;
-    const ship = room.ships['red'];
-    const type = ammoType || 1;
+        // 船の操舵中か判定
+        const ship = room.ships[player.shipId];
 
-    const now = Date.now();
-    if (ship.ammo[type] > 0) {
-      if (side === 'left') {
-        if (ship.leftCooldown > now) return;
-        ship.leftCooldown = now + 1500;
-      } else if (side === 'right') {
-        if (ship.rightCooldown > now) return;
-        ship.rightCooldown = now + 1500;
-      } else {
-        return;
-      }
+        if (player.isSteering && ship) {
+            // 船の操縦
+            if (input.w) ship.speed = Math.min(ship.speed + 0.1, ship.maxSpeed);
+            if (input.s) ship.speed = Math.max(ship.speed - 0.1, -ship.maxSpeed / 2);
+            if (!input.w && !input.s) ship.speed *= 0.95; // 減速
 
-      ship.ammo[type]--;
-      const offsetRelX = -30;
-      const offsetRelY = side === 'left' ? -55 : 55;
-      const wx = ship.x + Math.cos(ship.angle) * offsetRelX - Math.sin(ship.angle) * offsetRelY;
-      const wy = ship.y + Math.sin(ship.angle) * offsetRelX + Math.cos(ship.angle) * offsetRelY;
+            if (input.a) ship.angle -= 0.03;
+            if (input.d) ship.angle += 0.03;
 
-      const ball = {
-        id: Math.random().toString(),
-        team: 'red',
-        ammoType: type,
-        x: wx,
-        y: wy,
-        vx: Math.cos(ship.angle + (side === 'left' ? -Math.PI/2 : Math.PI/2)) * 18,
-        vy: Math.sin(ship.angle + (side === 'left' ? -Math.PI/2 : Math.PI/2)) * 18,
-        range: 0
-      };
+            ship.x += Math.cos(ship.angle) * ship.speed;
+            ship.y += Math.sin(ship.angle) * ship.speed;
 
-      room.cannonBalls.push(ball);
-      io.to(socket.roomCode).emit('cannonFired', ball);
-      io.to(socket.roomCode).emit('shipAmmoUpdate', { team: 'red', ammo: ship.ammo });
-      socket.emit('sideCooldownStarted', { side, duration: 1500 });
-    }
-  });
-
-  socket.on('collectPotato', (potatoId) => {
-    const room = rooms[socket.roomCode];
-    if (!room || room.status !== 'playing') return;
-    const potato = room.potatoes.find(pt => pt.id === potatoId);
-    if (potato && !potato.collected) {
-      potato.collected = true;
-      const ship = room.ships['red'];
-      ship.ammo[1] += 3;
-      io.to(socket.roomCode).emit('potatoCollected', { potatoId, team: 'red', ammo: ship.ammo });
-
-      setTimeout(() => {
-        if (room.potatoes) {
-          potato.x = Math.random() * (WORLD_WIDTH - 1000) + 500;
-          potato.y = Math.random() * (WORLD_HEIGHT - 1000) + 500;
-          potato.collected = false;
-          io.to(socket.roomCode).emit('potatoRespawned', potato);
-        }
-      }, 5000);
-    }
-  });
-
-  socket.on('gatherIsland', (islandId) => {
-    const room = rooms[socket.roomCode];
-    if (!room || room.status !== 'playing') return;
-    const island = room.islands.find(isl => isl.id === islandId);
-    const ship = room.ships['red'];
-
-    if (island && !island.isTown && (island.wood > 0 || island.hasSpecialAmmo)) {
-      if (island.wood > 0) {
-        island.wood--;
-        ship.wood += 1;
-      }
-      if (island.hasSpecialAmmo) {
-        ship.ammo[island.ammoType] = (ship.ammo[island.ammoType] || 0) + 2;
-        island.hasSpecialAmmo = false;
-      }
-      io.to(socket.roomCode).emit('islandGathered', { islandId, shipWood: ship.wood, ammo: ship.ammo });
-
-      setTimeout(() => {
-        if (room.islands) {
-          island.wood = 6;
-          island.hasSpecialAmmo = true;
-          io.to(socket.roomCode).emit('islandRespawned', island);
-        }
-      }, 10000);
-    }
-  });
-
-  socket.on('disconnect', () => {
-    const roomCode = socket.roomCode;
-    if (roomCode && rooms[roomCode]) {
-      const room = rooms[roomCode];
-      delete room.players[socket.id];
-      if (room.status === 'playing') {
-        io.to(roomCode).emit('playerDisconnected', socket.id);
-        io.to(roomCode).emit('gameStateUpdate', { players: room.players, ships: room.ships });
-      } else {
-        io.to(roomCode).emit('lobbyUpdate', { players: room.players, status: room.status, roomCode });
-      }
-    }
-  });
-});
-
-setInterval(() => {
-  for (let roomCode in rooms) {
-    const room = rooms[roomCode];
-    if (room.status !== 'playing') continue;
-
-    const redShip = room.ships['red'];
-    if (!redShip) continue;
-
-    if (room.isCpuMode) {
-      for (let sId in room.ships) {
-        const cpuShip = room.ships[sId];
-        if (!cpuShip.isCpu || cpuShip.hp <= 0) continue;
-
-        let dx = redShip.x - cpuShip.x;
-        let dy = redShip.y - cpuShip.y;
-        let dist = Math.hypot(dx, dy);
-
-        let angleToPlayer = Math.atan2(dy, dx);
-        if (dist > 350) {
-          let angleDiff = angleToPlayer - cpuShip.angle;
-          while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-          while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-          cpuShip.angle += angleDiff * 0.03;
-          cpuShip.speed = cpuShip.maxSpeed;
+            // プレイヤーも船に追従
+            player.x = ship.x;
+            player.y = ship.y;
+            player.angle = ship.angle;
         } else {
-          let sideAngle = angleToPlayer + Math.PI / 2;
-          let angleDiff = sideAngle - cpuShip.angle;
-          while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-          while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-          cpuShip.angle += angleDiff * 0.05;
-          cpuShip.speed = 1.0;
+            // 豚の自由移動
+            const moveSpeed = 3.5;
+            let dx = 0, dy = 0;
+            if (input.w) dy -= moveSpeed;
+            if (input.s) dy += moveSpeed;
+            if (input.a) dx -= moveSpeed;
+            if (input.d) dx += moveSpeed;
+
+            if (dx !== 0 || dy !== 0) {
+                player.x += dx;
+                player.y += dy;
+                player.angle = Math.atan2(dy, dx);
+            }
         }
 
-        let nextX = cpuShip.x + Math.cos(cpuShip.angle) * cpuShip.speed;
-        let nextY = cpuShip.y + Math.sin(cpuShip.angle) * cpuShip.speed;
+        // 範囲制限
+        player.x = Math.max(50, Math.min(WORLD_WIDTH - 50, player.x));
+        player.y = Math.max(50, Math.min(WORLD_HEIGHT - 50, player.y));
+    });
 
-        let testShip = { ...cpuShip, x: nextX, y: nextY };
-        let collided = false;
-        room.islands.forEach(isl => {
-          if (checkShipIslandCollision(testShip, [isl])) collided = true;
-        });
+    socket.on('toggle_steer', () => {
+        if (!currentRoom || !rooms[currentRoom]) return;
+        const room = rooms[currentRoom];
+        const player = room.players[playerId];
+        const ship = room.ships[player.shipId];
+        if (!player || !ship) return;
 
-        if (!collided) {
-          cpuShip.x = nextX;
-          cpuShip.y = nextY;
+        if (player.isSteering) {
+            // 舵を降りる
+            player.isSteering = false;
+            player.x = ship.x + 40;
+            player.y = ship.y;
+        } else {
+            // 舵に乗る（距離判定）
+            const dist = Math.hypot(player.x - ship.x, player.y - ship.y);
+            if (dist < 80) {
+                player.isSteering = true;
+            }
         }
-        cpuShip.x = Math.max(300, Math.min(WORLD_WIDTH - 300, cpuShip.x));
-        cpuShip.y = Math.max(300, Math.min(WORLD_HEIGHT - 300, cpuShip.y));
+    });
+
+    socket.on('fire_cannons', (side) => {
+        if (!currentRoom || !rooms[currentRoom]) return;
+        const room = rooms[currentRoom];
+        const player = room.players[playerId];
+        const ship = room.ships[player.shipId];
+        if (!player || !ship || !player.isSteering) return;
 
         const now = Date.now();
-        if (dist < 1000 && cpuShip.leftCooldown < now) {
-          cpuShip.leftCooldown = now + 2000;
-          room.cannonBalls.push({
-            id: Math.random().toString(),
-            team: cpuShip.id,
-            ammoType: 1,
-            x: cpuShip.x,
-            y: cpuShip.y,
-            vx: Math.cos(cpuShip.angle - Math.PI/2) * 15,
-            vy: Math.sin(cpuShip.angle - Math.PI/2) * 15,
-            range: 0
-          });
+        if (side === 'left' && ship.leftCooldown <= now) {
+            ship.leftCooldown = now + 1000; // 1秒クールダウン
+            fireCannonBall(room, ship, -Math.PI / 2, player.ammoType, playerId);
+        } else if (side === 'right' && ship.rightCooldown <= now) {
+            ship.rightCooldown = now + 1000;
+            fireCannonBall(room, ship, Math.PI / 2, player.ammoType, playerId);
         }
-      }
-    }
+    });
 
-    for (let i = room.cannonBalls.length - 1; i >= 0; i--) {
-      let ball = room.cannonBalls[i];
-      ball.x += ball.vx;
-      ball.y += ball.vy;
-      ball.range += 1;
+    socket.on('repair_ship', () => {
+        if (!currentRoom || !rooms[currentRoom]) return;
+        const room = rooms[currentRoom];
+        const player = room.players[playerId];
+        const ship = room.ships[player.shipId];
+        if (!player || !ship) return;
 
-      if (ball.range > 120) {
-        room.cannonBalls.splice(i, 1);
-        continue;
-      }
+        // 修理ポイント（船の先端付近）にいるか、または木材が2個以上ありHPが満タンでない場合
+        if (player.wood >= 2 && ship.hp < ship.maxHp) {
+            player.wood -= 2;
+            ship.hp = Math.min(ship.maxHp, ship.hp + 30);
+        }
+    });
 
-      for (let shipId in room.ships) {
-        let ship = room.ships[shipId];
-        if (ship.id !== ball.team) {
-          let dist = Math.hypot(ship.x - ball.x, ship.y - ball.y);
-          if (dist < 100 && ship.hp > 0) {
-            const damage = ball.ammoType === 2 ? 30 : 15;
-            ship.hp -= damage;
-            io.to(roomCode).emit('shipHit', { shipId: ship.id, hp: ship.hp });
-            room.cannonBalls.splice(i, 1);
+    socket.on('gather_resource', () => {
+        if (!currentRoom || !rooms[currentRoom]) return;
+        const room = rooms[currentRoom];
+        const player = room.players[playerId];
+        if (!player) return;
 
-            if (ship.id === 'red' && ship.hp <= 0) {
-              io.to(roomCode).emit('gameOver', { result: 'lose', message: '💀 敗北... 船が沈んでしまった！' });
-              room.status = 'waiting';
+        room.resources.forEach(res => {
+            if (res.active && Math.hypot(player.x - res.x, player.y - res.y) < 60) {
+                res.active = false;
+                player.wood += res.amount;
+                // 30秒後にリスポーン
+                setTimeout(() => {
+                    if (rooms[currentRoom]) {
+                        const targetRes = rooms[currentRoom].resources.find(r => r.id === res.id);
+                        if (targetRes) targetRes.active = true;
+                    }
+                }, 30000);
             }
+        });
+    });
 
-            if (ship.isCpu && ship.hp <= 0) {
-              redShip.coins += 50;
+    socket.on('port_action', (action) => {
+        if (!currentRoom || !rooms[currentRoom]) return;
+        const room = rooms[currentRoom];
+        const player = room.players[playerId];
+        const ship = room.ships[player.shipId];
+        if (!player || !ship) return;
+
+        // ポテト港町の範囲内にいるか
+        const port = room.islands.find(i => i.type === 'port');
+        if (Math.hypot(player.x - port.x, player.y - port.y) < port.radius + 50) {
+            if (action === 'sell_wood' && player.wood > 0) {
+                player.coins += player.wood * 15;
+                player.wood = 0;
+            } else if (action === 'upgrade_speed' && player.coins >= 50 * ship.speedLevel) {
+                player.coins -= 50 * ship.speedLevel;
+                ship.speedLevel++;
+                ship.maxSpeed += 1;
+            } else if (action === 'upgrade_hp' && player.coins >= 100) {
+                player.coins -= 100;
+                ship.maxHp += 50;
+                ship.hp = ship.maxHp;
             }
+        }
+    });
 
-            if (room.isCpuMode) {
-              let allCpuDead = true;
-              for (let sId in room.ships) {
-                if (room.ships[sId].isCpu && room.ships[sId].hp > 0) {
-                  allCpuDead = false;
-                  break;
+    socket.on('change_ammo', (type) => {
+        if (!currentRoom || !rooms[currentRoom]) return;
+        const player = rooms[currentRoom].players[playerId];
+        if (player) player.ammoType = type;
+    });
+
+    socket.on('disconnect', () => {
+        if (currentRoom && rooms[currentRoom]) {
+            const room = rooms[currentRoom];
+            delete room.players[playerId];
+            if (room.ships['ship_' + playerId]) {
+                delete room.ships['ship_' + playerId];
+            }
+            if (Object.keys(room.players).length === 0) {
+                delete rooms[currentRoom];
+            } else {
+                updateRoomState(currentRoom);
+            }
+        }
+    });
+});
+
+function fireCannonBall(room, ship, angleOffset, ammoType, shooterId) {
+    const fireAngle = ship.angle + angleOffset;
+    const spawnX = ship.x + Math.cos(fireAngle) * 30;
+    const spawnY = ship.y + Math.sin(fireAngle) * 30;
+
+    room.projectiles.push({
+        id: Math.random().toString(36).substr(2, 9),
+        x: spawnX,
+        y: spawnY,
+        vx: Math.cos(fireAngle) * 8,
+        vy: Math.sin(fireAngle) * 8,
+        ammoType: ammoType,
+        shooterId: shooterId,
+        range: 0
+    });
+}
+
+// ゲームループ（サーバーサイド物理・判定）
+setInterval(() => {
+    for (const code in rooms) {
+        const room = rooms[code];
+        if (!room.started) continue;
+
+        // 砲弾の移動
+        for (let i = room.projectiles.length - 1; i >= 0; i--) {
+            const p = room.projectiles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.range += 8;
+
+            let hit = false;
+            // 船とのヒット判定
+            for (const shipId in room.ships) {
+                const ship = room.ships[shipId];
+                if (ship.ownerId === p.shooterId) continue;
+                if (Math.hypot(p.x - ship.x, p.y - ship.y) < ship.radius) {
+                    let dmg = p.ammoType === 2 ? 35 : (p.ammoType === 3 ? 50 : 20);
+                    ship.hp -= dmg;
+                    hit = true;
+                    break;
                 }
-              }
-              if (allCpuDead) {
-                io.to(roomCode).emit('gameOver', { result: 'win', message: '🎉 勝利！すべての海賊船を制圧した！' });
-                room.status = 'waiting';
-              }
             }
-            break;
-          }
-        }
-      }
-    }
 
-    io.to(roomCode).emit('serverTick', { ships: room.ships, cannonBalls: room.cannonBalls });
-  }
+            // 敵海賊船とのヒット判定
+            for (let e = room.enemies.length - 1; e >= 0; e--) {
+                const enemy = room.enemies[e];
+                if (Math.hypot(p.x - enemy.x, p.y - enemy.y) < enemy.radius) {
+                    enemy.hp -= 25;
+                    hit = true;
+                    if (enemy.hp <= 0) {
+                        room.enemies.splice(e, 1);
+                        // 撃破報酬
+                        const shooterPlayer = room.players[p.shooterId];
+                        if (shooterPlayer) shooterPlayer.coins += 200;
+                    }
+                    break;
+                }
+            }
+
+            if (hit || p.range > 600 || p.x < 0 || p.x > WORLD_WIDTH || p.y < 0 || p.y > WORLD_HEIGHT) {
+                room.projectiles.splice(i, 1);
+            }
+        }
+
+        // CPU海賊船のAI挙動
+        room.enemies.forEach(enemy => {
+            // 最寄りのプレイヤー船を探す
+            let closestShip = null;
+            let minDist = Infinity;
+            for (const shipId in room.ships) {
+                const s = room.ships[shipId];
+                const dist = Math.hypot(s.x - enemy.x, s.y - enemy.y);
+                if (dist < minDist) {
+                    minDist = dist;
+                    closestShip = s;
+                }
+            }
+
+            if (closestShip) {
+                const targetAngle = Math.atan2(closestShip.y - enemy.y, closestShip.x - enemy.x);
+                enemy.angle = targetAngle;
+                if (minDist > 200) {
+                    enemy.x += Math.cos(enemy.angle) * enemy.speed;
+                    enemy.y += Math.sin(enemy.angle) * enemy.speed;
+                }
+            }
+        });
+
+        // 船と島の衝突判定
+        for (const shipId in room.ships) {
+            const ship = room.ships[shipId];
+            room.islands.forEach(island => {
+                const dist = Math.hypot(ship.x - island.x, ship.y - island.y);
+                if (dist < island.radius + ship.radius) {
+                    // 押し出し
+                    const pushAngle = Math.atan2(ship.y - island.y, ship.x - island.x);
+                    ship.x = island.x + Math.cos(pushAngle) * (island.radius + ship.radius);
+                    ship.y = island.y + Math.sin(pushAngle) * (island.radius + ship.radius);
+                    ship.speed = 0;
+                }
+            });
+        }
+
+        // 全クライアントへ状態ブロードキャスト
+        io.to(code).emit('game_update', {
+            players: room.players,
+            ships: room.ships,
+            projectiles: room.projectiles,
+            enemies: room.enemies,
+            resources: room.resources,
+            islands: room.islands
+        });
+    }
 }, 1000 / 60);
 
-const PORT = process.env.PORT || 3000;
+function updateRoomState(roomCode) {
+    const room = rooms[roomCode];
+    if (room) {
+        io.to(roomCode).emit('room_state', {
+            code: room.code,
+            mode: room.mode,
+            started: room.started,
+            players: room.players
+        });
+    }
+}
+
+const PORT = process.env.PORT || 10000;
 server.listen(PORT, () => {
-  console.log(`✨ Pig of Potato MMORPG サーバー起動: http://localhost:${PORT}`);
+    console.log(`Pig of Potato server running on port ${PORT}`);
 });
