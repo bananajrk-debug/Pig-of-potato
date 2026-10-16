@@ -517,7 +517,7 @@
             <canvas id="minimapCanvas" width="200" height="150"></canvas>
         </div>
 
-        <canvas id="gameCanvas"></canvas>
+        <canvas id="gameCanvas" tabindex="0"></canvas>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
@@ -595,7 +595,6 @@
             roomCodeBadge.style.display = 'none';
         }
 
-        // プロンプトを直接タップした時の処理
         function onPromptClick() {
             if (interactTarget) {
                 socket.emit('interact', interactTarget);
@@ -667,7 +666,10 @@
             socket.emit('toggleReady');
         });
 
-        btnStart.addEventListener('click', () => { socket.emit('startGame', { roomCode: currentRoomCode }); });
+        btnStart.addEventListener('click', () => { 
+            socket.emit('startGame', { roomCode: currentRoomCode }); 
+            setTimeout(() => { canvas.focus(); }, 100);
+        });
 
         socket.on('lobbyUpdate', (data) => {
             players = data.players;
@@ -695,18 +697,21 @@
             resultOverlay.style.display = 'none';
             gameUi.classList.remove('hidden');
             resize();
+            setTimeout(() => { canvas.focus(); }, 100);
         });
 
+        // 物理キーコード (e.code) を使用してiPadのハードウェアキーボードに対応
         window.addEventListener('keydown', (e) => {
             if (!gameUi.classList.contains('hidden')) {
-                if (['w','W','ArrowUp'].includes(e.key)) keys.w = true;
-                if (['s','S','ArrowDown'].includes(e.key)) keys.s = true;
-                if (['a','A','ArrowLeft'].includes(e.key)) keys.a = true;
-                if (['d','D','ArrowRight'].includes(e.key)) keys.d = true;
-                if (e.key === '1') { selectedAmmo = 1; updateAmmoDisplay(); }
-                if (e.key === '2') { selectedAmmo = 2; updateAmmoDisplay(); }
-                if (e.key === '3') { selectedAmmo = 3; updateAmmoDisplay(); }
-                if (['r','R'].includes(e.key) && !keys.r) {
+                if (['KeyW', 'ArrowUp'].includes(e.code)) keys.w = true;
+                if (['KeyS', 'ArrowDown'].includes(e.code)) keys.s = true;
+                if (['KeyA', 'ArrowLeft'].includes(e.code)) keys.a = true;
+                if (['KeyD', 'ArrowRight'].includes(e.code)) keys.d = true;
+                if (e.code === 'Digit1' || e.code === 'Numpad1') { selectedAmmo = 1; updateAmmoDisplay(); }
+                if (e.code === 'Digit2' || e.code === 'Numpad2') { selectedAmmo = 2; updateAmmoDisplay(); }
+                if (e.code === 'Digit3' || e.code === 'Numpad3') { selectedAmmo = 3; updateAmmoDisplay(); }
+                
+                if (e.code === 'KeyR' && !keys.r) {
                     keys.r = true;
                     const me = players[myId];
                     const ship = ships['red'];
@@ -717,24 +722,24 @@
                         if (Math.hypot(me.x - rx, me.y - ry) < 60) { repairing = true; }
                     }
                 }
-                if (['e','E'].includes(e.key) && !keys.e) {
+                if (e.code === 'KeyE' && !keys.e) {
                     keys.e = true;
                     if (interactTarget) {
                         socket.emit('interact', interactTarget);
                     }
                 }
-                if (['k','K'].includes(e.key) && leftReady) socket.emit('fireSideCannon', { side: 'left', ammoType: selectedAmmo });
-                if (['o','O'].includes(e.key) && rightReady) socket.emit('fireSideCannon', { side: 'right', ammoType: selectedAmmo });
+                if (e.code === 'KeyK' && leftReady) socket.emit('fireSideCannon', { side: 'left', ammoType: selectedAmmo });
+                if (e.code === 'KeyO' && rightReady) socket.emit('fireSideCannon', { side: 'right', ammoType: selectedAmmo });
             }
         });
 
         window.addEventListener('keyup', (e) => {
-            if (['w','W','ArrowUp'].includes(e.key)) keys.w = false;
-            if (['s','S','ArrowDown'].includes(e.key)) keys.s = false;
-            if (['a','A','ArrowLeft'].includes(e.key)) keys.a = false;
-            if (['d','D','ArrowRight'].includes(e.key)) keys.d = false;
-            if (['e','E'].includes(e.key)) { keys.e = false; }
-            if (['r','R'].includes(e.key)) { keys.r = false; repairing = false; }
+            if (['KeyW', 'ArrowUp'].includes(e.code)) keys.w = false;
+            if (['KeyS', 'ArrowDown'].includes(e.code)) keys.s = false;
+            if (['KeyA', 'ArrowLeft'].includes(e.code)) keys.a = false;
+            if (['KeyD', 'ArrowRight'].includes(e.code)) keys.d = false;
+            if (e.code === 'KeyE') { keys.e = false; }
+            if (e.code === 'KeyR') { keys.r = false; repairing = false; }
         });
 
         function updateAmmoDisplay() {
@@ -812,6 +817,7 @@
             if (!myId || !players || !players[myId] || !ships['red']) return;
             const p = players[myId];
             const ship = ships['red'];
+            const promptEl = document.getElementById('prompt');
 
             if (p.role === 'free') {
                 let speed = 6.0, dx = 0, dy = 0;
@@ -833,7 +839,6 @@
                     if (Date.now() - lastSendTime > 25) { socket.emit('playerMove', { x: p.x, y: p.y }); lastSendTime = Date.now(); }
                 }
 
-                const promptEl = document.getElementById('prompt');
                 if (promptEl) {
                     interactTarget = null;
                     let inTown = false;
@@ -845,16 +850,15 @@
                         promptEl.innerHTML = `🥔 <b>ポテト港町</b> | <button class="btn" style="padding:4px 10px; font-size:14px;" onclick="socket.emit('portAction','sellWood')">木材売却(20G)</button> <button class="btn" style="padding:4px 10px; font-size:14px;" onclick="socket.emit('portAction','upgradeHp')">HP強化(50G)</button> <button class="btn" style="padding:4px 10px; font-size:14px;" onclick="socket.emit('portAction','upgradeSpeed')">速度強化(80G)</button>`;
                         promptEl.style.display = 'block';
                     } else {
-                        // シンプルな固定相対位置での判定（うまく動いていた状態）
                         const helmX = ship.x - 80;
                         const helmY = ship.y;
                         const rx = ship.x + 110;
                         const ry = ship.y;
 
-                        if (Math.hypot(p.x - rx, p.y - ry) < 60) {
+                        if (Math.hypot(p.x - rx, p.y - ry) < 65) {
                             promptEl.innerText = '【Rキー長押し】船の先端で修理 (木材2個必要)';
                             promptEl.style.display = 'block';
-                        } else if (Math.hypot(p.x - helmX, p.y - helmY) < 60 && !ship.helmsman) {
+                        } else if (Math.hypot(p.x - helmX, p.y - helmY) < 70 && !ship.helmsman) {
                             interactTarget = { type: 'helm' };
                             promptEl.innerText = '【Eキー または タップ】舵を取る';
                             promptEl.style.display = 'block';
@@ -864,6 +868,12 @@
                     }
                 }
             } else {
+                if (promptEl) {
+                    interactTarget = { type: 'helm' };
+                    promptEl.innerText = '【Eキー または タップ】舵を降りる';
+                    promptEl.style.display = 'block';
+                }
+
                 let rotSpeed = 0.05, targetSpeed = 0;
                 if (keys.a) ship.angle -= rotSpeed;
                 if (keys.d) ship.angle += rotSpeed;
