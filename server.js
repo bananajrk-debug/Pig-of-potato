@@ -229,8 +229,8 @@ io.on('connection', (socket) => {
       } else if (p.role === 'helmsman') {
         ship.helmsman = null;
         p.role = 'free';
-        p.x = ship.x - Math.cos(ship.angle) * 80;
-        p.y = ship.y - Math.sin(ship.angle) * 80;
+        p.x = ship.x - 80;
+        p.y = ship.y;
       }
     }
     io.to(socket.roomCode).emit('gameStateUpdate', { players: room.players, ships: room.ships });
@@ -311,7 +311,7 @@ io.on('connection', (socket) => {
   socket.on('fireSideCannon', ({ side, ammoType }) => {
     const room = rooms[socket.roomCode];
     if (!room || room.status !== 'playing') return;
-    if (!room.isCpuMode) return;
+    if (!room.isCpuMode) return; // ソロプレイ時のみ有効
 
     const p = room.players[socket.id];
     if (!p) return;
