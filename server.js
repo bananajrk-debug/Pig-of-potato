@@ -229,8 +229,8 @@ io.on('connection', (socket) => {
       } else if (p.role === 'helmsman') {
         ship.helmsman = null;
         p.role = 'free';
-        p.x = ship.x - Math.cos(ship.angle) * 80 - Math.sin(ship.angle) * 0;
-        p.y = ship.y - Math.sin(ship.angle) * 80 + Math.cos(ship.angle) * 0;
+        p.x = ship.x - Math.cos(ship.angle) * 80;
+        p.y = ship.y - Math.sin(ship.angle) * 80;
       }
     }
     io.to(socket.roomCode).emit('gameStateUpdate', { players: room.players, ships: room.ships });
@@ -348,8 +348,8 @@ io.on('connection', (socket) => {
       };
 
       room.cannonBalls.push(ball);
-      io.to(socket.roomCode).emit('cannonFired', ball);
-      io.to(socket.roomCode).emit('shipAmmoUpdate', { team: 'red', ammo: ship.ammo });
+      io.to(roomCode).emit('cannonFired', ball);
+      io.to(roomCode).emit('shipAmmoUpdate', { team: 'red', ammo: ship.ammo });
       socket.emit('sideCooldownStarted', { side, duration: 1500 });
     }
   });
@@ -362,14 +362,14 @@ io.on('connection', (socket) => {
       potato.collected = true;
       const ship = room.ships['red'];
       ship.ammo[1] += 3;
-      io.to(socket.roomCode).emit('potatoCollected', { potatoId, team: 'red', ammo: ship.ammo });
+      io.to(roomCode).emit('potatoCollected', { potatoId, team: 'red', ammo: ship.ammo });
 
       setTimeout(() => {
         if (room.potatoes) {
           potato.x = Math.random() * (WORLD_WIDTH - 1000) + 500;
           potato.y = Math.random() * (WORLD_HEIGHT - 1000) + 500;
           potato.collected = false;
-          io.to(socket.roomCode).emit('potatoRespawned', potato);
+          io.to(roomCode).emit('potatoRespawned', potato);
         }
       }, 5000);
     }
@@ -390,13 +390,13 @@ io.on('connection', (socket) => {
         ship.ammo[island.ammoType] = (ship.ammo[island.ammoType] || 0) + 2;
         island.hasSpecialAmmo = false;
       }
-      io.to(socket.roomCode).emit('islandGathered', { islandId, shipWood: ship.wood, ammo: ship.ammo });
+      io.to(roomCode).emit('islandGathered', { islandId, shipWood: ship.wood, ammo: ship.ammo });
 
       setTimeout(() => {
         if (room.islands) {
           island.wood = 6;
           island.hasSpecialAmmo = true;
-          io.to(socket.roomCode).emit('islandRespawned', island);
+          io.to(roomCode).emit('islandRespawned', island);
         }
       }, 10000);
     }
