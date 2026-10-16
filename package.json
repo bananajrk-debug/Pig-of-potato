@@ -1,7 +1,7 @@
 {
   "name": "pig-of-potato",
-  "version": "12.0.0",
-  "description": "Multiplayer & CPU pirate game with random room codes, click-to-enlarge code display, helm firing, and left/right individual cannon cooltimes",
+  "version": "1.0.0",
+  "description": "Multiplayer online naval battle MMORPG",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
@@ -9,5 +9,8 @@
   "dependencies": {
     "express": "^4.19.2",
     "socket.io": "^4.7.5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
