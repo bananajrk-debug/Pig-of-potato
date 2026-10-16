@@ -152,7 +152,7 @@ io.on('connection', (socket) => {
     room.players[socket.id] = {
       id: socket.id,
       team: 'red',
-      x: ship.x - 80,
+      x: ship.x - 50,
       y: ship.y,
       role: 'free',
       activeCannonId: null,
@@ -188,7 +188,7 @@ io.on('connection', (socket) => {
       for (let id in room.players) {
         let p = room.players[id];
         let ship = room.ships[p.team];
-        p.x = ship.x - 80;
+        p.x = ship.x - 50;
         p.y = ship.y;
         p.role = 'free';
         p.activeCannonId = null;
@@ -311,7 +311,7 @@ io.on('connection', (socket) => {
   socket.on('fireSideCannon', ({ side, ammoType }) => {
     const room = rooms[socket.roomCode];
     if (!room || room.status !== 'playing') return;
-    if (!room.isCpuMode) return; // ソロプレイ時のみ有効
+    if (!room.isCpuMode) return;
 
     const p = room.players[socket.id];
     if (!p) return;
@@ -539,4 +539,4 @@ setInterval(() => {
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`✨ Pig of Potato MMORPG サーバー起動: http://localhost:${PORT}`);
-});
+});                                          
