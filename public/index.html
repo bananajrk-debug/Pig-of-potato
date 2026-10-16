@@ -502,13 +502,13 @@
             </div>
         </div>
 
-        <!-- タップ（クリック）でも発動できるようにオンクリックを追加 -->
-        <div id="prompt" onclick="onPromptClick()">【Eキー】舵を取る</div>
+        <!-- キーボードのEキーまたはバナーの直接タップで舵を取る -->
+        <div id="prompt" onclick="onPromptClick()">【Eキー または タップ】舵を取る</div>
 
         <div id="instructions">
             <b>オープンワールド操作:</b><br>
             - <b>移動:</b> W / A / S / D （船の上または島の上）<br>
-            - <b>舵・大砲:</b> 近くで <b>[ Eキー ]</b> または画面下の表示をタップ！<br>
+            - <b>舵・大砲:</b> 近くで <b>[ Eキー ]</b> または表示をタップ！<br>
             - <b>港町（中央の巨大島）:</b> 立ち寄ると木材をコインに換金＆船を強化可能！<br>
             - <b>修理:</b> 船先端の赤い修理ポイントで <b>[Rキー長押し]</b> （木材2個必要）
         </div>
@@ -573,8 +573,6 @@
         let leftReady = true;
         let rightReady = true;
         let repairing = false;
-        let repairStartTime = 0;
-        let repairDuration = 2000;
 
         const keys = { w: false, s: false, a: false, d: false, e: false, r: false };
         let lastSendTime = 0;
@@ -597,7 +595,7 @@
             roomCodeBadge.style.display = 'none';
         }
 
-        // プロンプト（案内バナー）をタップした時の処理
+        // 画面下のプロンプトを直接タップしたときのアクション発動
         function onPromptClick() {
             if (interactTarget) {
                 socket.emit('interact', interactTarget);
@@ -718,7 +716,7 @@
                         const sin = Math.sin(ship.angle);
                         const rx = ship.x + cos * 110;
                         const ry = ship.y + sin * 110;
-                        if (Math.hypot(me.x - rx, me.y - ry) < 60) { repairing = true; }
+                        if (Math.hypot(me.x - rx, me.y - ry) < 70) { repairing = true; }
                     }
                 }
                 if (['e','E'].includes(e.key) && !keys.e) {
@@ -849,6 +847,7 @@
                         promptEl.innerHTML = `🥔 <b>ポテト港町</b> | <button class="btn" style="padding:4px 10px; font-size:14px;" onclick="socket.emit('portAction','sellWood')">木材売却(20G)</button> <button class="btn" style="padding:4px 10px; font-size:14px;" onclick="socket.emit('portAction','upgradeHp')">HP強化(50G)</button> <button class="btn" style="padding:4px 10px; font-size:14px;" onclick="socket.emit('portAction','upgradeSpeed')">速度強化(80G)</button>`;
                         promptEl.style.display = 'block';
                     } else {
+                        // 安定していた舵と修理の判定位置
                         const cos = Math.cos(ship.angle);
                         const sin = Math.sin(ship.angle);
                         const helmX = ship.x + cos * (-80) - sin * 0;
@@ -856,10 +855,10 @@
                         const rx = ship.x + cos * 110 - sin * 0;
                         const ry = ship.y + sin * 110 + cos * 0;
 
-                        if (Math.hypot(p.x - rx, p.y - ry) < 65) {
+                        if (Math.hypot(p.x - rx, p.y - ry) < 70) {
                             promptEl.innerText = '【Rキー長押し】船の先端で修理 (木材2個必要)';
                             promptEl.style.display = 'block';
-                        } else if (Math.hypot(p.x - helmX, p.y - helmY) < 65 && !ship.helmsman) {
+                        } else if (Math.hypot(p.x - helmX, p.y - helmY) < 70 && !ship.helmsman) {
                             interactTarget = { type: 'helm' };
                             promptEl.innerText = '【Eキー または タップ】舵を取る';
                             promptEl.style.display = 'block';
