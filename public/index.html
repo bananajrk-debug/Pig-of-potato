@@ -700,18 +700,17 @@
             setTimeout(() => { canvas.focus(); }, 100);
         });
 
-        // 物理キーコード (e.code) を使用してiPadのハードウェアキーボードに対応
         window.addEventListener('keydown', (e) => {
             if (!gameUi.classList.contains('hidden')) {
-                if (['KeyW', 'ArrowUp'].includes(e.code)) keys.w = true;
-                if (['KeyS', 'ArrowDown'].includes(e.code)) keys.s = true;
-                if (['KeyA', 'ArrowLeft'].includes(e.code)) keys.a = true;
-                if (['KeyD', 'ArrowRight'].includes(e.code)) keys.d = true;
-                if (e.code === 'Digit1' || e.code === 'Numpad1') { selectedAmmo = 1; updateAmmoDisplay(); }
-                if (e.code === 'Digit2' || e.code === 'Numpad2') { selectedAmmo = 2; updateAmmoDisplay(); }
-                if (e.code === 'Digit3' || e.code === 'Numpad3') { selectedAmmo = 3; updateAmmoDisplay(); }
+                if (['KeyW', 'ArrowUp', 'KeyW'].includes(e.code) || ['w','W'].includes(e.key)) keys.w = true;
+                if (['KeyS', 'ArrowDown'].includes(e.code) || ['s','S'].includes(e.key)) keys.s = true;
+                if (['KeyA', 'ArrowLeft'].includes(e.code) || ['a','A'].includes(e.key)) keys.a = true;
+                if (['KeyD', 'ArrowRight'].includes(e.code) || ['d','D'].includes(e.key)) keys.d = true;
+                if (e.code === 'Digit1' || e.code === 'Numpad1' || e.key === '1') { selectedAmmo = 1; updateAmmoDisplay(); }
+                if (e.code === 'Digit2' || e.code === 'Numpad2' || e.key === '2') { selectedAmmo = 2; updateAmmoDisplay(); }
+                if (e.code === 'Digit3' || e.code === 'Numpad3' || e.key === '3') { selectedAmmo = 3; updateAmmoDisplay(); }
                 
-                if (e.code === 'KeyR' && !keys.r) {
+                if ((e.code === 'KeyR' || ['r','R'].includes(e.key)) && !keys.r) {
                     keys.r = true;
                     const me = players[myId];
                     const ship = ships['red'];
@@ -722,24 +721,24 @@
                         if (Math.hypot(me.x - rx, me.y - ry) < 60) { repairing = true; }
                     }
                 }
-                if (e.code === 'KeyE' && !keys.e) {
+                if ((e.code === 'KeyE' || ['e','E'].includes(e.key)) && !keys.e) {
                     keys.e = true;
                     if (interactTarget) {
                         socket.emit('interact', interactTarget);
                     }
                 }
-                if (e.code === 'KeyK' && leftReady) socket.emit('fireSideCannon', { side: 'left', ammoType: selectedAmmo });
-                if (e.code === 'KeyO' && rightReady) socket.emit('fireSideCannon', { side: 'right', ammoType: selectedAmmo });
+                if ((e.code === 'KeyK' || ['k','K'].includes(e.key)) && leftReady) socket.emit('fireSideCannon', { side: 'left', ammoType: selectedAmmo });
+                if ((e.code === 'KeyO' || ['o','O'].includes(e.key)) && rightReady) socket.emit('fireSideCannon', { side: 'right', ammoType: selectedAmmo });
             }
         });
 
         window.addEventListener('keyup', (e) => {
-            if (['KeyW', 'ArrowUp'].includes(e.code)) keys.w = false;
-            if (['KeyS', 'ArrowDown'].includes(e.code)) keys.s = false;
-            if (['KeyA', 'ArrowLeft'].includes(e.code)) keys.a = false;
-            if (['KeyD', 'ArrowRight'].includes(e.code)) keys.d = false;
-            if (e.code === 'KeyE') { keys.e = false; }
-            if (e.code === 'KeyR') { keys.r = false; repairing = false; }
+            if (['KeyW', 'ArrowUp'].includes(e.code) || ['w','W'].includes(e.key)) keys.w = false;
+            if (['KeyS', 'ArrowDown'].includes(e.code) || ['s','S'].includes(e.key)) keys.s = false;
+            if (['KeyA', 'ArrowLeft'].includes(e.code) || ['a','A'].includes(e.key)) keys.a = false;
+            if (['KeyD', 'ArrowRight'].includes(e.code) || ['d','D'].includes(e.key)) keys.d = false;
+            if (e.code === 'KeyE' || ['e','E'].includes(e.key)) { keys.e = false; }
+            if (e.code === 'KeyR' || ['r','R'].includes(e.key)) { keys.r = false; repairing = false; }
         });
 
         function updateAmmoDisplay() {
