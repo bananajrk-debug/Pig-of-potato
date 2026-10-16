@@ -6,61 +6,52 @@
     <title>Pig of Potato - 海戦MMORPG</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background: #1a1a2e; color: #fff; overflow: hidden; height: 100vh; width: 100vw; }
+        body { background: #1a1a2e; color: #fff; overflow: hidden; height: 100dvh; width: 100vw; position: fixed; }
         
-        /* 画面共通 */
-        .screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: radial-gradient(circle, #226089, #112233); z-index: 10; }
+        .screen { position: absolute; top: 0; left: 0; width: 100vw; height: 100dvh; display: flex; flex-direction: column; justify-content: center; align-items: center; background: radial-gradient(circle, #226089, #112233); z-index: 10; overflow: hidden; }
         .hidden { display: none !important; }
 
-        /* ロビー画面 */
-        .lobby-box { background: rgba(0, 0, 0, 0.75); padding: 30px; border-radius: 16px; border: 3px solid #f39c12; width: 450px; max-width: 95%; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        .lobby-box h1 { color: #f39c12; font-size: 2.2rem; margin-bottom: 10px; text-shadow: 2px 2px #000; }
-        .lobby-box p { color: #bdc3c7; margin-bottom: 20px; font-size: 0.95rem; }
-        .form-group { margin-bottom: 15px; text-align: left; }
-        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; color: #f1c40f; }
-        .form-group input, .form-group select { width: 100%; padding: 10px; border-radius: 8px; border: none; background: #34495e; color: #fff; font-size: 1rem; }
-        .btn { background: #e74c3c; color: #fff; border: none; padding: 12px 20px; border-radius: 8px; font-size: 1.1rem; font-weight: bold; cursor: pointer; width: 100%; margin-top: 10px; transition: 0.2s; box-shadow: 0 4px #c0392b; }
+        .lobby-box { background: rgba(0, 0, 0, 0.85); padding: 25px; border-radius: 16px; border: 3px solid #f39c12; width: 420px; max-width: 90%; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .lobby-box h1 { color: #f39c12; font-size: 2rem; margin-bottom: 8px; text-shadow: 2px 2px #000; }
+        .lobby-box p { color: #bdc3c7; margin-bottom: 15px; font-size: 0.9rem; }
+        .form-group { margin-bottom: 12px; text-align: left; }
+        .form-group label { display: block; margin-bottom: 4px; font-weight: bold; color: #f1c40f; font-size: 0.9rem; }
+        .form-group input, .form-group select { width: 100%; padding: 8px; border-radius: 8px; border: none; background: #34495e; color: #fff; font-size: 1rem; }
+        .btn { background: #e74c3c; color: #fff; border: none; padding: 10px 20px; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; width: 100%; margin-top: 8px; transition: 0.2s; box-shadow: 0 4px #c0392b; }
         .btn:active { transform: translateY(3px); box-shadow: 0 1px #c0392b; }
         .btn-green { background: #2ecc71; box-shadow: 0 4px #27ae60; }
         .btn-green:active { box-shadow: 0 1px #27ae60; }
         
-        #previewCanvas { width: 80px; height: 80px; background: #2c3e50; border-radius: 50%; margin: 10px auto; display: block; border: 2px solid #fff; }
+        #previewCanvas { width: 70px; height: 70px; background: #2c3e50; border-radius: 50%; margin: 5px auto; display: block; border: 2px solid #fff; }
 
-        /* ゲーム画面・HUD */
-        #gameCanvas { display: block; width: 100vw; height: 100vh; background: #2980b9; }
+        #gameCanvas { display: block; width: 100vw; height: 100dvh; background: #2980b9; }
         .hud-top { position: absolute; top: 15px; left: 15px; display: flex; gap: 15px; z-index: 5; pointer-events: none; }
-        .hud-card { background: rgba(0,0,0,0.7); padding: 10px 15px; border-radius: 8px; border: 2px solid #f39c12; font-size: 0.95rem; }
+        .hud-card { background: rgba(0,0,0,0.7); padding: 8px 12px; border-radius: 8px; border: 2px solid #f39c12; font-size: 0.9rem; }
         
-        /* プロンプトボタン (Eキー または タップ) */
-        #promptBox { position: absolute; bottom: 120px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); border: 3px solid #2ecc71; padding: 15px 30px; border-radius: 12px; font-size: 1.3rem; font-weight: bold; z-index: 8; text-align: center; cursor: pointer; display: none; animation: pulse 1.5s infinite; }
+        #promptBox { position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); border: 3px solid #2ecc71; padding: 12px 24px; border-radius: 12px; font-size: 1.1rem; font-weight: bold; z-index: 8; text-align: center; cursor: pointer; display: none; animation: pulse 1.5s infinite; }
         @keyframes pulse { 0% { transform: translateX(-50%) scale(1); } 50% { transform: translateX(-50%) scale(1.05); } 100% { transform: translateX(-50%) scale(1); } }
 
-        /* ミニマップ */
-        #minimapCanvas { position: absolute; bottom: 20px; right: 20px; width: 180px; height: 180px; background: rgba(0,0,0,0.6); border: 3px solid #fff; border-radius: 12px; z-index: 5; }
+        #minimapCanvas { position: absolute; bottom: 20px; right: 20px; width: 150px; height: 150px; background: rgba(0,0,0,0.6); border: 3px solid #fff; border-radius: 12px; z-index: 5; }
 
-        /* 弾薬・ショップコントロール */
-        .hud-bottom-controls { position: absolute; bottom: 20px; left: 20px; display: flex; gap: 10px; z-index: 5; }
-        .control-btn { background: rgba(0,0,0,0.7); border: 2px solid #fff; color: #fff; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .hud-bottom-controls { position: absolute; bottom: 20px; left: 20px; display: flex; gap: 8px; z-index: 5; }
+        .control-btn { background: rgba(0,0,0,0.7); border: 2px solid #fff; color: #fff; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 0.9rem; }
         .control-btn.active { border-color: #f1c40f; color: #f1c40f; }
 
-        /* ポートショップモーダル */
-        #portModal { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(20,20,30,0.95); border: 4px solid #f39c12; padding: 30px; border-radius: 16px; width: 400px; z-index: 20; display: none; text-align: center; }
-        #portModal h2 { color: #f39c12; margin-bottom: 15px; }
-        #portModal button { margin: 8px 0; width: 100%; }
+        #portModal { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(20,20,30,0.95); border: 4px solid #f39c12; padding: 25px; border-radius: 16px; width: 380px; z-index: 20; display: none; text-align: center; }
+        #portModal h2 { color: #f39c12; margin-bottom: 12px; }
+        #portModal button { margin: 6px 0; width: 100%; }
 
-        /* 警告インジケーター */
-        #warningBanner { position: absolute; top: 80px; left: 50%; transform: translateX(-50%); background: rgba(231, 76, 60, 0.9); color: #fff; padding: 10px 25px; border-radius: 8px; font-weight: bold; font-size: 1.1rem; z-index: 6; display: none; }
+        #warningBanner { position: absolute; top: 70px; left: 50%; transform: translateX(-50%); background: rgba(231, 76, 60, 0.9); color: #fff; padding: 8px 20px; border-radius: 8px; font-weight: bold; font-size: 1rem; z-index: 6; display: none; }
     </style>
 </head>
 <body tabindex="0">
 
-    <!-- ロビー画面 -->
     <div id="lobbyScreen" class="screen">
         <div class="lobby-box">
             <h1>🐷 Pig of Potato</h1>
             <p>大海原を駆け抜けろ！オープンワールド海戦MMORPG</p>
             
-            <canvas id="previewCanvas" width="80" height="80"></canvas>
+            <canvas id="previewCanvas" width="70" height="70"></canvas>
 
             <div class="form-group">
                 <label>船長名 (豚の名前)</label>
@@ -71,13 +62,13 @@
                 <label>ルームコード (4桁)</label>
                 <div style="display: flex; gap: 10px;">
                     <input type="text" id="roomCodeInput" value="1234" maxlength="4">
-                    <button class="btn" style="margin-top:0; width:120px;" onclick="randomRoom()">🎲 乱数</button>
+                    <button class="btn" style="margin-top:0; width:110px;" onclick="randomRoom()">🎲 乱数</button>
                 </div>
             </div>
 
             <div class="form-group">
                 <label>豚の体色</label>
-                <input type="color" id="pigColorInput" value="#ff99bb" style="height: 40px; cursor: pointer;">
+                <input type="color" id="pigColorInput" value="#ff99bb" style="height: 35px; cursor: pointer;">
             </div>
 
             <div class="form-group">
@@ -92,7 +83,6 @@
         </div>
     </div>
 
-    <!-- ゲーム画面 -->
     <div id="gameScreen" class="screen hidden" style="justify-content: flex-start; align-items: flex-start;">
         <canvas id="gameCanvas"></canvas>
         
@@ -107,16 +97,15 @@
         <div id="promptBox" onclick="triggerPromptAction()">【Eキー または タップ】舵を取る</div>
 
         <div class="hud-bottom-controls">
-            <button class="control-btn active" id="ammo1" onclick="setAmmo(1)">1: 通常弾</button>
-            <button class="control-btn" id="ammo2" onclick="setAmmo(2)">2: 爆発弾</button>
-            <button class="control-btn" id="ammo3" onclick="setAmmo(3)">3: 特製弾</button>
+            <button class="control-btn active" id="ammo1" onclick="setAmmo(1)">1: 通常</button>
+            <button class="control-btn" id="ammo2" onclick="setAmmo(2)">2: 爆発</button>
+            <button class="control-btn" id="ammo3" onclick="setAmmo(3)">3: 特製</button>
             <button class="control-btn" style="background:#e67e22;" onclick="repairShip()">🔧 修理 (R)</button>
         </div>
 
-        <canvas id="minimapCanvas" width="180" height="180"></canvas>
+        <canvas id="minimapCanvas" width="150" height="150"></canvas>
     </div>
 
-    <!-- ポートショップモーダル -->
     <div id="portModal">
         <h2>🥔 ポテト港町</h2>
         <p>ここでは木材の売却や船のアップグレードが行えます。</p>
@@ -130,7 +119,6 @@
     <script>
         const socket = io();
 
-        // UI要素
         const lobbyScreen = document.getElementById('lobbyScreen');
         const gameScreen = document.getElementById('gameScreen');
         const canvas = document.getElementById('gameCanvas');
@@ -143,13 +131,11 @@
         const previewCanvas = document.getElementById('previewCanvas');
         const previewCtx = previewCanvas.getContext('2d');
 
-        // 入力状態
         const keys = { w: false, a: false, s: false, d: false };
         let gameState = null;
         let myId = null;
-        let promptState = null; // 'steer', 'unsteer', 'resource', 'port'
+        let promptState = null;
 
-        // キャンバスサイズ調整
         function resizeCanvas() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
@@ -157,30 +143,27 @@
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
 
-        // 豚の色プレビュー描画
         function drawPigPreview() {
             const color = document.getElementById('pigColorInput').value;
-            previewCtx.clearRect(0, 0, 80, 80);
+            previewCtx.clearRect(0, 0, 70, 70);
             previewCtx.fillStyle = color;
             previewCtx.beginPath();
-            previewCtx.arc(40, 40, 22, 0, Math.PI * 2);
+            previewCtx.arc(35, 35, 20, 0, Math.PI * 2);
             previewCtx.fill();
             previewCtx.lineWidth = 2;
             previewCtx.strokeStyle = '#000';
             previewCtx.stroke();
 
-            // 耳
             previewCtx.beginPath();
-            previewCtx.arc(26, 22, 8, 0, Math.PI * 2);
-            previewCtx.arc(54, 22, 8, 0, Math.PI * 2);
+            previewCtx.arc(23, 20, 7, 0, Math.PI * 2);
+            previewCtx.arc(47, 20, 7, 0, Math.PI * 2);
             previewCtx.fillStyle = color;
             previewCtx.fill();
             previewCtx.stroke();
 
-            // 鼻
             previewCtx.fillStyle = '#ff77aa';
             previewCtx.beginPath();
-            previewCtx.ellipse(40, 44, 8, 5, 0, 0, Math.PI * 2);
+            previewCtx.ellipse(35, 38, 7, 4, 0, 0, Math.PI * 2);
             previewCtx.fill();
             previewCtx.stroke();
         }
@@ -208,7 +191,6 @@
             canvas.focus();
         }
 
-        // ソケット受信
         socket.on('connect', () => {
             myId = socket.id;
         });
@@ -219,18 +201,8 @@
             updateHUD();
         });
 
-        socket.on('game_started', () => {
-            // ゲーム開始合図
-        });
-
-        // キーボード・入力イベント（iPad / モバイル対応）
-        window.addEventListener('keydown', (e) => {
-            handleKey(e, true);
-        });
-
-        window.addEventListener('keyup', (e) => {
-            handleKey(e, false);
-        });
+        window.addEventListener('keydown', (e) => handleKey(e, true));
+        window.addEventListener('keyup', (e) => handleKey(e, false));
 
         function handleKey(e, isDown) {
             const code = e.code;
@@ -242,36 +214,25 @@
             if (code === 'KeyD' || key === 'd' || key === 'arrowright') keys.d = isDown;
 
             if (isDown) {
-                if (code === 'KeyE' || key === 'e') {
-                    executePromptAction();
-                }
-                if (code === 'KeyR' || key === 'r') {
-                    repairShip();
-                }
-                if (code === 'KeyK' || key === 'k') {
-                    socket.emit('fire_cannons', 'left');
-                }
-                if (code === 'KeyO' || key === 'o') {
-                    socket.emit('fire_cannons', 'right');
-                }
+                if (code === 'KeyE' || key === 'e') executePromptAction();
+                if (code === 'KeyR' || key === 'r') repairShip();
+                if (code === 'KeyK' || key === 'k') socket.emit('fire_cannons', 'left');
+                if (code === 'KeyO' || key === 'o') socket.emit('fire_cannons', 'right');
             }
         }
 
-        // 定期的なサーバーへの入力送信
         setInterval(() => {
             if (!gameScreen.classList.contains('hidden')) {
                 socket.emit('player_input', keys);
             }
         }, 1000 / 60);
 
-        // プロンプトとアクション管理
         function checkPrompts() {
             if (!gameState || !gameState.players[myId]) return;
             const player = gameState.players[myId];
             const ship = gameState.ships[player.shipId];
 
             if (player.isSteering) {
-                // 舵を取っている最中は常時「舵を降りる」を表示
                 promptState = 'unsteer';
                 promptBox.innerText = '【Eキー または タップ】舵を降りる';
                 promptBox.style.display = 'block';
@@ -280,7 +241,7 @@
 
             if (ship) {
                 const distToShip = Math.hypot(player.x - ship.x, player.y - ship.y);
-                if (distToShip < 80) {
+                if (distToShip < 100) {
                     promptState = 'steer';
                     promptBox.innerText = '【Eキー または タップ】舵を取る';
                     promptBox.style.display = 'block';
@@ -288,7 +249,6 @@
                 }
             }
 
-            // 港の判定
             const port = gameState.islands.find(i => i.type === 'port');
             if (port && Math.hypot(player.x - port.x, player.y - port.y) < port.radius + 50) {
                 promptState = 'port';
@@ -297,8 +257,7 @@
                 return;
             }
 
-            // 資源の判定
-            let nearRes = gameState.resources.find(r => r.active && Math.hypot(player.x - r.x, player.y - r.y) < 60);
+            let nearRes = gameState.resources.find(r => r.active && Math.hypot(player.x - r.x, player.y - r.y) < 80);
             if (nearRes) {
                 promptState = 'resource';
                 promptBox.innerText = '【Eキー または タップ】木材を採取する';
@@ -310,9 +269,7 @@
             promptBox.style.display = 'none';
         }
 
-        function triggerPromptAction() {
-            executePromptAction();
-        }
+        function triggerPromptAction() { executePromptAction(); }
 
         function executePromptAction() {
             if (promptState === 'steer' || promptState === 'unsteer') {
@@ -324,17 +281,9 @@
             }
         }
 
-        function closePortModal() {
-            portModal.style.display = 'none';
-        }
-
-        function portAction(action) {
-            socket.emit('port_action', action);
-        }
-
-        function repairShip() {
-            socket.emit('repair_ship');
-        }
+        function closePortModal() { portModal.style.display = 'none'; }
+        function portAction(action) { socket.emit('port_action', action); }
+        function repairShip() { socket.emit('repair_ship'); }
 
         function setAmmo(type) {
             socket.emit('change_ammo', type);
@@ -354,7 +303,6 @@
                 document.getElementById('hudHp').innerText = `❤️ 船HP: ${Math.max(0, Math.floor(ship.hp))} / ${ship.maxHp}`;
             }
 
-            // 海賊船接近警告チェック
             let warning = false;
             if (ship && gameState.enemies) {
                 gameState.enemies.forEach(e => {
@@ -364,7 +312,6 @@
             warningBanner.style.display = warning ? 'block' : 'none';
         }
 
-        // メイン描画ループ
         function render() {
             requestAnimationFrame(render);
             if (!gameState || !gameState.players[myId]) return;
@@ -375,16 +322,13 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             ctx.save();
-            // カメラ中心調整（操舵中なら船、徒歩ならプレイヤー中心）
-            const camX = player.isSteering && ship ? ship.x : player.x;
-            const camY = player.isSteering && ship ? ship.y : player.y;
+            const camX = ship ? ship.x : player.x;
+            const camY = ship ? ship.y : player.y;
             ctx.translate(canvas.width / 2 - camX, canvas.height / 2 - camY);
 
-            // 海の背景グリッド・模様
             ctx.fillStyle = '#2980b9';
             ctx.fillRect(0, 0, 4000, 4000);
 
-            // 島・港の描画
             gameState.islands.forEach(island => {
                 ctx.fillStyle = island.type === 'port' ? '#e67e22' : '#27ae60';
                 ctx.beginPath();
@@ -400,7 +344,6 @@
                 ctx.fillText(island.name, island.x, island.y - island.radius - 10);
             });
 
-            // 資源の描画
             gameState.resources.forEach(res => {
                 if (!res.active) return;
                 ctx.fillStyle = '#8e44ad';
@@ -415,28 +358,24 @@
                 ctx.fillText('🪵', res.x, res.y + 4);
             });
 
-            // 船の描画
             for (const sId in gameState.ships) {
                 const s = gameState.ships[sId];
                 ctx.save();
                 ctx.translate(s.x, s.y);
                 ctx.rotate(s.angle);
 
-                // 船体
                 ctx.fillStyle = '#8B4513';
                 ctx.fillRect(-35, -20, 70, 40);
                 ctx.lineWidth = 3;
                 ctx.strokeStyle = '#000';
                 ctx.strokeRect(-35, -20, 70, 40);
 
-                // 船首（赤色修理ポイント）
                 ctx.fillStyle = '#e74c3c';
                 ctx.fillRect(25, -10, 15, 20);
 
                 ctx.restore();
             }
 
-            // 敵海賊船の描画
             if (gameState.enemies) {
                 gameState.enemies.forEach(enemy => {
                     ctx.save();
@@ -451,7 +390,6 @@
                     ctx.stroke();
                     ctx.restore();
 
-                    // HPバー
                     ctx.fillStyle = 'red';
                     ctx.fillRect(enemy.x - 30, enemy.y - 55, 60, 6);
                     ctx.fillStyle = 'green';
@@ -459,16 +397,14 @@
                 });
             }
 
-            // プレイヤー（豚）の描画
             for (const pId in gameState.players) {
                 const p = gameState.players[pId];
-                if (p.isSteering) continue; // 舵を取っている時は船上にいるため豚単体は非表示
+                if (p.isSteering) continue;
 
                 ctx.save();
                 ctx.translate(p.x, p.y);
                 ctx.rotate(p.angle);
 
-                // 豚の体
                 ctx.fillStyle = p.color;
                 ctx.beginPath();
                 ctx.arc(0, 0, 16, 0, Math.PI * 2);
@@ -477,7 +413,6 @@
                 ctx.strokeStyle = '#000';
                 ctx.stroke();
 
-                // 鼻
                 ctx.fillStyle = '#ff77aa';
                 ctx.beginPath();
                 ctx.ellipse(10, 0, 5, 4, 0, 0, Math.PI * 2);
@@ -486,14 +421,12 @@
 
                 ctx.restore();
 
-                // 名前
                 ctx.fillStyle = '#fff';
                 ctx.font = 'bold 12px sans-serif';
                 ctx.textAlign = 'center';
                 ctx.fillText(p.name, p.x, p.y - 24);
             }
 
-            // 砲弾の描画
             if (gameState.projectiles) {
                 gameState.projectiles.forEach(proj => {
                     ctx.fillStyle = proj.ammoType === 2 ? '#e74c3c' : (proj.ammoType === 3 ? '#f1c40f' : '#333');
@@ -504,16 +437,13 @@
             }
 
             ctx.restore();
-
-            // ミニマップ描画
             renderMinimap(player, ship);
         }
 
         function renderMinimap(player, ship) {
-            minimapCtx.clearRect(0, 0, 180, 180);
-            const scale = 180 / 4000;
+            minimapCtx.clearRect(0, 0, 150, 150);
+            const scale = 150 / 4000;
 
-            // 島
             gameState.islands.forEach(island => {
                 minimapCtx.fillStyle = island.type === 'port' ? '#e67e22' : '#27ae60';
                 minimapCtx.beginPath();
@@ -521,14 +451,12 @@
                 minimapCtx.fill();
             });
 
-            // 資源
             gameState.resources.forEach(res => {
                 if (!res.active) return;
                 minimapCtx.fillStyle = '#8e44ad';
                 minimapCtx.fillRect(res.x * scale - 2, res.y * scale - 2, 4, 4);
             });
 
-            // 敵
             if (gameState.enemies) {
                 gameState.enemies.forEach(e => {
                     minimapCtx.fillStyle = '#e74c3c';
@@ -538,11 +466,12 @@
                 });
             }
 
-            // 自分
-            minimapCtx.fillStyle = '#2ecc71';
-            minimapCtx.beginPath();
-            minimapCtx.arc(player.x * scale, player.y * scale, 5, 0, Math.PI * 2);
-            minimapCtx.fill();
+            if (player) {
+                minimapCtx.fillStyle = '#2ecc71';
+                minimapCtx.beginPath();
+                minimapCtx.arc(player.x * scale, player.y * scale, 4, 0, Math.PI * 2);
+                minimapCtx.fill();
+            }
         }
 
         requestAnimationFrame(render);
