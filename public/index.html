@@ -78,7 +78,7 @@
             box-shadow: 0 5px 0 #b7950b;
             text-align: center;
         }
-        .btn:hover { background: #f1c40f; transform: translateY(-2px); }
+        .btn:hover { background: #f39c12; transform: translateY(-2px); }
         .btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #b7950b; }
 
         .btn-cpu {
@@ -302,22 +302,17 @@
             left: 50%;
             transform: translateX(-50%);
             background: rgba(0, 0, 0, 0.9);
-            padding: 14px 28px;
-            border-radius: 12px;
-            font-size: 18px;
-            font-weight: bold;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-size: 16px;
             color: #f1c40f;
             display: none;
-            z-index: 25;
-            border: 3px solid #f39c12;
+            z-index: 20;
+            border: 2px solid #f39c12;
             text-align: center;
-            box-shadow: 0 6px 20px rgba(0,0,0,0.8);
-            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
             pointer-events: auto;
-            transition: transform 0.1s, background 0.2s;
         }
-        #prompt:hover { background: #1b263b; transform: translateX(-50%) scale(1.05); }
-
         #instructions {
             position: absolute;
             bottom: 15px;
@@ -502,13 +497,12 @@
             </div>
         </div>
 
-        <!-- タップまたはEキーで反応するプロンプト -->
-        <div id="prompt" onclick="onPromptClick()">【Eキーまたはタップ】舵を取る</div>
+        <div id="prompt">【Eキー】インタラクト</div>
 
         <div id="instructions">
             <b>オープンワールド操作:</b><br>
             - <b>移動:</b> W / A / S / D （船の上または島の上）<br>
-            - <b>舵・大砲:</b> 近くで <b>[ Eキー ]</b> または下の表示をタップ！<br>
+            - <b>舵・大砲:</b> 近くで <b>[ Eキー ]</b><br>
             - <b>港町（中央の巨大島）:</b> 立ち寄ると木材をコインに換金＆船を強化可能！<br>
             - <b>修理:</b> 船先端の赤い修理ポイントで <b>[Rキー長押し]</b> （木材2個必要）
         </div>
@@ -517,7 +511,7 @@
             <canvas id="minimapCanvas" width="200" height="150"></canvas>
         </div>
 
-        <canvas id="gameCanvas" tabindex="0"></canvas>
+        <canvas id="gameCanvas"></canvas>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
@@ -572,7 +566,12 @@
 
         let leftReady = true;
         let rightReady = true;
+        let gatheringIslandId = null;
+        let gatherStartTime = 0;
+        let gatheringDuration = 3000;
         let repairing = false;
+        let repairStartTime = 0;
+        let repairDuration = 2000;
 
         const keys = { w: false, s: false, a: false, d: false, e: false, r: false };
         let lastSendTime = 0;
@@ -593,12 +592,6 @@
             gameUi.classList.add('hidden');
             titleScreen.classList.remove('hidden');
             roomCodeBadge.style.display = 'none';
-        }
-
-        function onPromptClick() {
-            if (interactTarget) {
-                socket.emit('interact', interactTarget);
-            }
         }
 
         function drawPigCharacterLarge(context, x, y, bodyColor, name) {
@@ -666,10 +659,7 @@
             socket.emit('toggleReady');
         });
 
-        btnStart.addEventListener('click', () => { 
-            socket.emit('startGame', { roomCode: currentRoomCode }); 
-            setTimeout(() => { canvas.focus(); }, 100);
-        });
+        btnStart.addEventListener('click', () => { socket.emit('startGame', { roomCode: currentRoomCode }); });
 
         socket.on('lobbyUpdate', (data) => {
             players = data.players;
@@ -697,48 +687,44 @@
             resultOverlay.style.display = 'none';
             gameUi.classList.remove('hidden');
             resize();
-            setTimeout(() => { canvas.focus(); }, 100);
         });
 
         window.addEventListener('keydown', (e) => {
             if (!gameUi.classList.contains('hidden')) {
-                if (['KeyW', 'ArrowUp', 'KeyW'].includes(e.code) || ['w','W'].includes(e.key)) keys.w = true;
-                if (['KeyS', 'ArrowDown'].includes(e.code) || ['s','S'].includes(e.key)) keys.s = true;
-                if (['KeyA', 'ArrowLeft'].includes(e.code) || ['a','A'].includes(e.key)) keys.a = true;
-                if (['KeyD', 'ArrowRight'].includes(e.code) || ['d','D'].includes(e.key)) keys.d = true;
-                if (e.code === 'Digit1' || e.code === 'Numpad1' || e.key === '1') { selectedAmmo = 1; updateAmmoDisplay(); }
-                if (e.code === 'Digit2' || e.code === 'Numpad2' || e.key === '2') { selectedAmmo = 2; updateAmmoDisplay(); }
-                if (e.code === 'Digit3' || e.code === 'Numpad3' || e.key === '3') { selectedAmmo = 3; updateAmmoDisplay(); }
-                
-                if ((e.code === 'KeyR' || ['r','R'].includes(e.key)) && !keys.r) {
+                if (['w','W','ArrowUp'].includes(e.key)) keys.w = true;
+                if (['s','S','ArrowDown'].includes(e.key)) keys.s = true;
+                if (['a','A','ArrowLeft'].includes(e.key)) keys.a = true;
+                if (['d','D','ArrowRight'].includes(e.key)) keys.d = true;
+                if (e.key === '1') { selectedAmmo = 1; updateAmmoDisplay(); }
+                if (e.key === '2') { selectedAmmo = 2; updateAmmoDisplay(); }
+                if (e.key === '3') { selectedAmmo = 3; updateAmmoDisplay(); }
+                if (['r','R'].includes(e.key) && !keys.r) {
                     keys.r = true;
                     const me = players[myId];
                     const ship = ships['red'];
                     if (me && ship && me.role === 'free') {
                         if (ship.wood < 2) { alert('木材が足りません！（修理には2個必要）'); return; }
-                        const rx = ship.x + 110;
-                        const ry = ship.y;
-                        if (Math.hypot(me.x - rx, me.y - ry) < 60) { repairing = true; }
+                        const rx = ship.x + Math.cos(ship.angle) * 110;
+                        const ry = ship.y + Math.sin(ship.angle) * 110;
+                        if (Math.hypot(me.x - rx, me.y - ry) < 60) { repairing = true; repairStartTime = Date.now(); }
                     }
                 }
-                if ((e.code === 'KeyE' || ['e','E'].includes(e.key)) && !keys.e) {
+                if (['e','E'].includes(e.key) && !keys.e) {
                     keys.e = true;
-                    if (interactTarget) {
-                        socket.emit('interact', interactTarget);
-                    }
+                    if (interactTarget) socket.emit('interact', interactTarget);
                 }
-                if ((e.code === 'KeyK' || ['k','K'].includes(e.key)) && leftReady) socket.emit('fireSideCannon', { side: 'left', ammoType: selectedAmmo });
-                if ((e.code === 'KeyO' || ['o','O'].includes(e.key)) && rightReady) socket.emit('fireSideCannon', { side: 'right', ammoType: selectedAmmo });
+                if (['k','K'].includes(e.key) && leftReady) socket.emit('fireSideCannon', { side: 'left', ammoType: selectedAmmo });
+                if (['o','O'].includes(e.key) && rightReady) socket.emit('fireSideCannon', { side: 'right', ammoType: selectedAmmo });
             }
         });
 
         window.addEventListener('keyup', (e) => {
-            if (['KeyW', 'ArrowUp'].includes(e.code) || ['w','W'].includes(e.key)) keys.w = false;
-            if (['KeyS', 'ArrowDown'].includes(e.code) || ['s','S'].includes(e.key)) keys.s = false;
-            if (['KeyA', 'ArrowLeft'].includes(e.code) || ['a','A'].includes(e.key)) keys.a = false;
-            if (['KeyD', 'ArrowRight'].includes(e.code) || ['d','D'].includes(e.key)) keys.d = false;
-            if (e.code === 'KeyE' || ['e','E'].includes(e.key)) { keys.e = false; }
-            if (e.code === 'KeyR' || ['r','R'].includes(e.key)) { keys.r = false; repairing = false; }
+            if (['w','W','ArrowUp'].includes(e.key)) keys.w = false;
+            if (['s','S','ArrowDown'].includes(e.key)) keys.s = false;
+            if (['a','A','ArrowLeft'].includes(e.key)) keys.a = false;
+            if (['d','D','ArrowRight'].includes(e.key)) keys.d = false;
+            if (['e','E'].includes(e.key)) { keys.e = false; gatheringIslandId = null; }
+            if (['r','R'].includes(e.key)) { keys.r = false; repairing = false; }
         });
 
         function updateAmmoDisplay() {
@@ -816,7 +802,6 @@
             if (!myId || !players || !players[myId] || !ships['red']) return;
             const p = players[myId];
             const ship = ships['red'];
-            const promptEl = document.getElementById('prompt');
 
             if (p.role === 'free') {
                 let speed = 6.0, dx = 0, dy = 0;
@@ -827,9 +812,14 @@
                 if (dx !== 0 || dy !== 0) {
                     p.x += dx; p.y += dy;
 
+                    // 船の回転を考慮したローカル座標判定により「動けないバグ」を完全解消
+                    const cos = Math.cos(-ship.angle);
+                    const sin = Math.sin(-ship.angle);
                     const relX = p.x - ship.x;
                     const relY = p.y - ship.y;
-                    let onShip = (relX >= -130 && relX <= 140 && relY >= -70 && relY <= 70);
+                    const localX = relX * cos - relY * sin;
+                    const localY = relX * sin + relY * cos;
+                    let onShip = (localX >= -120 && localX <= 130 && localY >= -60 && localY <= 60);
 
                     let onIsland = false;
                     islands.forEach(isl => { if (Math.hypot(p.x - isl.x, p.y - isl.y) <= isl.radius) onIsland = true; });
@@ -838,6 +828,7 @@
                     if (Date.now() - lastSendTime > 25) { socket.emit('playerMove', { x: p.x, y: p.y }); lastSendTime = Date.now(); }
                 }
 
+                const promptEl = document.getElementById('prompt');
                 if (promptEl) {
                     interactTarget = null;
                     let inTown = false;
@@ -849,17 +840,17 @@
                         promptEl.innerHTML = `🥔 <b>ポテト港町</b> | <button class="btn" style="padding:4px 10px; font-size:14px;" onclick="socket.emit('portAction','sellWood')">木材売却(20G)</button> <button class="btn" style="padding:4px 10px; font-size:14px;" onclick="socket.emit('portAction','upgradeHp')">HP強化(50G)</button> <button class="btn" style="padding:4px 10px; font-size:14px;" onclick="socket.emit('portAction','upgradeSpeed')">速度強化(80G)</button>`;
                         promptEl.style.display = 'block';
                     } else {
-                        const helmX = ship.x - 80;
-                        const helmY = ship.y;
-                        const rx = ship.x + 110;
-                        const ry = ship.y;
+                        const helmX = ship.x - Math.cos(ship.angle) * 110;
+                        const helmY = ship.y - Math.sin(ship.angle) * 110;
+                        const rx = ship.x + Math.cos(ship.angle) * 110;
+                        const ry = ship.y + Math.sin(ship.angle) * 110;
 
-                        if (Math.hypot(p.x - rx, p.y - ry) < 65) {
+                        if (Math.hypot(p.x - rx, p.y - ry) < 50) {
                             promptEl.innerText = '【Rキー長押し】船の先端で修理 (木材2個必要)';
                             promptEl.style.display = 'block';
-                        } else if (Math.hypot(p.x - helmX, p.y - helmY) < 70 && !ship.helmsman) {
+                        } else if (Math.hypot(p.x - helmX, p.y - helmY) < 55 && !ship.helmsman) {
                             interactTarget = { type: 'helm' };
-                            promptEl.innerText = '【Eキー または タップ】舵を取る';
+                            promptEl.innerText = '【Eキー】舵を取る';
                             promptEl.style.display = 'block';
                         } else {
                             promptEl.style.display = 'none';
@@ -867,12 +858,6 @@
                     }
                 }
             } else {
-                if (promptEl) {
-                    interactTarget = { type: 'helm' };
-                    promptEl.innerText = '【Eキー または タップ】舵を降りる';
-                    promptEl.style.display = 'block';
-                }
-
                 let rotSpeed = 0.05, targetSpeed = 0;
                 if (keys.a) ship.angle -= rotSpeed;
                 if (keys.d) ship.angle += rotSpeed;
@@ -905,6 +890,7 @@
             ctx.fillStyle = '#2980b9'; 
             ctx.fillRect(0, 0, 15000, 11250);
 
+            // 島と港町の美しい描画
             islands.forEach(isl => {
                 ctx.save(); 
                 ctx.translate(isl.x, isl.y);
@@ -924,6 +910,7 @@
                 ctx.restore();
             });
 
+            // ポテト資源の描画
             potatoes.forEach(pot => {
                 if (!pot.collected) {
                     ctx.save();
@@ -935,6 +922,7 @@
                 }
             });
 
+            // 立体感のある美しい船のグラフィック描画の修復
             for (let sId in ships) {
                 let s = ships[sId];
                 if (s.hp <= 0) continue;
@@ -942,32 +930,33 @@
                 ctx.save();
                 ctx.translate(s.x, s.y);
                 ctx.rotate(s.angle);
+                ctx.translate(50, 0);
 
+                // 船体ベース
                 ctx.fillStyle = s.isCpu ? '#154360' : '#78281f';
                 ctx.fillRect(-100, -50, 200, 100);
                 ctx.lineWidth = 4; ctx.strokeStyle = '#111';
                 ctx.strokeRect(-100, -50, 200, 100);
 
+                // 船首（尖った三角形）
                 ctx.beginPath();
                 ctx.moveTo(100, -50); ctx.lineTo(140, 0); ctx.lineTo(100, 50);
                 ctx.closePath();
                 ctx.fillStyle = s.isCpu ? '#1f618d' : '#922b21';
                 ctx.fill(); ctx.stroke();
 
+                // 甲板
                 ctx.fillStyle = '#d4ac0d';
                 ctx.fillRect(-70, -35, 140, 70);
                 ctx.strokeRect(-70, -35, 140, 70);
 
+                // 操舵席・キャビン
                 ctx.fillStyle = '#5d4037';
                 ctx.fillRect(-12, -12, 24, 24);
                 ctx.beginPath(); ctx.arc(0, 0, 18, 0, Math.PI * 2);
                 ctx.fillStyle = '#8d6e63'; ctx.fill(); ctx.stroke();
 
-                ctx.fillStyle = '#e67e22';
-                ctx.fillRect(-90, -12, 14, 24);
-                ctx.strokeStyle = '#d35400';
-                ctx.strokeRect(-90, -12, 14, 24);
-
+                // 大砲の描画
                 if (s.cannons) {
                     s.cannons.forEach(c => {
                         ctx.fillStyle = '#2c3e50';
@@ -977,6 +966,7 @@
                     });
                 }
 
+                // プレイヤー船の修理ポイント
                 if (!s.isCpu) {
                     ctx.save();
                     ctx.translate(110, 0);
@@ -990,18 +980,21 @@
 
                 ctx.restore();
 
+                // 船名 & HP
                 ctx.fillStyle = '#fff'; ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'center';
                 ctx.shadowColor = '#000'; ctx.shadowBlur = 6;
                 ctx.fillText(`${s.name} (HP: ${s.hp}/${s.maxHp})`, s.x, s.y - 85);
                 ctx.shadowBlur = 0;
             }
 
+            // 砲弾の描画
             cannonBalls.forEach(b => {
                 ctx.fillStyle = b.ammoType === 2 ? '#e74c3c' : '#f39c12';
                 ctx.beginPath(); ctx.arc(b.x, b.y, 12, 0, Math.PI * 2); ctx.fill();
                 ctx.lineWidth = 2; ctx.strokeStyle = '#000'; ctx.stroke();
             });
 
+            // プレイヤー（豚）の描画
             for (let id in players) {
                 let p = players[id];
                 if (p.role === 'free') {
