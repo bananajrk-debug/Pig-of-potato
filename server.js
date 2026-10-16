@@ -152,7 +152,7 @@ io.on('connection', (socket) => {
     room.players[socket.id] = {
       id: socket.id,
       team: 'red',
-      x: ship.x - 50,
+      x: ship.x - 80,
       y: ship.y,
       role: 'free',
       activeCannonId: null,
@@ -188,7 +188,7 @@ io.on('connection', (socket) => {
       for (let id in room.players) {
         let p = room.players[id];
         let ship = room.ships[p.team];
-        p.x = ship.x - 50;
+        p.x = ship.x - 80;
         p.y = ship.y;
         p.role = 'free';
         p.activeCannonId = null;
@@ -229,24 +229,8 @@ io.on('connection', (socket) => {
       } else if (p.role === 'helmsman') {
         ship.helmsman = null;
         p.role = 'free';
-        p.x = ship.x - 80;
-        p.y = ship.y;
-      }
-    } else if (actionData.type === 'cannon') {
-      const cannon = ship.cannons.find(c => c.id === actionData.cannonId);
-      if (p.role === 'free' && cannon && !cannon.gunner) {
-        cannon.gunner = socket.id;
-        p.role = 'cannon';
-        p.activeCannonId = cannon.id;
-      } else if (p.role === 'cannon') {
-        const currentCannon = ship.cannons.find(c => c.id === p.activeCannonId);
-        if (currentCannon) {
-          currentCannon.gunner = null;
-        }
-        p.role = 'free';
-        p.x = ship.x;
-        p.y = ship.y;
-        p.activeCannonId = null;
+        p.x = ship.x - Math.cos(ship.angle) * 80 - Math.sin(ship.angle) * 0;
+        p.y = ship.y - Math.sin(ship.angle) * 80 + Math.cos(ship.angle) * 0;
       }
     }
     io.to(socket.roomCode).emit('gameStateUpdate', { players: room.players, ships: room.ships });
