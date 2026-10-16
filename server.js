@@ -9,14 +9,11 @@ const io = new Server(server);
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ゲーム内ワールド定数
 const WORLD_WIDTH = 4000;
 const WORLD_HEIGHT = 4000;
 
-// ルーム管理
 const rooms = {};
 
-// 島・港・資源の初期データ
 const baseIslands = [
     { id: 'port_potato', name: '🥔 ポテト港町', x: 2000, y: 2000, radius: 250, type: 'port' },
     { id: 'island_1', name: 'バナナ島', x: 1000, y: 1000, radius: 150, type: 'resource' },
@@ -47,8 +44,8 @@ io.on('connection', (socket) => {
         if (!rooms[roomCode]) {
             rooms[roomCode] = {
                 code: roomCode,
-                mode: mode || 'multi', // 'multi' or 'cpu'
-                started: false,
+                mode: mode || 'multi',
+                started: true, // すぐにゲーム開始状態にする
                 players: {},
                 ships: {},
                 projectiles: [],
@@ -57,14 +54,13 @@ io.on('connection', (socket) => {
                 resources: JSON.parse(JSON.stringify(baseResources))
             };
 
-            // CPUモードの場合、初期敵海賊船を生成
             if (mode === 'cpu') {
                 rooms[roomCode].enemies.push({
                     id: 'cpu_1',
-                    x: 1500,
-                    y: 1500,
+                    x: 1800,
+                    y: 1800,
                     angle: 0,
-                    speed: 2,
+                    speed: 1.5,
                     hp: 100,
                     maxHp: 100,
                     radius: 40
@@ -75,29 +71,27 @@ io.on('connection', (socket) => {
         const room = rooms[roomCode];
         socket.join(roomCode);
 
-        // プレイヤー初期化
         room.players[playerId] = {
             id: playerId,
             name: name || '名無しの豚',
             color: color || '#ff99bb',
-            x: 2000 + (Math.random() * 100 - 50),
-            y: 2200 + (Math.random() * 100 - 50),
+            x: 2000,
+            y: 2150,
             angle: 0,
             isSteering: false,
-            shipId: null,
+            shipId: 'ship_' + playerId,
             wood: 0,
             coins: 100,
-            ammoType: 1, // 1: 通常, 2: 爆発, 3: 特製
-            ready: false
+            ammoType: 1,
+            ready: true
         };
 
-        // プレイヤー自身の船を作成
         const shipId = 'ship_' + playerId;
         room.ships[shipId] = {
             id: shipId,
             ownerId: playerId,
-            x: room.players[playerId].x,
-            y: room.players[playerId].y + 50,
+            x: 2000,
+            y: 2200,
             angle: 0,
             speed: 0,
             maxSpeed: 4,
@@ -109,41 +103,21 @@ io.on('connection', (socket) => {
             rightCooldown: 0
         };
 
-        room.players[playerId].shipId = shipId;
-
         updateRoomState(roomCode);
-    });
-
-    socket.on('set_ready', (ready) => {
-        if (!currentRoom || !rooms[currentRoom]) return;
-        const room = rooms[currentRoom];
-        if (room.players[playerId]) {
-            room.players[playerId].ready = ready;
-            updateRoomState(currentRoom);
-
-            // 全員準備完了でゲームスタート
-            const playersArr = Object.values(room.players);
-            if (playersArr.length > 0 && playersArr.every(p => p.ready)) {
-                room.started = true;
-                io.to(currentRoom).emit('game_started');
-            }
-        }
     });
 
     socket.on('player_input', (input) => {
         if (!currentRoom || !rooms[currentRoom]) return;
         const room = rooms[currentRoom];
         const player = room.players[playerId];
-        if (!player || !room.started) return;
+        if (!player) return;
 
-        // 船の操舵中か判定
         const ship = room.ships[player.shipId];
 
         if (player.isSteering && ship) {
-            // 船の操縦
             if (input.w) ship.speed = Math.min(ship.speed + 0.1, ship.maxSpeed);
             if (input.s) ship.speed = Math.max(ship.speed - 0.1, -ship.maxSpeed / 2);
-            if (!input.w && !input.s) ship.speed *= 0.95; // 減速
+            if (!input.w && !input.s) ship.speed *= 0.95;
 
             if (input.a) ship.angle -= 0.03;
             if (input.d) ship.angle += 0.03;
@@ -151,12 +125,10 @@ io.on('connection', (socket) => {
             ship.x += Math.cos(ship.angle) * ship.speed;
             ship.y += Math.sin(ship.angle) * ship.speed;
 
-            // プレイヤーも船に追従
             player.x = ship.x;
             player.y = ship.y;
             player.angle = ship.angle;
         } else {
-            // 豚の自由移動
             const moveSpeed = 3.5;
             let dx = 0, dy = 0;
             if (input.w) dy -= moveSpeed;
@@ -169,9 +141,11 @@ io.on('connection', (socket) => {
                 player.y += dy;
                 player.angle = Math.atan2(dy, dx);
             }
+            if (ship && !player.isSteering) {
+                // 船の近くにいる場合の位置連動などは自由移動を優先
+            }
         }
 
-        // 範囲制限
         player.x = Math.max(50, Math.min(WORLD_WIDTH - 50, player.x));
         player.y = Math.max(50, Math.min(WORLD_HEIGHT - 50, player.y));
     });
@@ -184,14 +158,12 @@ io.on('connection', (socket) => {
         if (!player || !ship) return;
 
         if (player.isSteering) {
-            // 舵を降りる
             player.isSteering = false;
             player.x = ship.x + 40;
             player.y = ship.y;
         } else {
-            // 舵に乗る（距離判定）
             const dist = Math.hypot(player.x - ship.x, player.y - ship.y);
-            if (dist < 80) {
+            if (dist < 100) {
                 player.isSteering = true;
             }
         }
@@ -206,7 +178,7 @@ io.on('connection', (socket) => {
 
         const now = Date.now();
         if (side === 'left' && ship.leftCooldown <= now) {
-            ship.leftCooldown = now + 1000; // 1秒クールダウン
+            ship.leftCooldown = now + 1000;
             fireCannonBall(room, ship, -Math.PI / 2, player.ammoType, playerId);
         } else if (side === 'right' && ship.rightCooldown <= now) {
             ship.rightCooldown = now + 1000;
@@ -221,7 +193,6 @@ io.on('connection', (socket) => {
         const ship = room.ships[player.shipId];
         if (!player || !ship) return;
 
-        // 修理ポイント（船の先端付近）にいるか、または木材が2個以上ありHPが満タンでない場合
         if (player.wood >= 2 && ship.hp < ship.maxHp) {
             player.wood -= 2;
             ship.hp = Math.min(ship.maxHp, ship.hp + 30);
@@ -235,10 +206,9 @@ io.on('connection', (socket) => {
         if (!player) return;
 
         room.resources.forEach(res => {
-            if (res.active && Math.hypot(player.x - res.x, player.y - res.y) < 60) {
+            if (res.active && Math.hypot(player.x - res.x, player.y - res.y) < 80) {
                 res.active = false;
                 player.wood += res.amount;
-                // 30秒後にリスポーン
                 setTimeout(() => {
                     if (rooms[currentRoom]) {
                         const targetRes = rooms[currentRoom].resources.find(r => r.id === res.id);
@@ -256,7 +226,6 @@ io.on('connection', (socket) => {
         const ship = room.ships[player.shipId];
         if (!player || !ship) return;
 
-        // ポテト港町の範囲内にいるか
         const port = room.islands.find(i => i.type === 'port');
         if (Math.hypot(player.x - port.x, player.y - port.y) < port.radius + 50) {
             if (action === 'sell_wood' && player.wood > 0) {
@@ -313,13 +282,10 @@ function fireCannonBall(room, ship, angleOffset, ammoType, shooterId) {
     });
 }
 
-// ゲームループ（サーバーサイド物理・判定）
 setInterval(() => {
     for (const code in rooms) {
         const room = rooms[code];
-        if (!room.started) continue;
 
-        // 砲弾の移動
         for (let i = room.projectiles.length - 1; i >= 0; i--) {
             const p = room.projectiles[i];
             p.x += p.vx;
@@ -327,7 +293,6 @@ setInterval(() => {
             p.range += 8;
 
             let hit = false;
-            // 船とのヒット判定
             for (const shipId in room.ships) {
                 const ship = room.ships[shipId];
                 if (ship.ownerId === p.shooterId) continue;
@@ -339,7 +304,6 @@ setInterval(() => {
                 }
             }
 
-            // 敵海賊船とのヒット判定
             for (let e = room.enemies.length - 1; e >= 0; e--) {
                 const enemy = room.enemies[e];
                 if (Math.hypot(p.x - enemy.x, p.y - enemy.y) < enemy.radius) {
@@ -347,7 +311,6 @@ setInterval(() => {
                     hit = true;
                     if (enemy.hp <= 0) {
                         room.enemies.splice(e, 1);
-                        // 撃破報酬
                         const shooterPlayer = room.players[p.shooterId];
                         if (shooterPlayer) shooterPlayer.coins += 200;
                     }
@@ -360,9 +323,7 @@ setInterval(() => {
             }
         }
 
-        // CPU海賊船のAI挙動
         room.enemies.forEach(enemy => {
-            // 最寄りのプレイヤー船を探す
             let closestShip = null;
             let minDist = Infinity;
             for (const shipId in room.ships) {
@@ -384,13 +345,11 @@ setInterval(() => {
             }
         });
 
-        // 船と島の衝突判定
         for (const shipId in room.ships) {
             const ship = room.ships[shipId];
             room.islands.forEach(island => {
                 const dist = Math.hypot(ship.x - island.x, ship.y - island.y);
                 if (dist < island.radius + ship.radius) {
-                    // 押し出し
                     const pushAngle = Math.atan2(ship.y - island.y, ship.x - island.x);
                     ship.x = island.x + Math.cos(pushAngle) * (island.radius + ship.radius);
                     ship.y = island.y + Math.sin(pushAngle) * (island.radius + ship.radius);
@@ -399,7 +358,6 @@ setInterval(() => {
             });
         }
 
-        // 全クライアントへ状態ブロードキャスト
         io.to(code).emit('game_update', {
             players: room.players,
             ships: room.ships,
