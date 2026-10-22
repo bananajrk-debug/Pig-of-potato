@@ -1,7 +1,7 @@
 {
-  "name": "poly-valo",
-  "version": "2.0.0",
-  "description": "A simple 3D FPS multiplayer game inspired by Valorant",
+  "name": "poly-pirates",
+  "version": "3.0.0",
+  "description": "海賊テーマの3Dマルチプレイヤー爆破FPS (Node.js + Three.js + Socket.io)",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
