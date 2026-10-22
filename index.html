@@ -1,246 +1,919 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>POLY-VALO (3D FPS)</title>
-    <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-            background-color: #111;
-            font-family: sans-serif;
-        }
-        #instructions {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: white;
-            text-align: center;
-            background: rgba(0, 0, 0, 0.8);
-            padding: 20px;
-            border-radius: 8px;
-            cursor: pointer;
-        }
-        #crosshair {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: white;
-            font-size: 24px;
-            pointer-events: none;
-            display: none;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>POLY-VALO (3D FPS)</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; overflow: hidden; background: #111;
+    font-family: "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+    color: #fff; user-select: none;
+  }
+  canvas { display: block; }
+
+  /* ===== オーバーレイ共通 ===== */
+  .overlay {
+    position: absolute; inset: 0; display: none;
+    align-items: center; justify-content: center; flex-direction: column;
+    text-align: center; z-index: 20;
+  }
+  #title { background: radial-gradient(circle at 50% 40%, #2b2d42 0%, #0d0d14 80%); display: flex; cursor: pointer; }
+  #title h1 { font-size: 72px; margin: 0; letter-spacing: 10px; color: #ff4655; text-shadow: 0 0 30px rgba(255,70,85,.5); }
+  #title .sub { color: #aab; margin: 8px 0 30px; letter-spacing: 4px; }
+  #title .start {
+    padding: 14px 44px; border: 2px solid #ff4655; color: #fff; font-size: 20px;
+    letter-spacing: 3px; animation: blink 1.4s infinite;
+  }
+  #title .help { margin-top: 34px; color: #ccd; line-height: 1.9; font-size: 14px; }
+  @keyframes blink { 50% { background: rgba(255,70,85,.25); } }
+
+  #pause { background: rgba(0,0,0,.65); cursor: pointer; }
+  #pause h2 { margin: 0 0 8px; }
+
+  /* ===== 購入メニュー ===== */
+  #buy { background: rgba(8,10,20,.88); }
+  #buy h2 { margin: 0; letter-spacing: 4px; color: #ff4655; }
+  #buy .credits { margin: 6px 0 22px; font-size: 22px; color: #ffd166; }
+  #buyCards { display: flex; gap: 18px; }
+  .card {
+    width: 220px; padding: 16px; background: #1b1e30; border: 2px solid #343a5a;
+    border-radius: 8px; cursor: pointer; text-align: left; transition: .15s;
+  }
+  .card:hover { border-color: #ff4655; transform: translateY(-4px); }
+  .card.owned { border-color: #06d6a0; }
+  .card.poor { opacity: .45; cursor: not-allowed; }
+  .card .key { color: #888; font-size: 12px; }
+  .card .name { font-size: 20px; font-weight: bold; margin: 2px 0; }
+  .card .type { color: #9ab; font-size: 13px; margin-bottom: 8px; }
+  .card .cost { color: #ffd166; font-size: 18px; margin-bottom: 8px; }
+  .card .stat { font-size: 13px; color: #cde; line-height: 1.7; }
+  .card .badge { margin-top: 8px; font-size: 13px; color: #06d6a0; min-height: 18px; }
+  #buyMsg { height: 24px; margin-top: 16px; color: #ff8fa3; }
+  #buy .hint { color: #889; font-size: 13px; }
+
+  /* ===== HUD ===== */
+  #hud { position: absolute; inset: 0; pointer-events: none; display: none; z-index: 10; }
+  #hp { position: absolute; left: 24px; bottom: 24px; width: 240px; }
+  #hp .label { font-size: 14px; color: #ccd; }
+  #hp .bar { height: 14px; background: rgba(0,0,0,.55); border: 1px solid #555; margin-top: 4px; }
+  #hp .fill { height: 100%; width: 100%; background: #06d6a0; transition: width .15s; }
+  #hpNum { font-size: 34px; font-weight: bold; text-shadow: 0 0 6px #000; }
+  #ammoBox { position: absolute; right: 24px; bottom: 24px; text-align: right; text-shadow: 0 0 6px #000; }
+  #wName { font-size: 16px; color: #ccd; }
+  #ammo { font-size: 44px; font-weight: bold; }
+  #reloadTxt { color: #ffd166; font-size: 14px; height: 18px; }
+  #topRight { position: absolute; right: 24px; top: 20px; text-align: right; text-shadow: 0 0 6px #000; }
+  #credits { font-size: 22px; color: #ffd166; }
+  #topRight .hint { font-size: 13px; color: #bbc; }
+  #score { position: absolute; left: 24px; top: 20px; text-shadow: 0 0 6px #000; font-size: 16px; }
+  #killfeed { position: absolute; left: 50%; top: 20px; transform: translateX(-50%); text-align: center; }
+  #killfeed div { background: rgba(0,0,0,.55); padding: 4px 12px; margin-bottom: 4px; border-left: 3px solid #ff4655; font-size: 14px; }
+  #notice { position: absolute; left: 50%; top: 30%; transform: translateX(-50%); font-size: 20px; color: #ffd166; text-shadow: 0 0 8px #000; }
+
+  /* ===== レティクル ===== */
+  #crosshair { position: absolute; left: 50%; top: 50%; width: 0; height: 0; z-index: 11; pointer-events: none; display: none; }
+  .ch-bar { position: absolute; background: #0f0; box-shadow: 0 0 2px #000; }
+  .ch-ring { position: absolute; width: 24px; height: 24px; left: -12px; top: -12px; border: 2px solid #0ff; border-radius: 50%; box-shadow: 0 0 3px #000; }
+  .ch-dot { position: absolute; width: 4px; height: 4px; left: -2px; top: -2px; background: #f33; border-radius: 50%; box-shadow: 0 0 2px #000; }
+  .ch-wide { position: absolute; width: 56px; height: 56px; left: -28px; top: -28px; border: 1px dashed rgba(255,230,0,.8); border-radius: 50%; }
+
+  #scope {
+    position: absolute; inset: 0; display: none; z-index: 9; pointer-events: none;
+    background: radial-gradient(circle at 50% 50%, transparent 0, transparent 32vmin, #000 32.3vmin);
+  }
+  #scope .h { position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: #000; }
+  #scope .v { position: absolute; top: 0; bottom: 0; left: 50%; width: 1px; background: #000; }
+  #scope .d { position: absolute; left: 50%; top: 50%; width: 5px; height: 5px; margin: -2px 0 0 -2px; border-radius: 50%; background: #f00; }
+
+  #hitmarker { position: absolute; left: 50%; top: 50%; width: 0; height: 0; z-index: 12; pointer-events: none; opacity: 0; transition: opacity .15s; }
+  #hitmarker i { position: absolute; width: 10px; height: 2px; background: #fff; left: -5px; top: -1px; }
+  #hitmarker i:nth-child(1) { transform: rotate(45deg) translateX(-12px); }
+  #hitmarker i:nth-child(2) { transform: rotate(-45deg) translateX(-12px); }
+  #hitmarker i:nth-child(3) { transform: rotate(45deg) translateX(12px); }
+  #hitmarker i:nth-child(4) { transform: rotate(-45deg) translateX(12px); }
+  #hitmarker.show { opacity: 1; transition: none; }
+  #hitmarker.kill i { background: #ff2d2d; }
+
+  #damageFlash { position: absolute; inset: 0; background: radial-gradient(circle, transparent 45%, rgba(255,0,0,.55)); opacity: 0; pointer-events: none; z-index: 8; transition: opacity .4s; }
+  #dead { position: absolute; inset: 0; background: rgba(60,0,0,.45); display: none; align-items: center; justify-content: center; flex-direction: column; z-index: 9; pointer-events: none; }
+  #dead h1 { font-size: 56px; margin: 0; color: #ff4655; }
+</style>
 </head>
 <body>
-    <div id="instructions">
-        <h2>POLY-VALO</h2>
-        <p>クリックしてゲームを開始</p>
-        <p>[WASD] 移動 | [マウス] 視点移動 | [クリック] 射撃</p>
-    </div>
-    <div id="crosshair">+</div>
 
-    <!-- Three.js と Socket.io のCDN読み込み -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="/socket.io/socket.io.js"></script>
-    <script>
-        const socket = io();
-        let scene, camera, renderer;
-        const otherPlayers = {};
+<!-- タイトル画面 -->
+<div id="title" class="overlay">
+  <h1>POLY-VALO</h1>
+  <div class="sub">3D TACTICAL FPS</div>
+  <div class="start">クリックでゲーム開始</div>
+  <div class="help">
+    [WASD] 移動 ／ [マウス] 視点 ／ [左クリック] 射撃 ／ [右クリック] スコープ(スナイパー)<br>
+    [Space] ジャンプ ／ [R] リロード ／ <b>[B] 武器購入メニュー</b>
+  </div>
+</div>
 
-        // 入力状態
-        const keys = { forward: false, backward: false, left: false, right: false };
-        let moveForward = false;
-        let moveBackward = false;
-        let moveLeft = false;
-        let moveRight = false;
+<!-- 一時停止 -->
+<div id="pause" class="overlay">
+  <h2>一時停止</h2>
+  <div>クリックして再開　／　[B] 武器購入</div>
+</div>
 
-        // マウス視点用の角度
-        let pitch = 0;
-        let yaw = 0;
+<!-- 購入メニュー -->
+<div id="buy" class="overlay">
+  <h2>BUY MENU</h2>
+  <div class="credits">クレジット: <span id="buyCredits">0</span></div>
+  <div id="buyCards"></div>
+  <div id="buyMsg"></div>
+  <div class="hint">カードをクリック、または [1][2][3] で購入　／　[B] か [Esc] で閉じる</div>
+</div>
 
-        const instructions = document.getElementById('instructions');
-        const crosshair = document.getElementById('crosshair');
+<!-- HUD -->
+<div id="hud">
+  <div id="score">K <span id="kills">0</span> / D <span id="deaths">0</span></div>
+  <div id="killfeed"></div>
+  <div id="notice"></div>
+  <div id="topRight">
+    <div id="credits">$0</div>
+    <div class="hint">[B] 購入メニュー</div>
+  </div>
+  <div id="hp">
+    <div id="hpNum">100</div>
+    <div class="bar"><div class="fill" id="hpFill"></div></div>
+  </div>
+  <div id="ammoBox">
+    <div id="wName"></div>
+    <div id="ammo">0 / 0</div>
+    <div id="reloadTxt"></div>
+  </div>
+</div>
+<div id="crosshair"></div>
+<div id="scope"><div class="h"></div><div class="v"></div><div class="d"></div></div>
+<div id="hitmarker"><i></i><i></i><i></i><i></i></div>
+<div id="damageFlash"></div>
+<div id="dead"><h1>DEAD</h1><div>まもなくリスポーンします…</div></div>
 
-        instructions.addEventListener('click', () => {
-            document.body.requestPointerLock();
-        });
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+(() => {
+  const socket = io();
 
-        document.addEventListener('pointerlockchange', () => {
-            if (document.pointerLockElement === document.body) {
-                instructions.style.display = 'none';
-                crosshair.style.display = 'block';
-            } else {
-                instructions.style.display = 'block';
-                crosshair.style.display = 'none';
-            }
-        });
+  // ===== 状態 =====
+  let myId = null;
+  let WEAPONS = {};
+  let WEAPON_ORDER = [];
+  const me = { hp: 100, credits: 0, weapon: 'pistol', alive: true, kills: 0, deaths: 0 };
 
-        // 初期化
-        function init() {
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x1a1a2e);
+  let started = false;     // タイトルを抜けたか
+  let buyOpen = false;     // 購入メニュー表示中か
+  let scoped = false;
+  let firing = false;
+  let reloading = false;
+  let reloadToken = 0;
+  let ammo = 0;
+  let lastShotAt = 0;
 
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.position.set(0, 1.6, 5);
+  let yaw = 0, pitch = 0;
+  let jumpY = 0, velY = 0;
+  const keys = { f: false, b: false, l: false, r: false };
 
-            renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            document.body.appendChild(renderer.domElement);
+  const PLAYER_R = 0.4;
+  const EYE = 1.6;
+  const LIMIT = 29.2;
 
-            // ライト
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-            scene.add(ambientLight);
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-            directionalLight.position.set(10, 20, 10);
-            scene.add(directionalLight);
+  // ===== DOM =====
+  const $ = (id) => document.getElementById(id);
+  const elTitle = $('title'), elPause = $('pause'), elBuy = $('buy'), elHud = $('hud');
+  const elCross = $('crosshair'), elScope = $('scope'), elHit = $('hitmarker');
+  const elDead = $('dead'), elFlash = $('damageFlash');
 
-            // 床 (マップ)
-            const floorGeometry = new THREE.PlaneGeometry(50, 50);
-            const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x22223b });
-            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-            floor.rotation.x = -Math.PI / 2;
-            scene.add(floor);
+  // ===== Three.js =====
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x1a1a2e);
+  scene.fog = new THREE.Fog(0x1a1a2e, 40, 110);
 
-            // 適当な障害物（Valorantの箱をイメージ）
-            const boxGeo = new THREE.BoxGeometry(3, 3, 3);
-            const boxMat = new THREE.MeshStandardMaterial({ color: 0x4a4e69 });
-            const box = new THREE.Mesh(boxGeo, boxMat);
-            box.position.set(0, 1.5, -10);
-            scene.add(box);
+  const BASE_FOV = 75;
+  const camera = new THREE.PerspectiveCamera(BASE_FOV, innerWidth / innerHeight, 0.1, 300);
+  camera.rotation.order = 'YXZ';
+  camera.position.set(0, EYE, 24);
+  scene.add(camera); // 武器モデルをカメラに付けるため
 
-            // イベントリスナー
-            document.addEventListener('keydown', onKeyDown);
-            document.addEventListener('keyup', onKeyUp);
-            document.addEventListener('mousemove', onMouseMove);
-            document.addEventListener('click', onShoot);
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(innerWidth, innerHeight);
+  document.body.appendChild(renderer.domElement);
 
-            window.addEventListener('resize', onWindowResize);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.65));
+  const sun = new THREE.DirectionalLight(0xffffff, 0.8);
+  sun.position.set(15, 30, 10);
+  scene.add(sun);
 
-            // Socket.ioイベント
-            socket.on('currentPlayers', (players) => {
-                Object.keys(players).forEach((id) => {
-                    if (id !== socket.id) {
-                        addOtherPlayer(id, players[id]);
-                    }
-                });
-            });
+  // ===== マップ構築 =====
+  const solids = [];     // 弾が当たる壁メッシュ
+  const colliders = [];  // 移動用AABB
 
-            socket.on('newPlayer', (data) => {
-                addOtherPlayer(data.id, data.player);
-            });
+  function addBlock(x, z, w, d, h, color) {
+    const mesh = new THREE.Mesh(
+      new THREE.BoxGeometry(w, h, d),
+      new THREE.MeshStandardMaterial({ color })
+    );
+    mesh.position.set(x, h / 2, z);
+    scene.add(mesh);
+    solids.push(mesh);
+    colliders.push({ minX: x - w / 2, maxX: x + w / 2, minZ: z - d / 2, maxZ: z + d / 2 });
+  }
 
-            socket.on('playerMoved', (data) => {
-                if (otherPlayers[data.id]) {
-                    otherPlayers[data.id].position.set(data.player.x, data.player.y, data.player.z);
-                    otherPlayers[data.id].rotation.y = data.player.rotationY;
-                }
-            });
+  function addFloor(cx, cz, w, d, color, y) {
+    const m = new THREE.Mesh(
+      new THREE.PlaneGeometry(w, d),
+      new THREE.MeshStandardMaterial({ color })
+    );
+    m.rotation.x = -Math.PI / 2;
+    m.position.set(cx, y, cz);
+    scene.add(m);
+  }
 
-            socket.on('disconnectPlayer', (id) => {
-                if (otherPlayers[id]) {
-                    scene.remove(otherPlayers[id]);
-                    delete otherPlayers[id];
-                }
-            });
+  function addFrame(cx, cz, w, d, color) {
+    const mat = new THREE.MeshBasicMaterial({ color });
+    const t = 0.3;
+    [
+      [cx, cz - d / 2, w, t],
+      [cx, cz + d / 2, w, t],
+      [cx - w / 2, cz, t, d],
+      [cx + w / 2, cz, t, d]
+    ].forEach(([x, z, ww, dd]) => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(ww, 0.06, dd), mat);
+      m.position.set(x, 0.04, z);
+      scene.add(m);
+    });
+  }
+
+  function addLabel(text, cx, cz, color) {
+    const c = document.createElement('canvas');
+    c.width = c.height = 128;
+    const g = c.getContext('2d');
+    g.fillStyle = color;
+    g.font = 'bold 110px sans-serif';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillText(text, 64, 70);
+    const m = new THREE.Mesh(
+      new THREE.PlaneGeometry(6, 6),
+      new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), transparent: true })
+    );
+    m.rotation.x = -Math.PI / 2;
+    m.position.set(cx, 0.05, cz);
+    scene.add(m);
+  }
+
+  function buildMap() {
+    // 地面
+    addFloor(0, 0, 60, 60, 0x2a2a40, 0);
+    // Aサイト（赤）/ Bサイト（青）/ スポーンエリア（緑）
+    addFloor(20, -21, 16, 16, 0x6b2430, 0.02);
+    addFloor(-20, -21, 16, 16, 0x1f3f7a, 0.02);
+    addFloor(0, 24, 18, 10, 0x1f5a3a, 0.02);
+    addFrame(20, -21, 16, 16, 0xff4655);
+    addFrame(-20, -21, 16, 16, 0x4da3ff);
+    addFrame(0, 24, 18, 10, 0x06d6a0);
+    addLabel('A', 20, -21, 'rgba(255,120,130,0.75)');
+    addLabel('B', -20, -21, 'rgba(120,180,255,0.75)');
+
+    const WALL = 0x4a4e69, WALL_H = 5;
+    // 外壁
+    addBlock(0, -30, 61, 1, WALL_H, 0x3a3d56);
+    addBlock(0, 30, 61, 1, WALL_H, 0x3a3d56);
+    addBlock(-30, 0, 1, 61, WALL_H, 0x3a3d56);
+    addBlock(30, 0, 1, 61, WALL_H, 0x3a3d56);
+    // スポーン前の仕切り壁（中央とサイドに出口）
+    addBlock(-15, 12, 14, 1, WALL_H, WALL);
+    addBlock(15, 12, 14, 1, WALL_H, WALL);
+    // ミッド通路
+    addBlock(-6, 0, 1, 16, WALL_H, WALL);
+    addBlock(6, 0, 1, 16, WALL_H, WALL);
+    // サイドレーン仕切り
+    addBlock(-16, -2, 12, 1, WALL_H, WALL);
+    addBlock(16, -2, 12, 1, WALL_H, WALL);
+    // サイトとセンターの間の壁
+    addBlock(-8, -16, 1, 8, WALL_H, WALL);
+    addBlock(8, -16, 1, 8, WALL_H, WALL);
+    // ミッド出口の遮蔽壁
+    addBlock(0, -12, 6, 1, 4, 0x5a5f80);
+
+    // 障害物（箱）
+    const BOX = 0x8d99ae;
+    // Aサイト
+    addBlock(20, -22, 3, 3, 2.5, BOX);
+    addBlock(24, -16, 2, 2, 2, BOX);
+    addBlock(15, -26, 4, 1.5, 2, BOX);
+    // Bサイト
+    addBlock(-20, -22, 3, 3, 2.5, BOX);
+    addBlock(-24, -16, 2, 2, 2, BOX);
+    addBlock(-15, -26, 4, 1.5, 2, BOX);
+    // センター・スポーン付近
+    addBlock(0, -20, 3, 3, 2.5, BOX);
+    addBlock(-14, 20, 2, 2, 1.5, BOX);
+    addBlock(14, 20, 2, 2, 1.5, BOX);
+    addBlock(-12, 4, 2, 2, 1.8, BOX);
+    addBlock(12, 6, 2, 2, 1.8, BOX);
+  }
+
+  // ===== 他プレイヤー / ダミー =====
+  const targets = {}; // id -> { group, alive, isDummy, tx, ty, tz, ry }
+
+  function makeHumanoid(color) {
+    const g = new THREE.Group();
+    const mat = new THREE.MeshStandardMaterial({ color });
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.2, 0.5), mat);
+    body.position.y = 0.6;
+    const head = new THREE.Mesh(
+      new THREE.SphereGeometry(0.23, 12, 12),
+      new THREE.MeshStandardMaterial({ color: 0xffd7b5 })
+    );
+    head.position.y = 1.45;
+    head.userData.head = true;
+    const gun = new THREE.Mesh(
+      new THREE.BoxGeometry(0.1, 0.12, 0.55),
+      new THREE.MeshStandardMaterial({ color: 0x222222 })
+    );
+    gun.position.set(0.3, 0.95, -0.35);
+    g.add(body, head, gun);
+    return g;
+  }
+
+  function addTarget(id, x, y, z, isDummy, alive, ry) {
+    if (targets[id]) return;
+    const group = makeHumanoid(isDummy ? 0xf4a261 : 0xe63946);
+    group.children.forEach((c) => { c.userData.targetId = id; });
+    group.position.set(x, y || 0, z);
+    group.rotation.y = ry || 0;
+    group.visible = alive !== false;
+    scene.add(group);
+    targets[id] = {
+      group, alive: alive !== false, isDummy,
+      tx: x, ty: y || 0, tz: z, ry: ry || 0
+    };
+  }
+
+  function removeTarget(id) {
+    if (!targets[id]) return;
+    scene.remove(targets[id].group);
+    delete targets[id];
+  }
+
+  // ===== 武器モデル（一人称）=====
+  const gunHolder = new THREE.Group();
+  gunHolder.position.set(0.25, -0.22, -0.55);
+  camera.add(gunHolder);
+  let gunMesh = null;
+  let gunKick = 0;
+
+  function equipModel() {
+    if (gunMesh) gunHolder.remove(gunMesh);
+    const w = WEAPONS[me.weapon];
+    if (!w) return;
+    const len = me.weapon === 'pistol' ? 0.3 : me.weapon === 'rifle' ? 0.6 : 0.9;
+    gunMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(0.07, 0.1, len),
+      new THREE.MeshStandardMaterial({ color: w.color })
+    );
+    gunMesh.position.z = -len / 2 + 0.1;
+    gunHolder.add(gunMesh);
+  }
+
+  // ===== レティクル =====
+  function renderCrosshair() {
+    const w = WEAPONS[me.weapon];
+    if (!w) return;
+    let html = '';
+    if (w.crosshair === 'cross') {
+      html =
+        '<div class="ch-bar" style="width:2px;height:7px;left:-1px;top:-14px"></div>' +
+        '<div class="ch-bar" style="width:2px;height:7px;left:-1px;top:7px"></div>' +
+        '<div class="ch-bar" style="width:7px;height:2px;left:-14px;top:-1px"></div>' +
+        '<div class="ch-bar" style="width:7px;height:2px;left:7px;top:-1px"></div>';
+    } else if (w.crosshair === 'ring') {
+      html = '<div class="ch-ring"></div><div class="ch-dot"></div>';
+    } else {
+      html = '<div class="ch-wide"></div><div class="ch-dot"></div>';
+    }
+    elCross.innerHTML = html;
+    elCross.style.display = (started && !buyOpen && me.alive && !scoped) ? 'block' : 'none';
+  }
+
+  function setScoped(v) {
+    const w = WEAPONS[me.weapon];
+    if (v && !(w && w.scope)) v = false;
+    scoped = v;
+    camera.fov = v ? 22 : BASE_FOV;
+    camera.updateProjectionMatrix();
+    gunHolder.visible = !v;
+    elScope.style.display = v ? 'block' : 'none';
+    renderCrosshair();
+  }
+
+  // ===== UI更新 =====
+  function isLocked() { return document.pointerLockElement === document.body; }
+
+  function refreshUI() {
+    const locked = isLocked();
+    elTitle.style.display = started ? 'none' : 'flex';
+    elBuy.style.display = (started && buyOpen) ? 'flex' : 'none';
+    elPause.style.display = (started && !buyOpen && !locked) ? 'flex' : 'none';
+    elHud.style.display = started ? 'block' : 'none';
+    elDead.style.display = (started && !me.alive) ? 'flex' : 'none';
+    renderCrosshair();
+  }
+
+  function lockPointer() {
+    const p = document.body.requestPointerLock();
+    if (p && p.catch) p.catch(() => refreshUI());
+  }
+
+  function updateHUD() {
+    $('hpNum').textContent = me.hp;
+    const f = $('hpFill');
+    f.style.width = Math.max(0, me.hp) + '%';
+    f.style.background = me.hp > 60 ? '#06d6a0' : me.hp > 30 ? '#ffd166' : '#ef476f';
+    $('credits').textContent = '$' + me.credits;
+    $('kills').textContent = me.kills;
+    $('deaths').textContent = me.deaths;
+    const w = WEAPONS[me.weapon];
+    if (w) {
+      $('wName').textContent = w.name + ' (' + w.type + ')';
+      $('ammo').textContent = ammo + ' / ' + w.mag;
+    }
+    $('buyCredits').textContent = me.credits;
+  }
+
+  function showNotice(text, ms) {
+    const n = $('notice');
+    n.textContent = text;
+    clearTimeout(showNotice.t);
+    showNotice.t = setTimeout(() => { n.textContent = ''; }, ms || 2000);
+  }
+
+  function addKillFeed(text) {
+    const d = document.createElement('div');
+    d.textContent = text;
+    $('killfeed').appendChild(d);
+    setTimeout(() => d.remove(), 5000);
+  }
+
+  // ===== 購入メニュー =====
+  function renderBuyMenu() {
+    const box = $('buyCards');
+    box.innerHTML = '';
+    WEAPON_ORDER.forEach((id, i) => {
+      const w = WEAPONS[id];
+      const owned = me.weapon === id;
+      const poor = !owned && me.credits < w.cost;
+      const crossName = w.crosshair === 'cross' ? '十字' : w.crosshair === 'ring' ? 'リング＋ドット' : 'スコープ(右クリック)';
+      const card = document.createElement('div');
+      card.className = 'card' + (owned ? ' owned' : '') + (poor ? ' poor' : '');
+      card.innerHTML =
+        '<div class="key">[' + (i + 1) + ']</div>' +
+        '<div class="name">' + w.name + '</div>' +
+        '<div class="type">' + w.type + '</div>' +
+        '<div class="cost">$' + w.cost + '</div>' +
+        '<div class="stat">ダメージ: ' + w.damage + '（ヘッド×' + w.headMult + '）<br>' +
+        '連射: ' + (1000 / w.rate).toFixed(1) + ' 発/秒 ' + (w.auto ? '(フルオート)' : '(セミオート)') + '<br>' +
+        'マガジン: ' + w.mag + ' 発<br>' +
+        'レティクル: ' + crossName + '</div>' +
+        '<div class="badge">' + (owned ? '✔ 装備中' : '') + '</div>';
+      card.addEventListener('click', () => buyWeapon(id));
+      box.appendChild(card);
+    });
+  }
+
+  function buyWeapon(id) {
+    const w = WEAPONS[id];
+    if (!w) return;
+    if (me.weapon === id) { $('buyMsg').textContent = 'すでに装備中です'; return; }
+    if (me.credits < w.cost) { $('buyMsg').textContent = 'クレジットが足りません'; return; }
+    $('buyMsg').textContent = '';
+    socket.emit('buy', id);
+  }
+
+  function openBuy() {
+    if (!started || buyOpen || !me.alive) return;
+    buyOpen = true;
+    firing = false;
+    setScoped(false);
+    keys.f = keys.b = keys.l = keys.r = false;
+    $('buyMsg').textContent = '';
+    renderBuyMenu();
+    if (isLocked()) document.exitPointerLock();
+    refreshUI();
+  }
+
+  function closeBuy() {
+    if (!buyOpen) return;
+    buyOpen = false;
+    refreshUI();
+    lockPointer();
+  }
+
+  // ===== 武器切替 / リロード =====
+  function equipWeapon(fillAmmo) {
+    const w = WEAPONS[me.weapon];
+    if (!w) return;
+    reloadToken++;
+    reloading = false;
+    $('reloadTxt').textContent = '';
+    if (fillAmmo) ammo = w.mag;
+    setScoped(false);
+    equipModel();
+    renderCrosshair();
+    updateHUD();
+  }
+
+  function reload() {
+    const w = WEAPONS[me.weapon];
+    if (!w || reloading || ammo >= w.mag || !me.alive) return;
+    reloading = true;
+    setScoped(false);
+    const token = ++reloadToken;
+    $('reloadTxt').textContent = 'リロード中...';
+    setTimeout(() => {
+      if (token !== reloadToken) return;
+      ammo = w.mag;
+      reloading = false;
+      $('reloadTxt').textContent = '';
+      updateHUD();
+    }, w.reload);
+  }
+
+  // ===== 射撃（Raycast）=====
+  const raycaster = new THREE.Raycaster();
+  const tracers = [];
+
+  function spawnTracer(from, to, color) {
+    const geo = new THREE.BufferGeometry().setFromPoints([from, to]);
+    const line = new THREE.Line(geo, new THREE.LineBasicMaterial({ color: color || 0xffee88 }));
+    scene.add(line);
+    tracers.push({ line, until: performance.now() + 70 });
+  }
+
+  function tryShoot() {
+    if (!started || buyOpen || !me.alive || reloading || !isLocked()) return;
+    const w = WEAPONS[me.weapon];
+    if (!w) return;
+    const now = performance.now();
+    if (now - lastShotAt < w.rate) return;
+    if (ammo <= 0) { reload(); return; }
+    lastShotAt = now;
+    ammo--;
+    updateHUD();
+
+    // 方向 + 散布
+    const dir = new THREE.Vector3();
+    camera.getWorldDirection(dir);
+    const spread = (w.scope && scoped) ? 0 : w.spread;
+    if (spread > 0) {
+      dir.x += (Math.random() - 0.5) * spread * 2;
+      dir.y += (Math.random() - 0.5) * spread * 2;
+      dir.z += (Math.random() - 0.5) * spread * 2;
+      dir.normalize();
+    }
+    const origin = camera.position.clone();
+    raycaster.set(origin, dir);
+    raycaster.far = 200;
+
+    // 壁との交差（壁が手前なら弾は遮られる）
+    const wallHit = raycaster.intersectObjects(solids, false)[0];
+    const wallDist = wallHit ? wallHit.distance : Infinity;
+
+    // 生きている敵との交差
+    const aliveGroups = Object.keys(targets)
+      .filter((id) => targets[id].alive)
+      .map((id) => targets[id].group);
+    const hits = raycaster.intersectObjects(aliveGroups, true);
+
+    let targetId = null, headshot = false;
+    let endDist = wallDist === Infinity ? 100 : wallDist;
+    if (hits.length && hits[0].distance < wallDist) {
+      targetId = hits[0].object.userData.targetId;
+      headshot = !!hits[0].object.userData.head;
+      endDist = hits[0].distance;
+    }
+
+    // 弾道エフェクト
+    camera.updateMatrixWorld();
+    const muzzle = new THREE.Vector3(0.25, -0.2, -0.9).applyMatrix4(camera.matrixWorld);
+    spawnTracer(muzzle, origin.clone().addScaledVector(dir, endDist), w.color);
+
+    socket.emit('shoot', {
+      origin: { x: origin.x, y: origin.y, z: origin.z },
+      direction: { x: dir.x, y: dir.y, z: dir.z },
+      targetId, headshot
+    });
+
+    // 反動
+    pitch = Math.min(Math.PI / 2 - 0.01, pitch + w.recoil);
+    applyCameraRotation();
+    gunKick = 0.08;
+
+    if (ammo === 0) reload();
+  }
+
+  function applyCameraRotation() {
+    camera.rotation.y = yaw;
+    camera.rotation.x = pitch;
+  }
+
+  // ===== 入力 =====
+  document.addEventListener('keydown', (e) => {
+    if (!started) return;
+    if (e.code === 'KeyB') { buyOpen ? closeBuy() : openBuy(); return; }
+    if (buyOpen) {
+      if (e.code === 'Escape') closeBuy();
+      if (e.code === 'Digit1') buyWeapon(WEAPON_ORDER[0]);
+      if (e.code === 'Digit2') buyWeapon(WEAPON_ORDER[1]);
+      if (e.code === 'Digit3') buyWeapon(WEAPON_ORDER[2]);
+      return;
+    }
+    switch (e.code) {
+      case 'KeyW': keys.f = true; break;
+      case 'KeyS': keys.b = true; break;
+      case 'KeyA': keys.l = true; break;
+      case 'KeyD': keys.r = true; break;
+      case 'KeyR': reload(); break;
+      case 'Space':
+        if (jumpY === 0 && me.alive) velY = 6;
+        e.preventDefault();
+        break;
+    }
+  });
+
+  document.addEventListener('keyup', (e) => {
+    switch (e.code) {
+      case 'KeyW': keys.f = false; break;
+      case 'KeyS': keys.b = false; break;
+      case 'KeyA': keys.l = false; break;
+      case 'KeyD': keys.r = false; break;
+    }
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (!isLocked() || buyOpen || !me.alive) return;
+    const sens = scoped ? 0.0007 : 0.002;
+    yaw -= (e.movementX || 0) * sens;
+    pitch -= (e.movementY || 0) * sens;
+    pitch = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, pitch));
+    applyCameraRotation();
+  });
+
+  document.addEventListener('mousedown', (e) => {
+    if (!started || buyOpen || !isLocked() || !me.alive) return;
+    if (e.button === 0) {
+      firing = true;
+      tryShoot();
+    } else if (e.button === 2) {
+      setScoped(true);
+    }
+  });
+
+  document.addEventListener('mouseup', (e) => {
+    if (e.button === 0) firing = false;
+    if (e.button === 2) setScoped(false);
+  });
+
+  document.addEventListener('contextmenu', (e) => e.preventDefault());
+
+  elTitle.addEventListener('click', () => {
+    started = true;
+    refreshUI();
+    lockPointer();
+  });
+  elPause.addEventListener('click', () => lockPointer());
+
+  document.addEventListener('pointerlockchange', () => {
+    if (!isLocked()) { firing = false; setScoped(false); }
+    refreshUI();
+  });
+
+  addEventListener('resize', () => {
+    camera.aspect = innerWidth / innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+  });
+
+  // ===== 移動・衝突 =====
+  function resolveCollisions(pos) {
+    for (let iter = 0; iter < 2; iter++) {
+      for (const c of colliders) {
+        const minX = c.minX - PLAYER_R, maxX = c.maxX + PLAYER_R;
+        const minZ = c.minZ - PLAYER_R, maxZ = c.maxZ + PLAYER_R;
+        if (pos.x > minX && pos.x < maxX && pos.z > minZ && pos.z < maxZ) {
+          const l = pos.x - minX, r = maxX - pos.x;
+          const u = pos.z - minZ, d = maxZ - pos.z;
+          const m = Math.min(l, r, u, d);
+          if (m === l) pos.x = minX;
+          else if (m === r) pos.x = maxX;
+          else if (m === u) pos.z = minZ;
+          else pos.z = maxZ;
         }
+      }
+    }
+    pos.x = Math.max(-LIMIT, Math.min(LIMIT, pos.x));
+    pos.z = Math.max(-LIMIT, Math.min(LIMIT, pos.z));
+  }
 
-        function addOtherPlayer(id, playerData) {
-            const geometry = new THREE.BoxGeometry(1, 2, 1);
-            const material = new THREE.MeshStandardMaterial({ color: 0xe63946 });
-            const playerMesh = new THREE.Mesh(geometry, material);
-            playerMesh.position.set(playerData.x, playerData.y, playerData.z);
-            scene.add(playerMesh);
-            otherPlayers[id] = playerMesh;
-        }
+  function updatePlayer(delta) {
+    const speed = (scoped ? 2.5 : 5.5) * delta;
+    const dir = new THREE.Vector3();
+    if (keys.f) dir.z -= 1;
+    if (keys.b) dir.z += 1;
+    if (keys.l) dir.x -= 1;
+    if (keys.r) dir.x += 1;
+    if (dir.lengthSq() > 0) {
+      dir.normalize();
+      dir.applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
+      camera.position.addScaledVector(dir, speed);
+      resolveCollisions(camera.position);
+    }
+    // ジャンプ
+    if (jumpY > 0 || velY > 0) {
+      velY -= 16 * delta;
+      jumpY += velY * delta;
+      if (jumpY <= 0) { jumpY = 0; velY = 0; }
+    }
+    camera.position.y = EYE + jumpY;
+  }
 
-        function onKeyDown(e) {
-            switch (e.code) {
-                case 'KeyW': moveForward = true; break;
-                case 'KeyS': moveBackward = true; break;
-                case 'KeyA': moveLeft = true; break;
-                case 'KeyD': moveRight = true; break;
-            }
-        }
+  // 位置送信（20Hz）
+  setInterval(() => {
+    if (!started || !me.alive || !myId) return;
+    socket.emit('move', {
+      x: camera.position.x,
+      y: camera.position.y - EYE,
+      z: camera.position.z,
+      rotationY: yaw
+    });
+  }, 50);
 
-        function onKeyUp(e) {
-            switch (e.code) {
-                case 'KeyW': moveForward = false; break;
-                case 'KeyS': moveBackward = false; break;
-                case 'KeyA': moveLeft = false; break;
-                case 'KeyD': moveRight = false; break;
-            }
-        }
+  // ===== Socket.io 受信 =====
+  socket.on('init', (data) => {
+    myId = data.id;
+    WEAPONS = data.weapons;
+    WEAPON_ORDER = Object.keys(WEAPONS);
+    Object.assign(me, data.you);
+    camera.position.set(data.spawn.x, EYE, data.spawn.z);
+    yaw = 0; pitch = 0;
+    applyCameraRotation();
 
-        function onMouseMove(e) {
-            if (document.pointerLockElement !== document.body) return;
+    Object.keys(data.players).forEach((id) => {
+      if (id === myId) return;
+      const p = data.players[id];
+      addTarget(id, p.x, p.y, p.z, false, p.alive, p.rotationY);
+    });
+    Object.keys(data.dummies).forEach((id) => {
+      const d = data.dummies[id];
+      addTarget(id, d.x, d.y, d.z, true, d.alive, 0);
+    });
 
-            const movementX = e.movementX || e.mozMovementX || 0;
-            const movementY = e.movementY || e.mozMovementY || 0;
+    equipWeapon(true);
+    renderBuyMenu();
+    updateHUD();
+    refreshUI();
+  });
 
-            yaw -= movementX * 0.002;
-            pitch -= movementY * 0.002;
+  socket.on('newPlayer', (data) => {
+    const p = data.player;
+    addTarget(data.id, p.x, p.y, p.z, false, p.alive, p.rotationY);
+  });
 
-            // 上下視点の制限
-            pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, pitch));
+  socket.on('playerMoved', (data) => {
+    const t = targets[data.id];
+    if (!t) return;
+    t.tx = data.player.x; t.ty = data.player.y; t.tz = data.player.z;
+    t.ry = data.player.rotationY;
+  });
 
-            camera.rotation.order = 'YXZ';
-            camera.rotation.y = yaw;
-            camera.rotation.x = pitch;
-        }
+  socket.on('playerShot', (data) => {
+    const o = new THREE.Vector3(data.origin.x, data.origin.y - 0.4, data.origin.z);
+    const d = new THREE.Vector3(data.direction.x, data.direction.y, data.direction.z).normalize();
+    spawnTracer(o, o.clone().addScaledVector(d, 60), data.color);
+  });
 
-        function onShoot() {
-            if (document.pointerLockElement !== document.body) return;
-            // 簡易的な弾丸発射エフェクトやイベント送信
-            const direction = new THREE.Vector3();
-            camera.getWorldDirection(direction);
-            socket.emit('shoot', { origin: camera.position, direction: direction });
-        }
+  socket.on('state', (s) => {
+    const prevHp = me.hp;
+    const prevWeapon = me.weapon;
+    Object.assign(me, s);
+    if (me.hp < prevHp && me.alive) {
+      elFlash.style.transition = 'none';
+      elFlash.style.opacity = 1;
+      requestAnimationFrame(() => {
+        elFlash.style.transition = 'opacity .4s';
+        elFlash.style.opacity = 0;
+      });
+    }
+    if (me.weapon !== prevWeapon) {
+      equipWeapon(true);
+      showNotice(WEAPONS[me.weapon].name + ' を装備', 1500);
+    }
+    updateHUD();
+    if (buyOpen) renderBuyMenu();
+  });
 
-        function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        }
+  socket.on('buyResult', (r) => {
+    if (!r.ok) $('buyMsg').textContent = r.message || '購入できません';
+    else $('buyMsg').textContent = '購入しました！';
+  });
 
-        // 移動処理
-        function updatePlayerPosition(delta) {
-            const speed = 5.0 * delta;
-            const direction = new THREE.Vector3();
+  socket.on('hitConfirm', (r) => {
+    elHit.classList.toggle('kill', !!r.killed);
+    elHit.classList.add('show');
+    setTimeout(() => elHit.classList.remove('show'), 90);
+    if (r.headshot) showNotice('HEADSHOT!', 800);
+  });
 
-            if (moveForward) direction.z -= 1;
-            if (moveBackward) direction.z += 1;
-            if (moveLeft) direction.x -= 1;
-            if (moveRight) direction.x += 1;
+  socket.on('targetDied', (d) => {
+    addKillFeed(d.killerName + (d.headshot ? ' ⌖ ' : ' ▸ ') + d.victimName);
+    if (d.id === myId) {
+      me.alive = false;
+      firing = false;
+      setScoped(false);
+      camera.position.y = 0.5;
+      refreshUI();
+    } else if (targets[d.id]) {
+      targets[d.id].alive = false;
+      targets[d.id].group.visible = false;
+    }
+  });
 
-            direction.normalize();
-            direction.applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
+  socket.on('targetRespawn', (d) => {
+    if (d.id === myId) {
+      me.alive = true;
+      camera.position.set(d.x, EYE, d.z);
+      yaw = 0; pitch = 0; jumpY = 0; velY = 0;
+      applyCameraRotation();
+      ammo = WEAPONS[me.weapon].mag;
+      reloading = false;
+      reloadToken++;
+      $('reloadTxt').textContent = '';
+      updateHUD();
+      refreshUI();
+      showNotice('リスポーン！ [B] で武器を購入できます', 2500);
+    } else if (targets[d.id]) {
+      const t = targets[d.id];
+      t.alive = true;
+      t.group.visible = true;
+      t.group.position.set(d.x, 0, d.z);
+      t.tx = d.x; t.ty = 0; t.tz = d.z;
+    }
+  });
 
-            camera.position.addScaledVector(direction, speed);
-            camera.position.y = 1.6; // 目の高さ固定
+  socket.on('disconnectPlayer', (id) => removeTarget(id));
 
-            // サーバーに位置を送信
-            socket.emit('playerMovement', {
-                x: camera.position.x,
-                y: camera.position.y,
-                z: camera.position.z,
-                rotationY: yaw
-            });
-        }
+  // ===== メインループ =====
+  const clock = new THREE.Clock();
 
-        const clock = new THREE.Clock();
-        function animate() {
-            requestAnimationFrame(animate);
-            const delta = clock.getDelta();
-            updatePlayerPosition(delta);
-            renderer.render(scene, camera);
-        }
+  function animate() {
+    requestAnimationFrame(animate);
+    const delta = Math.min(clock.getDelta(), 0.05);
+    const now = performance.now();
 
-        init();
-        animate();
-    </script>
+    if (started && isLocked() && !buyOpen && me.alive) {
+      updatePlayer(delta);
+      const w = WEAPONS[me.weapon];
+      if (firing && w && w.auto) tryShoot();
+    }
+
+    // 他プレイヤーの補間
+    Object.keys(targets).forEach((id) => {
+      const t = targets[id];
+      if (t.isDummy) return;
+      const g = t.group;
+      g.position.x += (t.tx - g.position.x) * 0.3;
+      g.position.y += (t.ty - g.position.y) * 0.3;
+      g.position.z += (t.tz - g.position.z) * 0.3;
+      g.rotation.y = t.ry;
+    });
+
+    // 銃の反動戻し
+    gunKick *= 0.85;
+    gunHolder.position.z = -0.55 + gunKick;
+
+    // 弾道エフェクトの後始末
+    for (let i = tracers.length - 1; i >= 0; i--) {
+      if (now > tracers[i].until) {
+        scene.remove(tracers[i].line);
+        tracers[i].line.geometry.dispose();
+        tracers[i].line.material.dispose();
+        tracers.splice(i, 1);
+      }
+    }
+
+    renderer.render(scene, camera);
+  }
+
+  buildMap();
+  refreshUI();
+  animate();
+})();
+</script>
 </body>
 </html>
