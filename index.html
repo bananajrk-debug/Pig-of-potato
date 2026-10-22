@@ -1,607 +1,427 @@
 <!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>生活ゲーム - 借金返済編</title>
-    <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            user-select: none;
-        }
-        body {
-            font-family: 'Helvetica Neue', Arial, sans-serif;
-            background-color: #1a1a1a;
-            color: #fff;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            overflow: hidden;
-        }
+<html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>どん底スタート生活</title>
+<link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;user-select:none}
+body{font-family:'DotGothic16','Hiragino Sans','Meiryo',sans-serif;background:#0d1117;color:#fff;display:flex;justify-content:center;align-items:center;height:100vh;overflow:hidden}
+.screen{display:none;width:min(98vw,1000px);height:min(98vh,680px);background:#111;border:4px solid #f5c542;border-radius:14px;position:relative;box-shadow:0 0 0 4px #3a2a10,0 12px 40px #000;overflow:hidden}
+.active{display:flex;flex-direction:column}
+#title-screen{justify-content:center;align-items:center;text-align:center;background:linear-gradient(#1b2a49,#4a3b6b 60%,#c0704a)}
+h1{font-size:3.2rem;color:#ffd166;text-shadow:3px 3px 0 #7a3b10,0 0 24px #f7a;animation:fl 3s ease-in-out infinite}
+@keyframes fl{50%{transform:translateY(-8px)}}
+#title-screen p{color:#fde;margin:10px 0 36px}
+.btns{display:flex;flex-direction:column;gap:14px;width:250px}
+.btn{padding:13px;font:inherit;font-size:1.1rem;border:3px solid #fff8;border-radius:10px;cursor:pointer;color:#fff;box-shadow:0 4px 0 #0006;background:#2e9e57}
+.btn:hover{filter:brightness(1.2);transform:translateY(-2px)}.btn.b{background:#2d7fc1}.btn.o{background:#d9792b}
+.btn:disabled{background:#555;color:#999;cursor:not-allowed;transform:none;filter:none}
+#cv{flex:1;width:100%;display:block;min-height:0}
+.panel{background:linear-gradient(#26324f,#141c33);border:2px solid #f5c542;border-radius:8px;padding:5px 10px;box-shadow:0 3px 0 #0007;font-size:.95rem}
+#hud{position:absolute;top:8px;left:8px;display:flex;gap:8px;z-index:5;pointer-events:none;flex-wrap:wrap;max-width:75%}
+#hud b{color:#ffd166}.bar{height:8px;width:120px;background:#0009;border-radius:4px;overflow:hidden;margin-top:3px;border:1px solid #fff4}.bar i{display:block;height:100%}
+#hint{position:absolute;top:8px;right:8px;z-index:5;font-size:.8rem;text-align:right;line-height:1.7}
+kbd{background:#eee;color:#222;border-radius:4px;padding:1px 6px;box-shadow:0 2px 0 #888;font-family:inherit;font-size:.8rem}
+#prompt{position:absolute;bottom:64px;left:50%;transform:translateX(-50%);display:none;z-index:5;border-color:#fff;animation:pu 1s infinite}
+@keyframes pu{50%{transform:translateX(-50%) scale(1.07)}}
+#dock{position:absolute;bottom:8px;left:8px;right:8px;display:flex;gap:8px;z-index:5;justify-content:center}
+#dock button{font:inherit;font-size:.85rem;padding:7px 14px;border-radius:8px;border:2px solid #f5c542;background:#1d2744;color:#fff;cursor:pointer}
+#dock button:hover{background:#34447a}
+#toast{position:absolute;top:70px;left:50%;transform:translateX(-50%);z-index:90;display:none;background:#000c;border:2px solid #ffd166;padding:8px 18px;border-radius:8px;color:#ffd166}
+.modal{position:absolute;inset:0;background:#000a;display:none;justify-content:center;align-items:center;z-index:50}.modal.on{display:flex}
+.win{width:440px;max-width:94%;background:linear-gradient(#222b47,#121829);border:3px solid #f5c542;border-radius:12px;padding:18px;box-shadow:0 10px 30px #000;text-align:center}
+.win h2{color:#ffd166;margin-bottom:12px;border-bottom:1px solid #fff3;padding-bottom:8px}
+.win .btn{margin:5px;padding:9px 14px;font-size:.95rem}.row{display:flex;justify-content:space-between;margin:6px 0}
+.sub{font-size:.8rem;color:#aab;margin-top:10px}
+.room{background:repeating-linear-gradient(90deg,#b4814a 0 38px,#9a6a38 38px 40px)}
+.room h2,.room .row{text-shadow:1px 1px 3px #000}
+.room .win,.win.room{border-color:#6b4a24}
+#jo{font-size:2.4rem;min-height:56px;margin:8px 0;background:#fff9;border-radius:10px;color:#000}#jo span.ok{opacity:.25}
+.tb{height:12px;background:#0007;border-radius:6px;overflow:hidden;margin:8px 0}.tb i{display:block;height:100%;background:#4cd964;width:100%}
+#ji button{font-size:1.6rem;margin:3px;width:58px;height:58px;border-radius:10px;border:2px solid #fff;background:#fff3;cursor:pointer;position:relative}
+#ji small{position:absolute;right:4px;bottom:1px;font-size:.6rem}
+.shake{animation:sh .25s}@keyframes sh{25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+#fish{position:absolute;bottom:60px;left:50%;transform:translateX(-50%);width:380px;display:none;z-index:40;text-align:center}
+#fbar{position:relative;height:26px;background:#0a2a4a;border-radius:13px;border:2px solid #fff;margin-top:8px;overflow:hidden;display:none}
+#fz{position:absolute;top:0;bottom:0;background:#4cd964;opacity:.85}#fc{position:absolute;top:0;bottom:0;width:6px;background:#fff;box-shadow:0 0 8px #fff}
+#fade{position:absolute;inset:0;background:#000;opacity:0;pointer-events:none;transition:opacity .3s;z-index:80}#fade.on{opacity:1}
+</style></head><body>
 
-        .screen {
-            display: none;
-            width: 800px;
-            height: 600px;
-            background-color: #2b2b2b;
-            border: 4px solid #444;
-            border-radius: 12px;
-            position: relative;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        }
-        .active {
-            display: flex;
-            flex-direction: column;
-        }
+<div id="title-screen" class="screen active">
+  <h1>どん底スタート生活</h1>
+  <p>ゴミを拾い、バイトし、魚を釣って、借金を返し、マイホームを手に入れろ！</p>
+  <div class="btns">
+    <button class="btn" onclick="newGame()">生活を始める</button>
+    <button id="cont" class="btn b" onclick="contGame()">生活を続ける</button>
+  </div>
+</div>
 
-        /* --- タイトル画面 --- */
-        #title-screen {
-            justify-content: center;
-            align-items: center;
-            background: linear-gradient(135deg, #111, #333);
-            text-align: center;
-        }
-        #title-screen h1 {
-            font-size: 3rem;
-            margin-bottom: 10px;
-            color: #f39c12;
-            text-shadow: 2px 2px 4px #000;
-        }
-        #title-screen p {
-            color: #aaa;
-            margin-bottom: 40px;
-        }
-        .btn-group {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            width: 240px;
-        }
-        .btn {
-            padding: 15px;
-            font-size: 1.1rem;
-            font-weight: bold;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .btn-primary {
-            background-color: #27ae60;
-            color: white;
-        }
-        .btn-primary:hover {
-            background-color: #2ec4b6;
-        }
-        .btn-secondary {
-            background-color: #2980b9;
-            color: white;
-        }
-        .btn-secondary:hover {
-            background-color: #3498db;
-        }
-        .btn:disabled {
-            background-color: #555;
-            color: #888;
-            cursor: not-allowed;
-        }
+<div id="game-screen" class="screen">
+  <canvas id="cv"></canvas>
+  <div id="hud">
+    <div class="panel">💰 <b id="hm">0</b> G</div>
+    <div class="panel">🗑️ <b id="ht">0</b> 個</div>
+    <div class="panel">💸 借金 <b id="hd" style="color:#ff6b6b">0</b> G<div class="bar"><i id="hdb" style="background:#ff6b6b"></i></div></div>
+    <div class="panel">⚡ 体力<div class="bar"><i id="hs" style="background:#4cd964"></i></div></div>
+    <div class="panel">📅 <b id="hday">1</b>日目</div>
+  </div>
+  <div id="hint" class="panel"><kbd>WASD</kbd>/<kbd>矢印</kbd> 移動<br><kbd>E</kbd> 調べる<br><kbd>Tab</kbd> バックパック</div>
+  <div id="prompt" class="panel"><kbd>E</kbd> <span id="ptxt"></span></div>
+  <div id="toast"></div>
+  <div id="dock"><button onclick="pay(1000)">💸 借金を1,000G返済</button><button onclick="saveExit()">💾 セーブしてタイトルへ</button></div>
+  <div id="fish" class="panel"><div id="fmsg" style="font-size:1.1rem"></div><div id="fbar"><div id="fz"></div><div id="fc"></div></div><div class="sub"><kbd>Space</kbd> / <kbd>E</kbd> で合わせる　<kbd>Esc</kbd> やめる</div></div>
 
-        /* --- ゲーム画面 --- */
-        #game-screen {
-            position: relative;
-            background-color: #3a3a3a;
-            overflow: hidden;
-        }
+  <div id="m-bag" class="modal"><div class="win"><h2>🎒 バックパック</h2><div id="bag"></div><div class="sub">[Tab] キーで閉じる</div></div></div>
+  <div id="m-shop" class="modal"><div class="win"><h2>♻️ 買取店</h2><div id="shopi"></div>
+    <button class="btn" onclick="sellT()">ゴミを売る (100G/個)</button><button class="btn b" onclick="sellF()">魚を売る</button><br>
+    <button class="btn o" onclick="pay(10000)">借金を10,000G返済</button><button class="btn b" onclick="closeUI()">店を出る</button></div></div>
+  <div id="m-home" class="modal"><div class="win room"><h2 id="homeT"></h2><div id="homeB"></div></div></div>
+  <div id="m-job" class="modal"><div class="win room"><h2>🍽️ レストラン バイト</h2>
+    <div style="font-size:.85rem">お客さんの注文を<b>順番どおり</b>に入力！ (キー 1〜6)</div>
+    <div id="jo"></div><div class="tb"><i id="jt"></i></div><div id="js" class="row" style="justify-content:center"></div>
+    <div id="ji"></div><div id="jr"></div></div></div>
+  <div id="fade"></div>
+</div>
 
-        .status-bar {
-            background-color: rgba(0, 0, 0, 0.8);
-            padding: 12px 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            z-index: 10;
-        }
-        .status-item {
-            font-size: 1rem;
-            font-weight: bold;
-        }
-        .status-value {
-            color: #f1c40f;
-        }
-        .debt-value {
-            color: #e74c3c;
-        }
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const socket = (typeof io !== 'undefined') ? io() : null;
+const $ = id => document.getElementById(id);
+const W = 2400, H = 1600, RW = 120, rv = [560, 1360], rh = [640, 1240], PRICE = 120000;
+const piers = [[760,1396,100,164],[1280,1396,100,164],[1760,1396,100,164]];
+const spots = [[810,1530],[1330,1530],[1810,1530]];
+const FONT = "'DotGothic16',sans-serif";
+const DEF = {x:230,y:1070,money:0,trash:0,debt:1000000,fish:{},st:100,day:1,home:0,ver:2};
+const FISH = [
+  {n:'長靴',e:'👢',v:10,w:10,z:.4},{n:'イワシ',e:'🐟',v:100,w:30,z:.3},{n:'アジ',e:'🐟',v:150,w:28,z:.28},
+  {n:'サバ',e:'🐟',v:250,w:16,z:.24},{n:'ヒラメ',e:'🐠',v:700,w:8,z:.18},{n:'タイ',e:'🐠',v:1200,w:5,z:.14},{n:'マグロ',e:'🐋',v:5000,w:1.5,z:.1}];
+const ITEMS = ['🍔','🍟','🥤','🍕','🍜','🍙'];
+let P = {...DEF}, S, solids = [], trash = [], fts = [], ui = 0, job = null, fs = null, near = null;
+let camX = 0, camY = 0, dir = 'd', moving = false, last = 0, seed = 7;
+const keys = {};
+const rnd = () => (seed = seed * 16807 % 2147483647) / 2147483647;
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
-        /* 【変更】広くなったマップビューポート（カメラ表示枠） */
-        .viewport {
-            flex: 1;
-            position: relative;
-            overflow: hidden;
-            background: #555;
-        }
+/* ---------- 静的マップ描画 ---------- */
+function tiles(c, x, y, w, h, a, b) {
+  for (let i = 0; i < w; i += 40) for (let j = 0; j < h; j += 40) { c.fillStyle = ((i + j) / 40) % 2 ? a : b; c.fillRect(x + i, y + j, Math.min(40, w - i), Math.min(40, h - j)); }
+  c.strokeStyle = '#0002'; c.lineWidth = 1;
+  for (let i = 0; i <= w; i += 40) { c.beginPath(); c.moveTo(x + i + .5, y); c.lineTo(x + i + .5, y + h); c.stroke(); }
+  for (let j = 0; j <= h; j += 40) { c.beginPath(); c.moveTo(x, y + j + .5); c.lineTo(x + w, y + j + .5); c.stroke(); }
+}
+function planks(c, x, y, w, h) {
+  for (let j = 0; j < h; j += 12) { c.fillStyle = (j / 12) % 2 ? '#a06f3d' : '#8c5e30'; c.fillRect(x, y + j, w, 12); c.fillStyle = '#0003'; c.fillRect(x, y + j, w, 1); }
+}
+function noise(c, x, y, w, h, n, cols) { for (let i = 0; i < n; i++) { c.fillStyle = cols[i % cols.length]; c.fillRect(x + rnd() * w, y + rnd() * h, 2, 2); } }
+function tree(c, x, y) {
+  solids.push([x - 8, y - 6, 16, 14]);
+  c.fillStyle = '#0003'; c.beginPath(); c.ellipse(x + 10, y + 8, 34, 14, 0, 0, 7); c.fill();
+  c.fillStyle = '#6b4423'; c.fillRect(x - 5, y - 20, 10, 28);
+  [[0,-48,32],[-20,-30,24],[20,-30,24]].forEach(([dx, dy, r], i) => {
+    const g = c.createRadialGradient(x + dx - 6, y + dy - 8, 2, x + dx, y + dy, r);
+    g.addColorStop(0, '#7ed36b'); g.addColorStop(1, '#2e7d32'); c.fillStyle = g; c.beginPath(); c.arc(x + dx, y + dy, r, 0, 7); c.fill();
+  });
+}
+function bld(c, x, y, w, h, o) {
+  solids.push([x, y, w, h]);
+  c.fillStyle = '#0004'; c.beginPath(); c.moveTo(x + w, y + h); c.lineTo(x + w + 24, y + h - 14); c.lineTo(x + w + 24, y + 10); c.lineTo(x + w, y + 24); c.fill();
+  c.fillStyle = '#0003'; c.fillRect(x + 8, y + h, w, 10);
+  const fy = y + h * .5, g = c.createLinearGradient(0, y, 0, fy);
+  g.addColorStop(0, o.roof[0]); g.addColorStop(1, o.roof[1]); c.fillStyle = g; c.fillRect(x, y, w, fy - y);
+  c.strokeStyle = '#0003'; c.lineWidth = 2; for (let j = y + 10; j < fy; j += 10) { c.beginPath(); c.moveTo(x, j); c.lineTo(x + w, j); c.stroke(); }
+  c.fillStyle = '#fff4'; c.fillRect(x, y, w, 4);
+  c.fillStyle = o.wall; c.fillRect(x, fy, w, y + h - fy);
+  for (let i = 0; i < w; i += 20) { c.fillStyle = (i / 20) % 2 ? o.awn[0] : o.awn[1]; c.fillRect(x + i, fy, 20, 22); }
+  c.fillStyle = '#0003'; c.fillRect(x, fy + 22, w, 5);
+  [x + w * .1, x + w * .7].forEach(wx => {
+    c.fillStyle = '#ffe3a0'; c.fillRect(wx, fy + 32, w * .2, 36); c.strokeStyle = '#3b2a1a'; c.lineWidth = 3; c.strokeRect(wx, fy + 32, w * .2, 36);
+    c.beginPath(); c.moveTo(wx + w * .1, fy + 32); c.lineTo(wx + w * .1, fy + 68); c.stroke();
+  });
+  const dx = x + w / 2 - 18; c.fillStyle = '#5a3a22'; c.fillRect(dx, y + h - 56, 36, 56); c.fillStyle = '#ffe3a0'; c.fillRect(dx + 5, y + h - 50, 26, 26);
+  c.fillStyle = '#fc0'; c.beginPath(); c.arc(dx + 29, y + h - 22, 2.5, 0, 7); c.fill();
+  c.strokeStyle = '#0007'; c.lineWidth = 3; c.strokeRect(x, y, w, h);
+  if (o.n) {
+    c.font = "bold 26px " + FONT; c.textAlign = 'center'; const tw = c.measureText(o.n).width + 36, ty = y + h * .12;
+    c.fillStyle = '#0008'; c.fillRect(x + w / 2 - tw / 2, ty, tw, 40); c.strokeStyle = '#ffd166'; c.lineWidth = 2; c.strokeRect(x + w / 2 - tw / 2, ty, tw, 40);
+    c.fillStyle = '#ffd166'; c.fillText(o.n, x + w / 2, ty + 30);
+  }
+}
+function build() {
+  S = document.createElement('canvas'); S.width = W; S.height = H; const c = S.getContext('2d'); solids = []; seed = 7;
+  c.fillStyle = '#4c9a4f'; c.fillRect(0, 0, W, 1400);
+  for (let x = 0; x < W; x += 40) for (let y = 0; y < 1400; y += 40) if ((x + y) / 40 % 2) { c.fillStyle = '#ffffff0b'; c.fillRect(x, y, 40, 40); }
+  for (let i = 0; i < 26000; i++) { c.fillStyle = i % 2 ? '#3d8541' : '#66b668'; c.fillRect(rnd() * W, rnd() * 1400, 2, 5); }
+  // 舗装
+  rh.forEach(y => tiles(c, 0, y - 36, W, RW + 72, '#cfc9bb', '#c3bdae'));
+  rv.forEach(x => tiles(c, x - 36, 0, RW + 72, 1396, '#cfc9bb', '#c3bdae'));
+  tiles(c, 800, 540, 280, 64, '#d9c7a0', '#cdb98f'); tiles(c, 1690, 540, 300, 64, '#d9c7a0', '#cdb98f');
+  tiles(c, 1860, 1080, 40, 124, '#d8d2c4', '#cfc9bb');
+  // ダンボール街（土）
+  c.fillStyle = '#7b6a55'; c.fillRect(0, 796, 524, 408); noise(c, 0, 796, 524, 408, 5000, ['#6a5a47', '#8c7b64', '#5e4f3e']);
+  c.fillStyle = '#4a6b8a66'; c.beginPath(); c.ellipse(400, 1130, 50, 20, 0, 0, 7); c.fill();
+  // 道路
+  rh.forEach(y => { c.fillStyle = '#3a3e46'; c.fillRect(0, y, W, RW); noise(c, 0, y, W, RW, 7000, ['#4a4f58', '#2e3239', '#555a63']); });
+  rv.forEach(x => { c.fillStyle = '#3a3e46'; c.fillRect(x, 0, RW, 1360); noise(c, x, 0, RW, 1360, 7000, ['#4a4f58', '#2e3239', '#555a63']); });
+  c.fillStyle = '#f5c542';
+  rh.forEach(y => { for (let x = 0; x < W; x += 70) if (!rv.some(v => x > v - 60 && x < v + RW + 30)) c.fillRect(x, y + RW / 2 - 2, 36, 4); });
+  rv.forEach(x => { for (let y = 0; y < 1360; y += 70) if (!rh.some(h => y > h - 60 && y < h + RW + 30)) c.fillRect(x + RW / 2 - 2, y, 4, 36); });
+  c.fillStyle = '#eee';
+  rv.forEach(x => rh.forEach(y => { for (let k = 8; k < RW; k += 20) { c.fillRect(x + k, y - 32, 10, 26); c.fillRect(x + k, y + RW + 6, 10, 26); c.fillRect(x - 32, y + k, 26, 10); c.fillRect(x + RW + 6, y + k, 26, 10); } }));
+  // 海・遊歩道・桟橋
+  const wg = c.createLinearGradient(0, 1470, 0, H); wg.addColorStop(0, '#3cc0e4'); wg.addColorStop(1, '#0a4a85'); c.fillStyle = wg; c.fillRect(0, 1470, W, 130);
+  planks(c, 0, 1396, W, 74); c.fillStyle = '#0004'; c.fillRect(0, 1470, W, 6);
+  piers.forEach(p => { c.fillStyle = '#0003'; c.fillRect(p[0] + 8, 1470, p[2], p[3] - 74); planks(c, p[0], 1396, p[2], p[3]); c.fillStyle = '#5a3a1c'; [p[0] + 3, p[0] + p[2] - 9].forEach(px => { for (let py = 1480; py < 1560; py += 40) c.fillRect(px, py, 6, 10); }); });
+  // 公園・池
+  const pg = c.createRadialGradient(1000, 1000, 10, 1000, 1000, 160); pg.addColorStop(0, '#5fd0f0'); pg.addColorStop(1, '#2a8fc0');
+  c.fillStyle = '#d9c7a0'; c.beginPath(); c.ellipse(1000, 1000, 172, 108, 0, 0, 7); c.fill();
+  c.fillStyle = pg; c.beginPath(); c.ellipse(1000, 1000, 152, 90, 0, 0, 7); c.fill();
+  c.fillStyle = '#3fa34d'; [[950, 1020], [1050, 980], [1010, 1040]].forEach(p => { c.beginPath(); c.arc(p[0], p[1], 9, 0, 7); c.fill(); });
+  solids.push([880, 930, 240, 140]);
+  // 建物
+  bld(c, 830, 330, 220, 210, {n: '♻ 買取店', roof: ['#2e8b57', '#1f6f43'], wall: '#f2ead3', awn: ['#2e8b57', '#fff']});
+  bld(c, 1700, 300, 280, 240, {n: '🍴 レストラン', roof: ['#c0443c', '#8e2f2a'], wall: '#f6d6a8', awn: ['#c0443c', '#fff']});
+  bld(c, 1780, 880, 200, 200, {n: P.home ? '🏠 MY HOME' : '', roof: P.home ? ['#4a78c2', '#2f5496'] : ['#8a8f9c', '#5d6270'], wall: '#f4f1ea', awn: P.home ? ['#4a78c2', '#fff'] : ['#999', '#ddd']});
+  bld(c, 1560, 900, 150, 150, {roof: ['#b5653a', '#8a4524'], wall: '#e8d5c4', awn: ['#b5653a', '#eee']});
+  bld(c, 2100, 900, 150, 150, {roof: ['#5a9a6a', '#3b7048'], wall: '#e6ecd9', awn: ['#5a9a6a', '#eee']});
+  // 売家看板
+  if (!P.home) { c.fillStyle = '#5a3a22'; c.fillRect(1815, 1100, 6, 30); c.fillStyle = '#e53935'; c.fillRect(1760, 1086, 116, 26); c.strokeStyle = '#fff'; c.lineWidth = 2; c.strokeRect(1760, 1086, 116, 26); c.fillStyle = '#fff'; c.font = "bold 16px " + FONT; c.textAlign = 'center'; c.fillText('売家 SALE', 1818, 1105); }
+  // ダンボール小屋
+  if (!P.home) {
+    solids.push([110, 960, 130, 80], [316, 996, 28, 28]);
+    c.fillStyle = '#0004'; c.fillRect(118, 1030, 130, 12);
+    c.fillStyle = '#c58b4e'; c.fillRect(110, 960, 130, 80); c.fillStyle = '#e0a468'; c.fillRect(110, 960, 130, 18);
+    c.fillStyle = '#e8d9b0'; c.fillRect(165, 960, 20, 80); c.strokeStyle = '#7a5530'; c.lineWidth = 3; c.strokeRect(110, 960, 130, 80);
+    c.fillStyle = '#3a6ea5'; c.beginPath(); c.moveTo(100, 970); c.lineTo(250, 970); c.lineTo(240, 950); c.lineTo(112, 950); c.fill();
+    c.fillStyle = '#3b2a1a'; c.font = "bold 16px " + FONT; c.textAlign = 'center'; c.fillText('My ダンボール', 175, 1012);
+    c.fillStyle = '#555'; c.fillRect(316, 996, 28, 28); c.fillStyle = '#222'; c.fillRect(316, 996, 28, 6); c.fillStyle = '#933'; c.fillRect(316, 1008, 28, 3);
+  }
+  // 木・花
+  [[100,120],[250,90],[420,150],[150,450],[400,480],[760,120],[1250,150],[1100,420],[1560,100],[1620,450],[2200,120],[2300,480],[2150,420],[740,850],[760,1150],[1290,850],[1300,1150],[900,850],[1150,1170],[1560,1150],[2150,1150],[2300,860]].forEach(p => tree(c, p[0], p[1]));
+  for (let i = 0; i < 40; i++) { c.fillStyle = ['#ff6b8b', '#ffd166', '#fff', '#b388ff'][i % 4]; c.beginPath(); c.arc(1740 + rnd() * 100, 1120 + rnd() * 70, 3, 0, 7); c.fill(); }
+}
 
-        /* 【変更】実際の広いワールドマップ (1600 x 1200) */
-        #world {
-            position: absolute;
-            width: 1600px;
-            height: 1200px;
-            background: #4a4a4a;
-        }
+/* ---------- キャラ・描画 ---------- */
+function human(c, x, y, d, t, mv, col, hair) {
+  const w = mv ? Math.sin(t / 80) : 0, b = mv ? Math.abs(Math.cos(t / 80)) * 2 : 0;
+  c.fillStyle = '#0005'; c.beginPath(); c.ellipse(x, y + 2, 13, 5, 0, 0, 7); c.fill();
+  c.fillStyle = '#2b2f4a'; c.fillRect(x - 7, y - 10, 5, 10 + w * 3); c.fillRect(x + 2, y - 10, 5, 10 - w * 3);
+  c.fillStyle = col; c.fillRect(x - 9, y - 27 - b, 18, 18); c.fillStyle = '#0002'; c.fillRect(x - 9, y - 14 - b, 18, 5);
+  c.fillRect(x - 13, y - 26 - b + w * 2, 4, 12); c.fillRect(x + 9, y - 26 - b - w * 2, 4, 12);
+  c.fillStyle = '#f2c9a0'; c.beginPath(); c.arc(x, y - 34 - b, 8, 0, 7); c.fill();
+  c.fillStyle = hair; c.beginPath(); c.arc(x, y - 36 - b, 8.5, Math.PI, 0); c.fill();
+  if (d === 'u') c.fillRect(x - 8, y - 36 - b, 16, 5);
+  c.fillStyle = '#222';
+  if (d === 'd') { c.fillRect(x - 4, y - 34 - b, 2, 3); c.fillRect(x + 2, y - 34 - b, 2, 3); }
+  if (d === 'l') c.fillRect(x - 5, y - 34 - b, 2, 3);
+  if (d === 'r') c.fillRect(x + 3, y - 34 - b, 2, 3);
+}
+function draw(t) {
+  const cv = $('cv'), c = cv.getContext('2d');
+  if (cv.width !== cv.clientWidth || cv.height !== cv.clientHeight) { cv.width = cv.clientWidth; cv.height = cv.clientHeight; }
+  const vw = cv.width, vh = cv.height;
+  camX = clamp(P.x - vw / 2, 0, Math.max(0, W - vw)); camY = clamp(P.y - vh / 2, 0, Math.max(0, H - vh));
+  c.drawImage(S, camX, camY, vw, vh, 0, 0, vw, vh);
+  c.save(); c.translate(-camX, -camY);
+  // 波
+  c.save(); c.beginPath(); c.rect(0, 1470, W, 130); piers.forEach(p => c.rect(p[0], 1470, p[2], 90)); c.clip('evenodd');
+  c.strokeStyle = '#ffffff66'; c.lineWidth = 2;
+  for (let j = 0; j < 6; j++) { c.beginPath(); for (let x = camX - 20; x < camX + vw + 20; x += 20) { const y = 1485 + j * 20 + Math.sin(x / 40 + t / 500 + j) * 4; x === camX - 20 ? c.moveTo(x, y) : c.lineTo(x, y); } c.stroke(); }
+  c.restore();
+  // 釣りスポット
+  spots.forEach(s => { const r = 14 + (t / 40 % 20); c.strokeStyle = `rgba(255,255,255,${1 - r / 34})`; c.lineWidth = 2; c.beginPath(); c.ellipse(s[0], s[1], r, r * .5, 0, 0, 7); c.stroke(); c.font = '22px ' + FONT; c.textAlign = 'center'; c.fillText('🎣', s[0], s[1] - 18 + Math.sin(t / 300) * 3); });
+  // 焚き火
+  if (!P.home) { const f = 1 + Math.sin(t / 90) * .2, g = c.createRadialGradient(330, 990, 2, 330, 990, 70); g.addColorStop(0, 'rgba(255,160,40,.55)'); g.addColorStop(1, 'rgba(255,160,40,0)'); c.fillStyle = g; c.fillRect(250, 920, 160, 140); c.fillStyle = '#ff7a18'; c.beginPath(); c.ellipse(330, 994, 9 * f, 14 * f, 0, 0, 7); c.fill(); c.fillStyle = '#ffd34d'; c.beginPath(); c.ellipse(330, 997, 5, 8 * f, 0, 0, 7); c.fill(); }
+  // ゴミ
+  trash.forEach(g => {
+    const b = Math.sin(t / 300 + g.p) * 4, a = 18 + Math.sin(t / 200 + g.p) * 4;
+    const gr = c.createRadialGradient(g.x, g.y, 2, g.x, g.y, a); gr.addColorStop(0, 'rgba(255,235,120,.65)'); gr.addColorStop(1, 'rgba(255,235,120,0)'); c.fillStyle = gr; c.fillRect(g.x - a, g.y - a, a * 2, a * 2);
+    c.fillStyle = '#0004'; c.beginPath(); c.ellipse(g.x, g.y + 8, 9 - b / 2, 3, 0, 0, 7); c.fill();
+    c.font = '22px ' + FONT; c.textAlign = 'center'; c.fillText(g.e, g.x, g.y + 6 - 5 - b);
+    if (((t / 400 + g.p) % 4) < .3) { c.fillStyle = '#fff'; c.fillText('✦', g.x + 10, g.y - 14); }
+  });
+  // プレイヤー
+  human(c, P.x, P.y, dir, t, moving, P.home ? '#3b82c4' : '#8a7f6a', '#3b2a1a');
+  // 浮遊テキスト
+  fts.forEach(f => { c.globalAlpha = Math.max(0, f.t); c.font = "bold 18px " + FONT; c.textAlign = 'center'; c.fillStyle = '#000'; c.fillText(f.s, f.x + 1, f.y - (1 - f.t) * 40 + 1); c.fillStyle = '#ffd166'; c.fillText(f.s, f.x, f.y - (1 - f.t) * 40); });
+  c.globalAlpha = 1; c.restore();
+  // ビネット
+  const v = c.createRadialGradient(vw / 2, vh / 2, vh * .45, vw / 2, vh / 2, vw * .7); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.35)'); c.fillStyle = v; c.fillRect(0, 0, vw, vh);
+}
 
-        .road-line {
-            position: absolute;
-            top: 600px;
-            left: 0;
-            right: 0;
-            height: 6px;
-            border-top: 6px dashed #777;
-        }
+/* ---------- ロジック ---------- */
+function hit(x, y) {
+  for (const [a, b] of [[-8, -6], [8, -6], [-8, 4], [8, 4]]) {
+    const px = x + a, py = y + b;
+    if (px < 0 || px > W || py < 20 || py > 1556) return 1;
+    if (py > 1466 && !piers.some(p => px > p[0] && px < p[0] + p[2])) return 1;
+    for (const s of solids) if (px > s[0] && px < s[0] + s[2] && py > s[1] && py < s[1] + s[3]) return 1;
+  }
+  return 0;
+}
+function spawnTrash() {
+  for (let i = 0; i < 20; i++) { const x = rnd() * W, y = 30 + rnd() * 1420; if (!hit(x, y)) { trash.push({x, y, e: ['🛍️', '🥫', '🍾', '📰'][trash.length % 4], p: rnd() * 6}); return; } }
+}
+function findNear() {
+  const c = [];
+  let bt = null, bd = 42;
+  trash.forEach(g => { const d = Math.hypot(P.x - g.x, P.y - 8 - g.y); if (d < bd) { bd = d; bt = g; } });
+  if (bt) c.push({d: bd, t: '[E] ゴミを拾う', f: () => { trash.splice(trash.indexOf(bt), 1); P.trash++; fx(bt.x, bt.y - 10, '+1🗑️'); hud(); }});
+  const door = (x, y, r, t, f) => { const d = Math.hypot(P.x - x, P.y - y); if (d < r) c.push({d, t, f}); };
+  door(940, 565, 60, '買取店に入る', () => enter(openShop));
+  door(1840, 565, 70, 'レストランでバイトする', () => enter(startJob));
+  door(1880, 1105, 60, P.home ? 'マイホームに入る' : '売家を見る', () => enter(openHome));
+  if (!P.home) door(175, 1062, 60, 'ダンボールで休む', restBox);
+  spots.forEach(s => door(s[0], s[1] + 14, 55, '釣りをする', () => startFish()));
+  c.sort((a, b) => a.d - b.d); return c[0] || null;
+}
+function fx(x, y, s) { fts.push({x, y, s, t: 1}); }
+function toast(s) { const t = $('toast'); t.textContent = s; t.style.display = 'block'; clearTimeout(toast.h); toast.h = setTimeout(() => t.style.display = 'none', 2200); }
+function hud() {
+  $('hm').textContent = P.money.toLocaleString(); $('ht').textContent = P.trash; $('hd').textContent = P.debt.toLocaleString();
+  $('hdb').style.width = (P.debt / 10000) + '%'; $('hs').style.width = P.st + '%'; $('hday').textContent = P.day;
+}
+function openM(id) { ui = 1; document.querySelectorAll('.modal').forEach(m => m.classList.remove('on')); $(id).classList.add('on'); }
+function closeUI() { document.querySelectorAll('.modal').forEach(m => m.classList.remove('on')); ui = 0; job = null; endFish(); hud(); save(); }
+function enter(fn) { ui = 1; $('fade').classList.add('on'); setTimeout(() => { fn(); $('fade').classList.remove('on'); }, 320); }
 
-        .cardboard-bed {
-            position: absolute;
-            left: 100px;
-            top: 700px;
-            width: 100px;
-            height: 70px;
-            background: #d35400;
-            border-radius: 6px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 0.85rem;
-            color: #f39c12;
-            font-weight: bold;
-            box-shadow: 2px 4px 10px rgba(0,0,0,0.4);
-        }
+function bag() {
+  const f = Object.entries(P.fish).filter(e => e[1] > 0);
+  $('bag').innerHTML = `<div class="row"><span>🗑️ 拾ったゴミ</span><b>${P.trash} 個</b></div>` + (f.length ? f.map(([n, k]) => `<div class="row"><span>${FISH.find(x => x.n === n).e} ${n}</span><b>${k} 匹</b></div>`).join('') : '<div class="row"><span>🐟 魚</span><b>なし</b></div>');
+}
+function toggleBag() { if (ui && !$('m-bag').classList.contains('on')) return; if ($('m-bag').classList.contains('on')) closeUI(); else { bag(); openM('m-bag'); } }
 
-        .shop-building {
-            position: absolute;
-            left: 1350px;
-            top: 200px;
-            width: 140px;
-            height: 90px;
-            background-color: #27ae60;
-            border: 3px solid #2ecc71;
-            border-radius: 6px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            font-size: 0.9rem;
-            color: #fff;
-            font-weight: bold;
-            box-shadow: 2px 4px 10px rgba(0,0,0,0.4);
-        }
+function fishVal() { return Object.entries(P.fish).reduce((a, [n, k]) => a + k * FISH.find(x => x.n === n).v, 0); }
+function openShop() { $('shopi').innerHTML = `<div class="row"><span>ゴミ ${P.trash}個</span><b>${P.trash * 100}G</b></div><div class="row"><span>魚 ${Object.values(P.fish).reduce((a, b) => a + b, 0)}匹</span><b>${fishVal()}G</b></div>`; openM('m-shop'); }
+function sellT() { if (!P.trash) return toast('売るゴミがありません'); P.money += P.trash * 100; toast(`💰 +${P.trash * 100}G`); P.trash = 0; hud(); openShop(); }
+function sellF() { const v = fishVal(); if (!v) return toast('売る魚がありません'); P.money += v; P.fish = {}; toast(`💰 +${v}G`); hud(); openShop(); }
+function pay(n) {
+  if (ui && !$('m-shop').classList.contains('on')) return;
+  if (P.debt <= 0) return toast('借金はもうありません！');
+  n = Math.min(n, P.debt); if (P.money < n) return toast(`返済資金が足りません (${n}G)`);
+  P.money -= n; P.debt -= n; hud(); if ($('m-shop').classList.contains('on')) openShop();
+  toast(P.debt ? `💸 ${n}G返済しました` : '🎉 借金を完済しました！'); save();
+}
+function restBox() { P.st = Math.min(100, P.st + 30); hud(); toast('ダンボールで仮眠…寒くて浅い眠り (体力+30)'); }
 
-        #player {
-            position: absolute;
-            width: 32px;
-            height: 32px;
-            background-color: #3498db;
-            border: 3px solid #fff;
-            border-radius: 50%;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.4);
-            z-index: 5;
-        }
+/* マイホーム */
+function openHome() {
+  if (!P.home) {
+    $('homeT').textContent = '🏷️ 売家';
+    $('homeB').innerHTML = `<p>日当たり良好の一戸建て。<br>価格 <b style="color:#ffd166">${PRICE.toLocaleString()} G</b></p><p class="sub">所持金: ${P.money.toLocaleString()} G</p><button class="btn" onclick="buyHome()">購入する</button><button class="btn b" onclick="closeUI()">やめる</button>`;
+  } else {
+    $('homeT').textContent = '🏠 マイホーム';
+    $('homeB').innerHTML = `<div style="font-size:2.6rem;margin:10px">🛋️ 🛏️ 📺 🪴</div><p>ようこそ、我が家へ。</p><button class="btn" onclick="sleep()">🌙 ぐっすり寝る (体力全快・セーブ)</button><button class="btn b" onclick="closeUI()">外に出る</button>`;
+  }
+  openM('m-home');
+}
+function buyHome() { if (P.money < PRICE) return toast('お金が足りません！'); P.money -= PRICE; P.home = 1; build(); hud(); save(); toast('🎉 マイホームを手に入れた！'); openHome(); }
+function sleep() { P.st = 100; P.day++; hud(); save(); toast(`☀️ ${P.day}日目の朝。体力が全回復した！`); closeUI(); }
 
-        .trash {
-            position: absolute;
-            width: 28px;
-            height: 28px;
-            background-color: #7f8c8d;
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 14px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-        }
+/* レストランバイト */
+function startJob() {
+  if (P.st < 20) { toast('体力が足りません (20必要)'); closeUI(); return; }
+  P.st -= 20; hud(); job = {t: 45, s: 0, n: 0, p: 0, o: [], ts: 0, over: 0};
+  $('ji').innerHTML = ITEMS.map((e, i) => `<button onclick="jobIn(${i})">${e}<small>${i + 1}</small></button>`).join('');
+  $('jr').innerHTML = ''; newOrder(); openM('m-job');
+}
+function newOrder() { job.o = Array.from({length: 2 + Math.floor(Math.random() * 3)}, () => Math.floor(Math.random() * 6)); job.p = 0; job.ts = performance.now(); jobUI(); }
+function jobUI() { $('jo').innerHTML = '🧑 ' + job.o.map((e, i) => `<span class="${i < job.p ? 'ok' : ''}">${ITEMS[e]}</span>`).join(''); $('js').textContent = `売上 ${job.s}G ／ 接客 ${job.n}人`; }
+function jobIn(i) {
+  if (!job || job.over) return;
+  if (i === job.o[job.p]) {
+    job.p++;
+    if (job.p === job.o.length) { const b = Math.max(0, 300 - Math.floor((performance.now() - job.ts) / 40)); job.s += 500 + b; job.n++; newOrder(); }
+    else jobUI();
+  } else { job.t -= 3; const j = $('jo'); j.classList.remove('shake'); void j.offsetWidth; j.classList.add('shake'); }
+}
+function endJob() {
+  job.over = 1; const pay = job.s + (job.n ? 1000 : 0); P.money += pay; hud(); save();
+  $('jr').innerHTML = `<h2 style="margin-top:12px">⏰ 終了！</h2><p>接客 ${job.n}人 / 給料 <b style="color:#ffd166">${pay.toLocaleString()}G</b></p><button class="btn" onclick="closeUI()">お疲れさま！外に出る</button>`;
+}
 
-        .controls-hint {
-            position: absolute;
-            top: 10px;
-            right: 15px;
-            background: rgba(0,0,0,0.7);
-            padding: 8px 14px;
-            border-radius: 6px;
-            font-size: 0.85rem;
-            color: #ccc;
-            z-index: 20;
-        }
+/* 釣り */
+function startFish() {
+  if (P.st < 8) return toast('体力が足りません (8必要)');
+  P.st -= 8; hud(); ui = 1; fs = {st: 'wait', t: 1.5 + Math.random() * 2.5, cur: 0, d: 1};
+  $('fish').style.display = 'block'; $('fbar').style.display = 'none'; $('fmsg').textContent = '🎣 ウキを見つめる…';
+}
+function endFish() { fs = null; $('fish').style.display = 'none'; if (!$('m-bag').classList.contains('on') && !document.querySelector('.modal.on')) ui = 0; }
+function pickFish() { let r = Math.random() * FISH.reduce((a, f) => a + f.w, 0); for (const f of FISH) { if ((r -= f.w) < 0) return f; } return FISH[1]; }
+function fAct() {
+  if (!fs) return;
+  if (fs.st === 'wait') { $('fmsg').textContent = '早すぎた！逃げられた…'; fs.st = 'end'; fs.t = 1.2; }
+  else if (fs.st === 'bite') {
+    fs.st = 'reel'; fs.cur = 0; fs.d = 1; fs.zs = .2 + Math.random() * (.6 - fs.f.z);
+    $('fmsg').textContent = '🐟 引き上げろ！緑のゾーンで止める！'; $('fbar').style.display = 'block';
+    $('fz').style.left = fs.zs * 100 + '%'; $('fz').style.width = fs.f.z * 100 + '%';
+  } else if (fs.st === 'reel') {
+    if (fs.cur >= fs.zs && fs.cur <= fs.zs + fs.f.z) {
+      P.fish[fs.f.n] = (P.fish[fs.f.n] || 0) + 1; $('fmsg').textContent = `${fs.f.e} ${fs.f.n} を釣り上げた！ (${fs.f.v}G)`;
+    } else $('fmsg').textContent = '糸が切れて逃げられた…';
+    fs.st = 'end'; fs.t = 1.6; $('fbar').style.display = 'none';
+  }
+}
 
-        /* 近くにゴミがある時のガイド表示 */
-        #interaction-prompt {
-            position: absolute;
-            bottom: 80px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.8);
-            border: 2px solid #f39c12;
-            padding: 8px 16px;
-            border-radius: 6px;
-            font-size: 0.9rem;
-            color: #f39c12;
-            font-weight: bold;
-            z-index: 20;
-            display: none;
-        }
+/* ---------- メインループ ---------- */
+function update(dt) {
+  if (!ui) {
+    let dx = 0, dy = 0;
+    if (keys.w || keys.arrowup) dy--; if (keys.s || keys.arrowdown) dy++; if (keys.a || keys.arrowleft) dx--; if (keys.d || keys.arrowright) dx++;
+    moving = !!(dx || dy);
+    if (moving) {
+      const k = dx && dy ? .707 : 1, sp = 4 * k * dt * 60;
+      if (!hit(P.x + dx * sp, P.y)) P.x += dx * sp; if (!hit(P.x, P.y + dy * sp)) P.y += dy * sp;
+      dir = dy < 0 ? 'u' : dy > 0 ? 'd' : dx < 0 ? 'l' : 'r';
+    }
+    near = findNear(); const p = $('prompt'); p.style.display = near ? 'block' : 'none'; if (near) $('ptxt').textContent = near.t.replace('[E] ', '');
+  } else { moving = false; $('prompt').style.display = 'none'; }
+  if (job && !job.over) { job.t -= dt; $('jt').style.width = Math.max(0, job.t / 45 * 100) + '%'; if (job.t <= 0) endJob(); }
+  if (fs) {
+    fs.t -= dt;
+    if (fs.st === 'wait' && fs.t <= 0) { fs.st = 'bite'; fs.f = pickFish(); fs.t = .8; $('fmsg').innerHTML = '<b style="color:#ff6b6b;font-size:1.5rem">❗ ヒット！ 今だ！</b>'; }
+    else if (fs.st === 'bite' && fs.t <= 0) { $('fmsg').textContent = '逃げられた…'; fs.st = 'end'; fs.t = 1.2; }
+    else if (fs.st === 'reel') { fs.cur += fs.d * dt * (.9 + fs.f.v / 6000); if (fs.cur > 1) { fs.cur = 1; fs.d = -1; } if (fs.cur < 0) { fs.cur = 0; fs.d = 1; } $('fc').style.left = fs.cur * 98 + '%'; }
+    else if (fs.st === 'end' && fs.t <= 0) { hud(); endFish(); save(); }
+  }
+  fts.forEach(f => f.t -= dt); fts = fts.filter(f => f.t > 0);
+  P.st = Math.min(100, P.st + dt * .2); $('hs').style.width = P.st + '%';
+}
+function loop(t) {
+  if (!$('game-screen').classList.contains('active')) return;
+  const dt = Math.min(.05, (t - last) / 1000 || 0); last = t; update(dt); draw(t); requestAnimationFrame(loop);
+}
 
-        #backpack-modal {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 350px;
-            background-color: rgba(20, 20, 20, 0.95);
-            border: 3px solid #f39c12;
-            border-radius: 10px;
-            padding: 20px;
-            z-index: 100;
-            display: none;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.6);
-        }
-        #backpack-modal h2 {
-            font-size: 1.2rem;
-            color: #f39c12;
-            margin-bottom: 15px;
-            text-align: center;
-            border-bottom: 1px solid #444;
-            padding-bottom: 8px;
-        }
-        .inventory-item {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 10px;
-            font-size: 1rem;
-        }
-        .close-hint {
-            margin-top: 15px;
-            text-align: center;
-            font-size: 0.8rem;
-            color: #aaa;
-        }
-
-        .action-panel {
-            background-color: rgba(0, 0, 0, 0.85);
-            padding: 15px;
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            z-index: 10;
-        }
-        .action-btn {
-            padding: 10px 20px;
-            font-size: 0.9rem;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-    </style>
-</head>
-<body>
-
-    <!-- 1. タイトル画面 -->
-    <div id="title-screen" class="screen active">
-        <h1>どん底スタート生活</h1>
-        <p>ゴミを拾い、借金を返し、自分の家を手に入れろ！</p>
-        <div class="btn-group">
-            <button class="btn btn-primary" onclick="startNewGame()">生活を始める</button>
-            <button id="continue-btn" class="btn btn-secondary" onclick="continueGame()">生活を続ける</button>
-        </div>
-    </div>
-
-    <!-- 2. ゲーム画面 -->
-    <div id="game-screen" class="screen">
-        <div class="status-bar">
-            <div class="status-item">所持金: <span id="money-display" class="status-value">0</span> G</div>
-            <div class="status-item">集めたゴミ: <span id="trash-display" class="status-value">0</span> 個</div>
-            <div class="status-item">残りの借金: <span id="debt-display" class="debt-value">1,000,000</span> G</div>
-        </div>
-
-        <!-- カメラビューポートとワールドマップ -->
-        <div class="viewport" id="viewport">
-            <div class="controls-hint">移動: [WASD] | 拾う: [E] | バックパック: [Tab]</div>
-            <div id="interaction-prompt">[E] キーでゴミを拾う</div>
-
-            <div id="world">
-                <div class="road-line"></div>
-                <div class="cardboard-bed">My ダンボール</div>
-                <div class="shop-building">
-                    <span>🏠 買取店</span>
-                    <span style="font-size: 0.65rem; color: #f1c40f; margin-top:2px;">ここで換金可能</span>
-                </div>
-                <!-- プレイヤー -->
-                <div id="player"></div>
-            </div>
-        </div>
-
-        <!-- バックパック画面 -->
-        <div id="backpack-modal">
-            <h2>🎒 バックパック (持ち物)</h2>
-            <div class="inventory-item">
-                <span>拾ったゴミ:</span>
-                <span id="inv-trash-count" style="color: #f1c40f;">0 個</span>
-            </div>
-            <div class="close-hint">[Tab] キーを押して閉じる</div>
-        </div>
-
-        <div class="action-panel">
-            <button class="action-btn btn-primary" onclick="sellTrashAtShop()">買取店でゴミを換金する (+100G/個)</button>
-            <button class="action-btn btn-secondary" onclick="payDebt()">借金を1,000G返済する</button>
-            <button class="action-btn" style="background:#e67e22; color:white;" onclick="saveAndExit()">セーブしてタイトルへ</button>
-        </div>
-    </div>
-
-    <script src="/socket.io/socket.io.js"></script>
-    <script>
-        const socket = io();
-
-        let playerData = {
-            x: 150,
-            y: 730,
-            money: 0,
-            trashCount: 0,
-            debt: 1000000,
-            hasSavedData: false
-        };
-
-        const keys = {};
-        const speed = 4;
-        let isBackpackOpen = false;
-        let nearestTrash = null; // 現在Eキーで拾える一番近いゴミ
-
-        window.onload = () => {
-            checkSaveData();
-            setupControls();
-        };
-
-        function checkSaveData() {
-            const saved = localStorage.getItem('lifeGame_saveData');
-            const continueBtn = document.getElementById('continue-btn');
-            continueBtn.disabled = !saved;
-        }
-
-        function setupControls() {
-            window.addEventListener('keydown', (e) => {
-                keys[e.key] = true;
-
-                if (e.key === 'Tab') {
-                    e.preventDefault();
-                    toggleBackpack();
-                }
-
-                // Eキーでゴミを拾う
-                if (e.key === 'e' || e.key === 'E') {
-                    if (nearestTrash && !isBackpackOpen) {
-                        pickUpTrash(nearestTrash);
-                    }
-                }
-            });
-            window.addEventListener('keyup', (e) => {
-                keys[e.key] = false;
-            });
-        }
-
-        function toggleBackpack() {
-            isBackpackOpen = !isBackpackOpen;
-            const modal = document.getElementById('backpack-modal');
-            if (isBackpackOpen) {
-                document.getElementById('inv-trash-count').textContent = playerData.trashCount + ' 個';
-                modal.style.display = 'block';
-            } else {
-                modal.style.display = 'none';
-            }
-        }
-
-        function startNewGame() {
-            if (localStorage.getItem('lifeGame_saveData')) {
-                if (!confirm("以前のセーブデータが上書きされます。よろしいですか？")) {
-                    return;
-                }
-            }
-            playerData = {
-                x: 150,
-                y: 730,
-                money: 0,
-                trashCount: 0,
-                debt: 1000000,
-                hasSavedData: true
-            };
-            saveData();
-            switchToGame();
-        }
-
-        function continueGame() {
-            const saved = localStorage.getItem('lifeGame_saveData');
-            if (saved) {
-                playerData = JSON.parse(saved);
-                switchToGame();
-            }
-        }
-
-        function switchToGame() {
-            document.getElementById('title-screen').classList.remove('active');
-            document.getElementById('game-screen').classList.add('active');
-            updateUI();
-            spawnTrashLoop();
-            requestAnimationFrame(gameLoop);
-        }
-
-        function gameLoop() {
-            if (!isBackpackOpen) {
-                // 広くなったマップの端（1600x1200）で制限
-                if (keys['ArrowUp'] || keys['w'] || keys['W']) {
-                    playerData.y = Math.max(10, playerData.y - speed);
-                }
-                if (keys['ArrowDown'] || keys['s'] || keys['S']) {
-                    playerData.y = Math.min(1160, playerData.y + speed);
-                }
-                if (keys['ArrowLeft'] || keys['a'] || keys['A']) {
-                    playerData.x = Math.max(10, playerData.x - speed);
-                }
-                if (keys['ArrowRight'] || keys['d'] || keys['D']) {
-                    playerData.x = Math.min(1560, playerData.x + speed);
-                }
-            }
-
-            // プレイヤー位置更新
-            const playerEl = document.getElementById('player');
-            playerEl.style.left = playerData.x + 'px';
-            playerEl.style.top = playerData.y + 'px';
-
-            // カメラ追従処理（プレイヤーが画面の中央に来るようにワールドを動かす）
-            updateCamera();
-
-            // 最も近いゴミを探す判定
-            checkNearestTrash();
-
-            if (document.getElementById('game-screen').classList.contains('active')) {
-                requestAnimationFrame(gameLoop);
-            }
-        }
-
-        function updateCamera() {
-            const viewport = document.getElementById('viewport');
-            const world = document.getElementById('world');
-            
-            const vpWidth = viewport.clientWidth;
-            const vpHeight = viewport.clientHeight;
-
-            // プレイヤーを中心にスクロール計算
-            let camX = playerData.x - vpWidth / 2 + 16;
-            let camY = playerData.y - vpHeight / 2 + 16;
-
-            // マップの端を超えないように制限
-            camX = Math.max(0, Math.min(1600 - vpWidth, camX));
-            camY = Math.max(0, Math.min(1200 - vpHeight, camY));
-
-            world.style.transform = `translate(${-camX}px, ${-camY}px)`;
-        }
-
-        function checkNearestTrash() {
-            const trashes = document.getElementsByClassName('trash');
-            const playerSize = 32;
-            let minDistance = 50; // 50px以内に近づいたらEキーが有効
-            let found = null;
-
-            for (let trash of Array.from(trashes)) {
-                const tx = parseInt(trash.style.left);
-                const ty = parseInt(trash.style.top);
-
-                const dx = (playerData.x + playerSize / 2) - (tx + 14);
-                const dy = (playerData.y + playerSize / 2) - (ty + 14);
-                const distance = Math.sqrt(dx * dx + dy * dy);
-
-                if (distance < minDistance) {
-                    minDistance = distance;
-                    found = trash;
-                }
-            }
-
-            nearestTrash = found;
-            const prompt = document.getElementById('interaction-prompt');
-            if (nearestTrash) {
-                prompt.style.display = 'block';
-            } else {
-                prompt.style.display = 'none';
-            }
-        }
-
-        function pickUpTrash(trashElement) {
-            playerData.trashCount += 1;
-            updateUI();
-            trashElement.remove();
-            nearestTrash = null;
-            document.getElementById('interaction-prompt').style.display = 'none';
-        }
-
-        function updateUI() {
-            document.getElementById('money-display').textContent = playerData.money.toLocaleString();
-            document.getElementById('trash-display').textContent = playerData.trashCount;
-            document.getElementById('debt-display').textContent = playerData.debt.toLocaleString();
-            if (isBackpackOpen) {
-                document.getElementById('inv-trash-count').textContent = playerData.trashCount + ' 個';
-            }
-        }
-
-        function spawnTrashLoop() {
-            setInterval(() => {
-                const world = document.getElementById('world');
-                const currentTrashes = world.getElementsByClassName('trash').length;
-                if (currentTrashes < 25) { // 広いマップに合わせて最大数増加
-                    spawnTrash();
-                }
-            }, 1500);
-        }
-
-        function spawnTrash() {
-            const world = document.getElementById('world');
-            const trash = document.createElement('div');
-            trash.className = 'trash';
-            trash.textContent = '🗑️';
-
-            // 広いマップ（1600x1200）全体にランダム配置
-            const x = Math.floor(Math.random() * 1500) + 50;
-            const y = Math.floor(Math.random() * 1100) + 50;
-
-            trash.style.left = x + 'px';
-            trash.style.top = y + 'px';
-
-            world.appendChild(trash);
-        }
-
-        function sellTrashAtShop() {
-            // 買取店の位置付近判定 (x: 1350~1490, y: 200~290)
-            const isInShopArea = (playerData.x >= 1330 && playerData.x <= 1510 && playerData.y >= 180 && playerData.y <= 310);
-
-            if (!isInShopArea) {
-                alert("📍 マップ右上にある「買取店」の建物付近まで移動しないと換金できません！");
-                return;
-            }
-
-            if (playerData.trashCount > 0) {
-                playerData.money += playerData.trashCount * 100;
-                playerData.trashCount = 0;
-                updateUI();
-                alert("💰 ゴミを買い取ってもらいました！");
-            } else {
-                alert("換金するゴミを持っていません！");
-            }
-        }
-
-        function payDebt() {
-            const payAmount = 1000;
-            if (playerData.money >= payAmount) {
-                if (playerData.debt > 0) {
-                    playerData.money -= payAmount;
-                    playerData.debt = Math.max(0, playerData.debt - payAmount);
-                    updateUI();
-
-                    if (playerData.debt === 0) {
-                        alert("🎉 借金をすべて完済しました！家を購入する準備が整えました！");
-                    }
-                } else {
-                    alert("すでに借金は完済しています！");
-                }
-            } else {
-                alert("返済用の資金（1,000G）が足りません。");
-            }
-        }
-
-        function saveData() {
-            localStorage.setItem('lifeGame_saveData', JSON.stringify(playerData));
-            checkSaveData();
-        }
-
-        function saveAndExit() {
-            saveData();
-            alert("位置情報とデータをセーブしました。");
-            location.reload();
-        }
-    </script>
-</body>
-</html>
+/* ---------- 入力・セーブ ---------- */
+window.addEventListener('keydown', e => {
+  const k = e.key.toLowerCase(); keys[k] = true;
+  if (!$('game-screen').classList.contains('active')) return;
+  if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' ', 'tab'].includes(k)) e.preventDefault();
+  if (k === 'tab') return toggleBag();
+  if (k === 'escape') { if (job && !job.over) return; if (ui && !fs) closeUI(); else if (fs) { endFish(); ui = 0; } return; }
+  if (job && !job.over && k >= '1' && k <= '6') return jobIn(+k - 1);
+  if (fs && (k === ' ' || k === 'e')) return fAct();
+  if (k === 'e' && !ui && near) near.f();
+});
+window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+window.addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
+function save() { localStorage.setItem('lifeGame_saveData', JSON.stringify(P)); $('cont').disabled = false; }
+function begin() {
+  $('title-screen').classList.remove('active'); $('game-screen').classList.add('active');
+  build(); trash = []; for (let i = 0; i < 30; i++) spawnTrash(); hud();
+  clearInterval(begin.h); begin.h = setInterval(() => { if (trash.length < 40) spawnTrash(); }, 1500);
+  clearInterval(begin.a); begin.a = setInterval(save, 20000);
+  last = performance.now(); requestAnimationFrame(loop);
+}
+function newGame() {
+  if (localStorage.getItem('lifeGame_saveData') && !confirm('以前のセーブデータが上書きされます。よろしいですか？')) return;
+  P = {...DEF, fish: {}}; save(); begin();
+}
+function contGame() {
+  const s = localStorage.getItem('lifeGame_saveData'); if (!s) return;
+  const o = JSON.parse(s);
+  P = o.ver === 2 ? {...DEF, ...o} : {...DEF, fish: {}, money: o.money || 0, trash: o.trashCount || 0, debt: o.debt ?? 1000000};
+  begin();
+}
+function saveExit() { save(); alert('セーブしました。'); location.reload(); }
+window.onload = () => { $('cont').disabled = !localStorage.getItem('lifeGame_saveData'); };
+</script>
+</body></html>
