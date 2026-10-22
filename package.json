@@ -1,13 +1,13 @@
 {
-  "name": "life-game",
+  "name": "poly-valo",
   "version": "1.0.0",
-  "description": "Life simulation game with debt repayment",
+  "description": "A simple 3D FPS multiplayer game inspired by Valorant",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "express": "^4.18.2",
-    "socket.io": "^4.6.1"
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5"
   }
 }
