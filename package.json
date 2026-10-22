@@ -1,7 +1,7 @@
 {
   "name": "poly-pirates",
-  "version": "4.0.0",
-  "description": "海賊テーマの3D海戦マルチプレイヤーFPS：舵・大砲・修理・フレンド・CPU対応 (Node.js + Three.js + Socket.io)",
+  "version": "5.0.0",
+  "description": "海賊テーマの3D海戦マルチプレイヤーFPS：広大マップ・クラーケン・宝のエリア制圧・ガチャ・ショップ・フレンド・CPU対応 (Node.js + Three.js + Socket.io)",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
