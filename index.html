@@ -22,7 +22,6 @@
             overflow: hidden;
         }
 
-        /* 画面共通設定 */
         .screen {
             display: none;
             width: 800px;
@@ -97,7 +96,6 @@
             overflow: hidden;
         }
 
-        /* UIヘッダー */
         .status-bar {
             background-color: rgba(0, 0, 0, 0.8);
             padding: 12px 20px;
@@ -117,44 +115,54 @@
             color: #e74c3c;
         }
 
-        /* マップエリア */
-        .map-area {
+        /* 【変更】広くなったマップビューポート（カメラ表示枠） */
+        .viewport {
             flex: 1;
             position: relative;
+            overflow: hidden;
             background: #555;
         }
+
+        /* 【変更】実際の広いワールドマップ (1600 x 1200) */
+        #world {
+            position: absolute;
+            width: 1600px;
+            height: 1200px;
+            background: #4a4a4a;
+        }
+
         .road-line {
             position: absolute;
-            top: 50%;
+            top: 600px;
             left: 0;
             right: 0;
-            height: 4px;
-            border-top: 4px dashed #888;
+            height: 6px;
+            border-top: 6px dashed #777;
         }
+
         .cardboard-bed {
             position: absolute;
-            left: 30px;
-            bottom: 30px;
-            width: 90px;
-            height: 60px;
+            left: 100px;
+            top: 700px;
+            width: 100px;
+            height: 70px;
             background: #d35400;
-            border-radius: 4px;
+            border-radius: 6px;
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 0.8rem;
+            font-size: 0.85rem;
             color: #f39c12;
             font-weight: bold;
             box-shadow: 2px 4px 10px rgba(0,0,0,0.4);
         }
 
-        /* 買取店エリア */
         .shop-building {
             position: absolute;
-            right: 40px;
-            top: 40px;
-            width: 120px;
-            height: 80px;
+            left: 1350px;
+            top: 200px;
+            width: 140px;
+            height: 90px;
             background-color: #27ae60;
             border: 3px solid #2ecc71;
             border-radius: 6px;
@@ -162,13 +170,12 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            font-size: 0.85rem;
+            font-size: 0.9rem;
             color: #fff;
             font-weight: bold;
             box-shadow: 2px 4px 10px rgba(0,0,0,0.4);
         }
 
-        /* プレイヤーキャラ（円） */
         #player {
             position: absolute;
             width: 32px;
@@ -180,7 +187,6 @@
             z-index: 5;
         }
 
-        /* ゴミ */
         .trash {
             position: absolute;
             width: 28px;
@@ -194,19 +200,35 @@
             box-shadow: 0 2px 5px rgba(0,0,0,0.3);
         }
 
-        /* 操作案内 */
         .controls-hint {
             position: absolute;
             top: 10px;
-            right: 170px;
-            background: rgba(0,0,0,0.6);
-            padding: 6px 12px;
+            right: 15px;
+            background: rgba(0,0,0,0.7);
+            padding: 8px 14px;
             border-radius: 6px;
-            font-size: 0.8rem;
+            font-size: 0.85rem;
             color: #ccc;
+            z-index: 20;
         }
 
-        /* バックパック（モーダル） */
+        /* 近くにゴミがある時のガイド表示 */
+        #interaction-prompt {
+            position: absolute;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #f39c12;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            color: #f39c12;
+            font-weight: bold;
+            z-index: 20;
+            display: none;
+        }
+
         #backpack-modal {
             position: absolute;
             top: 50%;
@@ -242,7 +264,6 @@
             color: #aaa;
         }
 
-        /* アクションエリア */
         .action-panel {
             background-color: rgba(0, 0, 0, 0.85);
             padding: 15px;
@@ -275,28 +296,30 @@
 
     <!-- 2. ゲーム画面 -->
     <div id="game-screen" class="screen">
-        <!-- 上部ステータス表示 -->
         <div class="status-bar">
             <div class="status-item">所持金: <span id="money-display" class="status-value">0</span> G</div>
             <div class="status-item">集めたゴミ: <span id="trash-display" class="status-value">0</span> 個</div>
             <div class="status-item">残りの借金: <span id="debt-display" class="debt-value">1,000,000</span> G</div>
         </div>
 
-        <!-- マップエリア -->
-        <div class="map-area" id="map-area">
-            <div class="road-line"></div>
-            <div class="cardboard-bed">My ダンボール</div>
-            <div class="shop-building">
-                <span>🏠 買取店</span>
-                <span style="font-size: 0.65rem; color: #f1c40f; margin-top:2px;">ここで換金可能</span>
+        <!-- カメラビューポートとワールドマップ -->
+        <div class="viewport" id="viewport">
+            <div class="controls-hint">移動: [WASD] | 拾う: [E] | バックパック: [Tab]</div>
+            <div id="interaction-prompt">[E] キーでゴミを拾う</div>
+
+            <div id="world">
+                <div class="road-line"></div>
+                <div class="cardboard-bed">My ダンボール</div>
+                <div class="shop-building">
+                    <span>🏠 買取店</span>
+                    <span style="font-size: 0.65rem; color: #f1c40f; margin-top:2px;">ここで換金可能</span>
+                </div>
+                <!-- プレイヤー -->
+                <div id="player"></div>
             </div>
-            <div class="controls-hint">移動: [WASD/矢印] | バックパック: [Tab]</div>
-            
-            <!-- プレイヤーキャラ（円） -->
-            <div id="player"></div>
         </div>
 
-        <!-- バックパック画面（Tabキーで表示） -->
+        <!-- バックパック画面 -->
         <div id="backpack-modal">
             <h2>🎒 バックパック (持ち物)</h2>
             <div class="inventory-item">
@@ -306,7 +329,6 @@
             <div class="close-hint">[Tab] キーを押して閉じる</div>
         </div>
 
-        <!-- 下部操作パネル -->
         <div class="action-panel">
             <button class="action-btn btn-primary" onclick="sellTrashAtShop()">買取店でゴミを換金する (+100G/個)</button>
             <button class="action-btn btn-secondary" onclick="payDebt()">借金を1,000G返済する</button>
@@ -318,10 +340,9 @@
     <script>
         const socket = io();
 
-        // プレイヤーデータ
         let playerData = {
-            x: 70,
-            y: 350,
+            x: 150,
+            y: 730,
             money: 0,
             trashCount: 0,
             debt: 1000000,
@@ -331,6 +352,7 @@
         const keys = {};
         const speed = 4;
         let isBackpackOpen = false;
+        let nearestTrash = null; // 現在Eキーで拾える一番近いゴミ
 
         window.onload = () => {
             checkSaveData();
@@ -347,10 +369,16 @@
             window.addEventListener('keydown', (e) => {
                 keys[e.key] = true;
 
-                // Tabキーでバックパックの開閉
                 if (e.key === 'Tab') {
-                    e.preventDefault(); // デフォルトのフォーカス移動を防止
+                    e.preventDefault();
                     toggleBackpack();
+                }
+
+                // Eキーでゴミを拾う
+                if (e.key === 'e' || e.key === 'E') {
+                    if (nearestTrash && !isBackpackOpen) {
+                        pickUpTrash(nearestTrash);
+                    }
                 }
             });
             window.addEventListener('keyup', (e) => {
@@ -376,8 +404,8 @@
                 }
             }
             playerData = {
-                x: 70,
-                y: 350,
+                x: 150,
+                y: 730,
                 money: 0,
                 trashCount: 0,
                 debt: 1000000,
@@ -404,36 +432,61 @@
         }
 
         function gameLoop() {
-            // バックパックが開いている時は移動を停止
             if (!isBackpackOpen) {
+                // 広くなったマップの端（1600x1200）で制限
                 if (keys['ArrowUp'] || keys['w'] || keys['W']) {
                     playerData.y = Math.max(10, playerData.y - speed);
                 }
                 if (keys['ArrowDown'] || keys['s'] || keys['S']) {
-                    playerData.y = Math.min(410, playerData.y + speed);
+                    playerData.y = Math.min(1160, playerData.y + speed);
                 }
                 if (keys['ArrowLeft'] || keys['a'] || keys['A']) {
                     playerData.x = Math.max(10, playerData.x - speed);
                 }
                 if (keys['ArrowRight'] || keys['d'] || keys['D']) {
-                    playerData.x = Math.min(750, playerData.x + speed);
+                    playerData.x = Math.min(1560, playerData.x + speed);
                 }
             }
 
+            // プレイヤー位置更新
             const playerEl = document.getElementById('player');
             playerEl.style.left = playerData.x + 'px';
             playerEl.style.top = playerData.y + 'px';
 
-            checkTrashCollision();
+            // カメラ追従処理（プレイヤーが画面の中央に来るようにワールドを動かす）
+            updateCamera();
+
+            // 最も近いゴミを探す判定
+            checkNearestTrash();
 
             if (document.getElementById('game-screen').classList.contains('active')) {
                 requestAnimationFrame(gameLoop);
             }
         }
 
-        function checkTrashCollision() {
+        function updateCamera() {
+            const viewport = document.getElementById('viewport');
+            const world = document.getElementById('world');
+            
+            const vpWidth = viewport.clientWidth;
+            const vpHeight = viewport.clientHeight;
+
+            // プレイヤーを中心にスクロール計算
+            let camX = playerData.x - vpWidth / 2 + 16;
+            let camY = playerData.y - vpHeight / 2 + 16;
+
+            // マップの端を超えないように制限
+            camX = Math.max(0, Math.min(1600 - vpWidth, camX));
+            camY = Math.max(0, Math.min(1200 - vpHeight, camY));
+
+            world.style.transform = `translate(${-camX}px, ${-camY}px)`;
+        }
+
+        function checkNearestTrash() {
             const trashes = document.getElementsByClassName('trash');
             const playerSize = 32;
+            let minDistance = 50; // 50px以内に近づいたらEキーが有効
+            let found = null;
 
             for (let trash of Array.from(trashes)) {
                 const tx = parseInt(trash.style.left);
@@ -443,12 +496,27 @@
                 const dy = (playerData.y + playerSize / 2) - (ty + 14);
                 const distance = Math.sqrt(dx * dx + dy * dy);
 
-                if (distance < 25) {
-                    playerData.trashCount += 1;
-                    updateUI();
-                    trash.remove();
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    found = trash;
                 }
             }
+
+            nearestTrash = found;
+            const prompt = document.getElementById('interaction-prompt');
+            if (nearestTrash) {
+                prompt.style.display = 'block';
+            } else {
+                prompt.style.display = 'none';
+            }
+        }
+
+        function pickUpTrash(trashElement) {
+            playerData.trashCount += 1;
+            updateUI();
+            trashElement.remove();
+            nearestTrash = null;
+            document.getElementById('interaction-prompt').style.display = 'none';
         }
 
         function updateUI() {
@@ -462,36 +530,36 @@
 
         function spawnTrashLoop() {
             setInterval(() => {
-                const map = document.getElementById('map-area');
-                const currentTrashes = map.getElementsByClassName('trash').length;
-                if (currentTrashes < 8) {
+                const world = document.getElementById('world');
+                const currentTrashes = world.getElementsByClassName('trash').length;
+                if (currentTrashes < 25) { // 広いマップに合わせて最大数増加
                     spawnTrash();
                 }
-            }, 2000);
+            }, 1500);
         }
 
         function spawnTrash() {
-            const map = document.getElementById('map-area');
+            const world = document.getElementById('world');
             const trash = document.createElement('div');
             trash.className = 'trash';
             trash.textContent = '🗑️';
 
-            const x = Math.floor(Math.random() * 680) + 50;
-            const y = Math.floor(Math.random() * 380) + 20;
+            // 広いマップ（1600x1200）全体にランダム配置
+            const x = Math.floor(Math.random() * 1500) + 50;
+            const y = Math.floor(Math.random() * 1100) + 50;
 
             trash.style.left = x + 'px';
             trash.style.top = y + 'px';
 
-            map.appendChild(trash);
+            world.appendChild(trash);
         }
 
-        // 【変更】買取店の近く（右上のエリア）にいないと換金できない制限
         function sellTrashAtShop() {
-            // 買取店の位置付近の判定 (画面右上のエリア: xが600以上、yが120以下)
-            const isInShopArea = (playerData.x >= 580 && playerData.y <= 130);
+            // 買取店の位置付近判定 (x: 1350~1490, y: 200~290)
+            const isInShopArea = (playerData.x >= 1330 && playerData.x <= 1510 && playerData.y >= 180 && playerData.y <= 310);
 
             if (!isInShopArea) {
-                alert("📍 画面右上にある「買取店」の建物付近まで移動しないと換金できません！");
+                alert("📍 マップ右上にある「買取店」の建物付近まで移動しないと換金できません！");
                 return;
             }
 
@@ -514,7 +582,7 @@
                     updateUI();
 
                     if (playerData.debt === 0) {
-                        alert("🎉 借金をすべて完済しました！家を購入する準備が整いました！");
+                        alert("🎉 借金をすべて完済しました！家を購入する準備が整えました！");
                     }
                 } else {
                     alert("すでに借金は完済しています！");
