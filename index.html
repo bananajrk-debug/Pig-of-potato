@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>POLY PIRATES - 海賊爆破FPS</title>
+<title>POLY PIRATES - 海賊海戦FPS</title>
 <style>
   :root{
     --navy:#0a1a2a; --deep:#10283d; --parch:#f1e3bd; --gold:#f2b632; --gold2:#ffd873;
@@ -18,8 +18,7 @@
   .screen button,.screen input,.screen .pa{pointer-events:auto}
   .hidden{display:none!important}
 
-  /* ---------- ボタン ---------- */
-  .big-btn{font-family:var(--serif);font-weight:900;font-size:26px;letter-spacing:.12em;padding:16px 46px;border:0;cursor:pointer;
+  .big-btn{font-family:var(--serif);font-weight:900;font-size:28px;letter-spacing:.14em;padding:16px 56px;border:0;cursor:pointer;
     color:var(--ink);background:linear-gradient(180deg,#ffe08a,#f2b632 55%,#d9981c);border-radius:6px;
     box-shadow:0 5px 0 #8a5a0c,0 12px 24px rgba(0,0,0,.45);transform:skewX(-6deg);transition:transform .08s, box-shadow .08s, filter .15s}
   .big-btn:hover:not(:disabled){filter:brightness(1.08);transform:skewX(-6deg) translateY(-2px)}
@@ -28,92 +27,93 @@
   .sub-btn{font-family:var(--sans);font-weight:700;font-size:15px;padding:10px 22px;border:1px solid rgba(255,255,255,.35);
     background:rgba(10,26,42,.75);color:#fff;cursor:pointer;border-radius:4px}
   .sub-btn:hover{background:rgba(242,182,50,.25);border-color:var(--gold)}
+  .mini{font-family:var(--sans);font-weight:700;font-size:12px;padding:5px 10px;border:1px solid rgba(255,255,255,.35);background:rgba(10,26,42,.85);color:#fff;cursor:pointer;border-radius:3px}
+  .mini:hover{background:rgba(242,182,50,.3);border-color:var(--gold)}
+  .mini.ok{border-color:#6fe08a;color:#9dffb0}.mini.ng{border-color:#e06a6a;color:#ffb0b0}
 
   /* ---------- タイトル ---------- */
-  #title{display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at center,rgba(10,26,42,.15),rgba(10,26,42,.75))}
+  #title{display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at center,rgba(10,26,42,.15),rgba(10,26,42,.78))}
   .title-box{text-align:center;padding:30px 50px;pointer-events:auto}
   .title-sub{font-family:var(--serif);letter-spacing:.5em;color:var(--gold2);font-size:15px;margin-bottom:6px;text-shadow:0 2px 6px #000}
-  #title h1{font-family:var(--serif);font-weight:900;font-size:clamp(64px,12vw,148px);line-height:.92;letter-spacing:.04em;
+  #title h1{font-family:var(--serif);font-weight:900;font-size:clamp(60px,11vw,140px);line-height:.92;letter-spacing:.04em;
     color:var(--parch);text-shadow:0 4px 0 #6b3d10,0 8px 0 #3a210a,0 18px 40px rgba(0,0,0,.7);transform:rotate(-2deg)}
   .title-tag{margin:18px 0 26px;font-family:var(--serif);font-size:20px;color:#fff;text-shadow:0 2px 6px #000;letter-spacing:.15em}
   #nameInput{display:block;margin:0 auto 20px;width:300px;padding:12px 16px;font-size:20px;text-align:center;font-family:var(--serif);font-weight:700;
-    color:var(--ink);background:var(--parch);border:3px solid #6b3d10;border-radius:4px;outline:none}
+    color:var(--ink);background:var(--parch);border:3px solid #6b3d10;border-radius:4px;outline:none;-webkit-user-select:text;user-select:text}
   #nameInput:focus{border-color:var(--gold)}
-  .title-hint{margin-top:26px;font-size:13px;color:#d8d2bd;text-shadow:0 1px 4px #000;line-height:1.8}
+  .title-hint{margin-top:26px;font-size:13px;color:#d8d2bd;text-shadow:0 1px 4px #000;line-height:1.9}
 
   /* ---------- ロビー ---------- */
-  .lb-top{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:18px 34px;
-    background:linear-gradient(180deg,rgba(10,26,42,.85),transparent)}
+  .lb-top{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:16px 30px;
+    background:linear-gradient(180deg,rgba(10,26,42,.88),transparent)}
   .lb-logo{font-family:var(--serif);font-size:30px;font-weight:900;letter-spacing:.12em;color:var(--parch);text-shadow:0 3px 0 #6b3d10}
-  .lb-right{display:flex;gap:22px;align-items:center;font-size:15px;color:#fff}
+  .lb-right{display:flex;gap:20px;align-items:center;font-size:15px}
   #lbName{font-family:var(--serif);font-weight:900;font-size:20px;color:var(--gold2)}
-  #lbOnline{color:#bcd}
-  .lb-chars{position:absolute;right:34px;top:100px;width:330px;display:flex;flex-direction:column;gap:10px}
-  .lb-card{pointer-events:auto;cursor:pointer;display:flex;align-items:center;gap:14px;padding:12px 16px;
-    background:rgba(10,26,42,.78);border:2px solid rgba(255,255,255,.18);border-radius:4px;transform:skewX(-5deg);transition:all .12s}
-  .lb-card:hover{border-color:var(--gold);background:rgba(30,50,70,.85)}
-  .lb-card.sel{border-color:var(--gold);background:linear-gradient(90deg,rgba(242,182,50,.35),rgba(10,26,42,.85));box-shadow:0 0 22px rgba(242,182,50,.45)}
-  .lb-card>*{transform:skewX(5deg)}
-  .lb-chip{width:42px;height:42px;border-radius:50%;border:3px solid #fff;flex:none;box-shadow:inset 0 -6px 0 rgba(0,0,0,.25)}
-  .lb-card b{display:block;font-family:var(--serif);font-size:18px}
-  .lb-card small{color:#bcd;font-size:12px}
-  .lb-info{position:absolute;left:34px;bottom:34px;width:470px;padding:18px 22px;background:rgba(10,26,42,.78);border-left:5px solid var(--gold);border-radius:3px}
-  .lb-info h2{font-family:var(--serif);font-size:30px;font-weight:900;color:var(--parch)}
-  .lb-info .role{display:inline-block;margin:4px 0 8px;padding:2px 12px;background:var(--gold);color:var(--ink);font-weight:900;font-size:13px;border-radius:2px}
-  .lb-info p{font-size:14px;line-height:1.7;color:#e6e0cc;margin-bottom:10px}
-  .lb-ab{display:flex;gap:10px;align-items:flex-start;margin-top:6px;font-size:13px;color:#fff}
-  .lb-ab kbd{flex:none;width:30px;height:30px;line-height:28px;text-align:center;border:2px solid var(--gold);border-radius:4px;font-family:var(--serif);font-weight:900;color:var(--gold2);background:rgba(0,0,0,.4)}
-  .lb-ab span{color:#cfd}
-  .lb-ab b{color:#fff}
-  .lb-bottom{position:absolute;right:34px;bottom:34px;text-align:right}
-  .lb-mode{font-size:14px;color:#e8dcb0;margin-bottom:12px;text-shadow:0 1px 4px #000;line-height:1.6}
-  #lbHint{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);font-size:12px;color:#d9cfae;text-shadow:0 1px 3px #000}
+  #lbCredits{color:var(--gold);font-weight:800}
+  #lbOnline,#lbRecord{color:#bcd;font-size:14px}
+  .panel{position:absolute;top:84px;bottom:110px;width:310px;padding:14px 16px;overflow:auto;
+    background:rgba(10,26,42,.82);border:2px solid rgba(255,255,255,.16);border-radius:4px}
+  .panel.left{left:26px}.panel.right{right:26px}
+  .panel h3{font-family:var(--serif);font-size:22px;color:var(--parch);margin-bottom:10px;border-bottom:2px solid var(--gold);padding-bottom:4px}
+  .mycode{font-size:13px;color:#cde;margin-bottom:10px}
+  .mycode b{display:inline-block;margin:0 8px;padding:2px 10px;background:var(--parch);color:var(--ink);font-family:var(--serif);font-size:20px;letter-spacing:.2em;-webkit-user-select:text;user-select:text}
+  .addrow{display:flex;gap:6px;margin-bottom:12px}
+  .addrow input{flex:1;min-width:0;padding:7px 9px;font-size:15px;letter-spacing:.15em;text-transform:uppercase;background:#f1e3bd;color:var(--ink);border:2px solid #6b3d10;border-radius:3px;outline:none;-webkit-user-select:text;user-select:text}
+  .sec{font-size:12px;color:var(--gold2);margin:10px 0 4px;letter-spacing:.1em}
+  .frow{display:flex;align-items:center;gap:7px;padding:7px 8px;margin-bottom:5px;background:rgba(255,255,255,.07);border-radius:3px;font-size:14px}
+  .frow .dot{width:9px;height:9px;border-radius:50%;background:#666;flex:none}
+  .frow .dot.on{background:#5ee07a;box-shadow:0 0 6px #5ee07a}
+  .frow .dot.bt{background:#ffb347;box-shadow:0 0 6px #ffb347}
+  .frow .nm{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .frow small{color:#9ab}
+  .empty{font-size:13px;color:#8aa;padding:6px 2px}
+  .skin{display:flex;align-items:center;gap:11px;padding:9px 10px;margin-bottom:8px;cursor:pointer;background:rgba(255,255,255,.07);border:2px solid transparent;border-radius:3px}
+  .skin:hover{border-color:rgba(242,182,50,.6)}
+  .skin.sel{border-color:var(--gold);background:rgba(242,182,50,.18)}
+  .skin .chip{width:34px;height:34px;border-radius:50%;border:3px solid #fff;flex:none;box-shadow:inset 0 -5px 0 rgba(0,0,0,.28)}
+  .skin b{display:block;font-family:var(--serif);font-size:16px}
+  .skin small{color:#bcd;font-size:12px}
+  .skin .tag{margin-left:auto;font-size:12px;font-weight:800;color:var(--gold2);white-space:nowrap}
+  .lb-center{position:absolute;left:0;right:0;bottom:26px;text-align:center}
+  #lbStatus{font-size:14px;color:#e8dcb0;margin-bottom:12px;text-shadow:0 1px 4px #000;line-height:1.6}
+  #lbHint{margin-top:12px;font-size:12px;color:#d9cfae;text-shadow:0 1px 3px #000}
   #loading{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;
-    background:rgba(5,12,20,.88);font-family:var(--serif);font-size:34px;font-weight:900;letter-spacing:.2em;color:var(--gold2)}
+    background:rgba(5,12,20,.9);font-family:var(--serif);font-size:34px;font-weight:900;letter-spacing:.2em;color:var(--gold2)}
   #loading small{font-size:15px;letter-spacing:.1em;color:#cde;font-family:var(--sans);font-weight:400}
 
   /* ---------- HUD ---------- */
-  #topbar{position:absolute;top:10px;left:50%;transform:translateX(-50%);display:flex;align-items:stretch;gap:0;text-shadow:0 2px 4px #000}
-  #topbar .score{width:74px;display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-weight:900;font-size:38px;background:rgba(10,26,42,.78);border-bottom:4px solid #fff}
-  #scoreMe{border-bottom-color:var(--crimson)}
-  #scoreEn{border-bottom-color:var(--blue)}
-  #centerInfo{width:200px;text-align:center;padding:5px 0 6px;background:rgba(10,26,42,.88)}
-  #roundLabel{font-size:12px;color:var(--gold2);letter-spacing:.2em}
-  #timer{font-family:var(--serif);font-weight:900;font-size:30px;line-height:1.05}
-  #roleLabel{font-size:12px;color:#dfe}
-  #bombInfo{position:absolute;top:84px;left:50%;transform:translateX(-50%);padding:6px 22px;background:rgba(160,20,20,.85);border:2px solid #ff8a5a;
-    font-family:var(--serif);font-weight:900;font-size:20px;letter-spacing:.1em;animation:pulse .6s infinite alternate}
-  @keyframes pulse{from{filter:brightness(1)}to{filter:brightness(1.5)}}
+  #shipBars{position:absolute;top:10px;left:50%;transform:translateX(-50%);display:flex;align-items:flex-start;gap:12px;text-shadow:0 2px 4px #000}
+  .sb{width:260px;padding:6px 10px 7px;background:rgba(10,26,42,.82);border-bottom:4px solid #fff}
+  .sb.me{border-bottom-color:var(--crimson)}.sb.en{border-bottom-color:var(--blue)}
+  .sb .row{display:flex;justify-content:space-between;font-size:13px;font-weight:700}
+  .sb .bar{height:12px;margin-top:4px;background:rgba(0,0,0,.6);border:2px solid #fff}
+  .sb .bar i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#f2b632,#ffe08a);transition:width .2s}
+  .sb small{display:block;margin-top:3px;font-size:12px;color:#ffb0a0}
+  #phaseLabel{align-self:center;font-family:var(--serif);font-weight:900;font-size:16px;color:var(--gold2);letter-spacing:.15em;width:70px;text-align:center}
+  #minimap{position:absolute;left:14px;top:14px;width:150px;height:150px;border-radius:50%;border:3px solid rgba(255,255,255,.7);background:rgba(10,40,70,.6)}
+  #killfeed{position:absolute;top:84px;right:14px;display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+  .kf{padding:5px 12px;background:rgba(10,26,42,.8);border-right:4px solid var(--gold);font-size:14px;font-weight:700;animation:kfin .2s}
+  .kf em{font-style:normal;color:var(--gold2);margin:0 6px}
+  @keyframes kfin{from{transform:translateX(40px);opacity:0}to{transform:none;opacity:1}}
   #crosshair{position:absolute;left:50%;top:50%;width:0;height:0}
-  #crosshair i{position:absolute;display:none;background:#fff;box-shadow:0 0 2px #000}
-  #crosshair.ch-cross i.l,#crosshair.ch-cross i.r{display:block;width:9px;height:2px;top:-1px}
-  #crosshair.ch-cross i.t,#crosshair.ch-cross i.b{display:block;width:2px;height:9px;left:-1px}
-  #crosshair.ch-cross i.l{left:-17px}#crosshair.ch-cross i.r{left:8px}
-  #crosshair.ch-cross i.t{top:-17px}#crosshair.ch-cross i.b{top:8px}
-  #crosshair.ch-ring i.c{display:block;width:46px;height:46px;left:-23px;top:-23px;background:transparent;border:2px solid #fff;border-radius:50%;box-shadow:0 0 2px #000,inset 0 0 2px #000}
-  #crosshair.ch-dot i.c{display:block;width:6px;height:6px;left:-3px;top:-3px;border-radius:50%}
-  #crosshair.ch-none i{display:none!important}
+  #crosshair i{position:absolute;background:#fff;box-shadow:0 0 2px #000}
+  #crosshair i.l,#crosshair i.r{width:9px;height:2px;top:-1px}
+  #crosshair i.t,#crosshair i.b{width:2px;height:9px;left:-1px}
+  #crosshair i.l{left:-17px}#crosshair i.r{left:8px}#crosshair i.t{top:-17px}#crosshair i.b{top:8px}
+  #crosshair.cannon i.l{left:-30px;width:22px}#crosshair.cannon i.r{left:8px;width:22px}
+  #crosshair.cannon i.t{top:-30px;height:22px}#crosshair.cannon i.b{top:8px;height:22px}
   #hitmarker{position:absolute;left:50%;top:50%;width:30px;height:30px;margin:-15px 0 0 -15px;opacity:0;transition:opacity .25s}
   #hitmarker::before,#hitmarker::after{content:'';position:absolute;left:14px;top:-2px;width:3px;height:34px;background:#fff;box-shadow:0 0 3px #000}
   #hitmarker::before{transform:rotate(45deg)}#hitmarker::after{transform:rotate(-45deg)}
   #hitmarker.on{opacity:1;transition:none}
-  #hitmarker.head::before,#hitmarker.head::after{background:#ff4040}
-  #hitmarker.kill::before,#hitmarker.kill::after{background:#ff4040;width:4px}
-  #scopeOv{position:absolute;inset:0;background:radial-gradient(circle at center,transparent 0,transparent 33vh,#000 33.4vh)}
-  #scopeOv::before,#scopeOv::after{content:'';position:absolute;background:#000}
-  #scopeOv::before{left:0;right:0;top:50%;height:2px}
-  #scopeOv::after{top:0;bottom:0;left:50%;width:2px}
-  #killfeed{position:absolute;top:72px;right:14px;display:flex;flex-direction:column;align-items:flex-end;gap:4px}
-  .kf{padding:5px 12px;background:rgba(10,26,42,.8);border-right:4px solid var(--gold);font-size:15px;font-weight:700;animation:kfin .2s}
-  .kf.me{border-right-color:var(--crimson);background:rgba(80,20,24,.85)}
-  .kf em{font-style:normal;color:var(--gold2);margin:0 6px}
-  @keyframes kfin{from{transform:translateX(40px);opacity:0}to{transform:none;opacity:1}}
-  #prompt{position:absolute;left:50%;top:62%;transform:translateX(-50%);font-family:var(--serif);font-weight:900;font-size:22px;color:var(--gold2);text-shadow:0 2px 6px #000;text-align:center}
-  #progWrap{position:absolute;left:50%;top:68%;transform:translateX(-50%);width:340px;text-align:center}
-  #progLabel{font-family:var(--serif);font-weight:900;font-size:18px;margin-bottom:6px;text-shadow:0 2px 4px #000}
-  #progBar{height:16px;background:rgba(0,0,0,.65);border:2px solid #fff;border-radius:3px;overflow:hidden}
+  #hitmarker.head::before,#hitmarker.head::after,#hitmarker.kill::before,#hitmarker.kill::after{background:#ff4040}
+  #prompt{position:absolute;left:50%;top:60%;transform:translateX(-50%);font-family:var(--serif);font-weight:900;font-size:22px;color:var(--gold2);text-shadow:0 2px 6px #000;text-align:center;white-space:nowrap}
+  #prompt.dim{color:#9aa}
+  #progWrap{position:absolute;left:50%;top:67%;transform:translateX(-50%);width:320px;text-align:center}
+  #progLabel{font-family:var(--serif);font-weight:900;font-size:17px;margin-bottom:6px;text-shadow:0 2px 4px #000}
+  #progBar{height:15px;background:rgba(0,0,0,.65);border:2px solid #fff;border-radius:3px;overflow:hidden}
   #progFill{height:100%;width:0;background:linear-gradient(90deg,#f2b632,#ffe08a)}
-  #banner{position:absolute;left:0;right:0;top:20%;text-align:center;opacity:0;transform:scale(1.25);transition:opacity .35s,transform .35s;pointer-events:none}
+  #banner{position:absolute;left:0;right:0;top:18%;text-align:center;opacity:0;transform:scale(1.25);transition:opacity .35s,transform .35s;pointer-events:none}
   #banner.show{opacity:1;transform:scale(1)}
   #bannerMain{font-family:var(--serif);font-weight:900;font-size:clamp(40px,7vw,86px);letter-spacing:.12em;color:var(--parch);text-shadow:0 4px 0 #6b3d10,0 10px 30px rgba(0,0,0,.8)}
   #bannerSub{margin-top:6px;font-size:22px;color:#fff;text-shadow:0 2px 8px #000;letter-spacing:.12em}
@@ -121,2119 +121,1567 @@
   #banner.lose #bannerMain{color:#ff9a9a;text-shadow:0 4px 0 #7a1414,0 10px 30px rgba(0,0,0,.8)}
   #dmgFlash{position:absolute;inset:0;background:radial-gradient(circle,transparent 45%,rgba(220,20,20,.75));opacity:0;transition:opacity .5s}
   #dmgFlash.on{opacity:1;transition:none}
-  #dmgArrow{position:absolute;left:50%;top:50%;width:0;height:0;opacity:0;transition:opacity .6s}
-  #dmgArrow.on{opacity:1;transition:none}
-  #dmgArrow::after{content:'';position:absolute;left:-18px;top:-150px;border-left:18px solid transparent;border-right:18px solid transparent;border-bottom:34px solid rgba(255,40,40,.9)}
-  #specLabel{position:absolute;left:50%;bottom:120px;transform:translateX(-50%);padding:8px 24px;background:rgba(10,26,42,.8);border:2px solid var(--gold);font-family:var(--serif);font-weight:900;font-size:20px}
-  #bl{position:absolute;left:26px;bottom:24px;min-width:300px}
-  #hpRow{display:flex;align-items:baseline;gap:10px}
-  #hpNum{font-family:var(--serif);font-weight:900;font-size:60px;line-height:1;text-shadow:0 3px 6px #000}
-  #hpBar{width:200px;height:12px;background:rgba(0,0,0,.6);border:2px solid #fff;margin-top:6px}
-  #hpFill{height:100%;width:100%;background:linear-gradient(90deg,#3ddc84,#9dffb0)}
-  #credits{margin-top:8px;font-family:var(--serif);font-weight:900;font-size:22px;color:var(--gold2);text-shadow:0 2px 4px #000}
-  #abil{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);display:flex;gap:16px}
-  .slot{position:relative;width:132px;height:62px;background:rgba(10,26,42,.82);border:2px solid var(--gold);overflow:hidden;display:flex;align-items:center;gap:10px;padding:0 10px}
-  .slot kbd{flex:none;width:34px;height:34px;line-height:32px;text-align:center;border:2px solid #fff;border-radius:4px;font-family:var(--serif);font-weight:900;font-size:20px}
-  .slot span{font-size:13px;font-weight:700;line-height:1.25;position:relative;z-index:2}
-  .slot .cd{position:absolute;left:0;right:0;bottom:0;height:0;background:rgba(0,0,0,.7);z-index:1}
-  .slot.rdy{box-shadow:0 0 14px rgba(242,182,50,.6)}
-  .slot .cdt{position:absolute;right:8px;top:4px;font-family:var(--serif);font-weight:900;font-size:16px;z-index:3;color:#fff}
-  #br{position:absolute;right:26px;bottom:24px;text-align:right;text-shadow:0 2px 6px #000}
-  #wName{font-family:var(--serif);font-weight:900;font-size:22px;color:var(--parch)}
-  #ammo{font-family:var(--serif);font-weight:900;font-size:64px;line-height:1}
-  #ammo small{font-size:26px;color:#cde}
-  #reloadTxt{font-size:15px;color:var(--gold2);height:20px}
-  #scoreboard{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:760px;max-width:94vw;padding:16px 20px;background:rgba(8,20,32,.92);border:2px solid var(--gold)}
-  #scoreboard h3{font-family:var(--serif);font-size:20px;margin:8px 0 4px}
-  #scoreboard table{width:100%;border-collapse:collapse;font-size:15px}
-  #scoreboard th{color:var(--gold2);text-align:left;font-weight:700;padding:4px 8px;border-bottom:1px solid rgba(255,255,255,.25)}
-  #scoreboard td{padding:5px 8px;border-bottom:1px solid rgba(255,255,255,.08)}
-  #scoreboard .dead{opacity:.45}
-  #scoreboard .you td{background:rgba(242,182,50,.18)}
-  #buyMenu{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:860px;max-width:96vw;padding:20px 24px;background:rgba(8,20,32,.94);border:3px solid var(--gold)}
-  #buyMenu h2{font-family:var(--serif);font-size:28px;font-weight:900;color:var(--parch);display:flex;justify-content:space-between;align-items:center}
-  #buyMenu .bm-sub{font-size:13px;color:#cde;margin:4px 0 14px}
-  .bm-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-  .bm-card{pointer-events:auto;cursor:pointer;padding:12px;background:rgba(255,255,255,.06);border:2px solid rgba(255,255,255,.2);border-radius:4px;transition:all .1s}
-  .bm-card:hover{border-color:var(--gold);background:rgba(242,182,50,.15)}
-  .bm-card.owned{border-color:#3ddc84;background:rgba(61,220,132,.15)}
-  .bm-card.poor{opacity:.5}
-  .bm-key{display:inline-block;width:24px;height:24px;line-height:22px;text-align:center;border:2px solid var(--gold);border-radius:3px;font-weight:900;margin-right:6px;font-family:var(--serif)}
-  .bm-card b{font-family:var(--serif);font-size:16px}
-  .bm-card .tp{font-size:12px;color:#bcd;margin:4px 0}
-  .bm-card .cost{font-family:var(--serif);font-weight:900;font-size:22px;color:var(--gold2);margin:6px 0}
-  .bm-card .st{font-size:12px;color:#dde;line-height:1.6}
-  #pause,#matchEnd{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:18px;background:rgba(5,12,20,.72);text-align:center}
-  #pause{cursor:pointer;pointer-events:auto}
-  #pause h2,#matchEnd h2{font-family:var(--serif);font-weight:900;font-size:50px;letter-spacing:.14em;color:var(--parch);text-shadow:0 4px 0 #6b3d10}
-  #pause p,#matchEnd p{font-size:16px;color:#dfe;line-height:1.9}
-  #matchEnd{pointer-events:auto}
-  #matchEnd .big{font-size:clamp(60px,10vw,120px)}
-  #toast{position:absolute;left:50%;top:30%;transform:translateX(-50%);padding:8px 22px;background:rgba(10,26,42,.88);border:1px solid var(--gold);font-weight:700;opacity:0;transition:opacity .3s}
-  #toast.on{opacity:1}
+  #bl{position:absolute;left:26px;bottom:24px;min-width:260px}
+  #hpNum{font-family:var(--serif);font-weight:900;font-size:56px;line-height:1;text-shadow:0 3px 6px #000}
+  #hpBar{width:220px;height:12px;background:rgba(0,0,0,.6);border:2px solid #fff;margin-top:6px}
+  #hpFill{height:100%;width:100%;background:linear-gradient(90deg,#d23a40,#ff8a8a)}
+  #woodRow{margin-top:8px;font-size:17px;font-weight:800;color:#e8c58a;text-shadow:0 2px 4px #000}
+  #br{position:absolute;right:26px;bottom:24px;text-align:right;text-shadow:0 2px 4px #000}
+  #wName{font-family:var(--serif);font-weight:900;font-size:20px;color:var(--gold2)}
+  #wAmmo{font-family:var(--serif);font-weight:900;font-size:50px;line-height:1}
+  #wSlots{margin-top:6px;font-size:13px;color:#cde}
+  #wSlots b{color:var(--gold2)}
+  #helmHud{position:absolute;right:26px;top:46%;width:90px;text-align:center;font-size:13px;font-weight:700;text-shadow:0 2px 4px #000}
+  #sailGauge{height:130px;width:18px;margin:6px auto;background:rgba(0,0,0,.6);border:2px solid #fff;position:relative}
+  #sailFill{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(0deg,#f2b632,#ffe08a);height:0}
+  #wheelGauge{height:14px;width:90px;margin:4px auto;background:rgba(0,0,0,.6);border:2px solid #fff;position:relative}
+  #wheelDot{position:absolute;top:-2px;width:8px;height:14px;background:var(--gold2);left:41px}
+  #deadInfo{position:absolute;left:50%;bottom:130px;transform:translateX(-50%);padding:10px 28px;background:rgba(10,26,42,.82);border:2px solid var(--crimson);font-family:var(--serif);font-weight:900;font-size:22px}
+  #pause{background:rgba(5,12,20,.72);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;z-index:30}
+  #pause h2{font-family:var(--serif);font-size:38px;color:var(--parch);letter-spacing:.15em}
+  #pause p{font-size:14px;color:#cde;line-height:1.9;text-align:center;max-width:560px}
+  #flash{position:fixed;inset:0;z-index:25;background:#fff;opacity:0;pointer-events:none;transition:opacity 1.3s}
+  #flash.on{opacity:.95;transition:none}
+  #bars i{position:fixed;left:0;right:0;height:0;background:#000;z-index:24;transition:height .8s;pointer-events:none}
+  #bars i.t{top:0}#bars i.b{bottom:0}
+  body.cinema #bars i{height:11vh}
+  body.cinema #hud .hudhide{display:none!important}
+  #toasts{position:fixed;left:50%;top:84px;transform:translateX(-50%);z-index:40;display:flex;flex-direction:column;gap:6px;align-items:center;pointer-events:none}
+  .toast{padding:8px 20px;background:rgba(10,26,42,.92);border:2px solid var(--gold);font-weight:700;font-size:15px;animation:kfin .2s}
 </style>
 </head>
 <body>
-<canvas id="view" tabindex="-1"></canvas>
+<canvas id="view"></canvas>
 
-<!-- ================= タイトル ================= -->
-<div id="title" class="screen">
+<div id="loading"><div>POLY PIRATES</div><small id="loadMsg">サーバーに接続中…</small></div>
+
+<!-- タイトル -->
+<div id="title" class="screen hidden">
   <div class="title-box">
-    <div class="title-sub">⚓ 3D MULTIPLAYER FPS ⚓</div>
+    <div class="title-sub">― 大海賊時代・海戦篇 ―</div>
     <h1>POLY<br>PIRATES</h1>
-    <div class="title-tag">二隻の海賊船で戦う　5点先取の爆破戦</div>
+    <div class="title-tag">舵を取れ、砲を撃て、敵船を沈めろ！</div>
     <input id="nameInput" maxlength="12" placeholder="海賊名を入力" autocomplete="off">
-    <button id="btnPlay" class="big-btn" disabled>接続中…</button>
-    <div class="title-hint">
-      WASD 移動　/　マウス 視点　/　左クリック 射撃　/　右クリック スコープ<br>
-      B 購入　/　Q・E アビリティ　/　F 長押しで設置・解除　/　R リロード　/　Tab 戦績
-    </div>
+    <button id="startBtn" class="big-btn">冒険を始める</button>
+    <div class="title-hint">セーブデータは自動で保存されます（アップデートしても消えません）</div>
   </div>
 </div>
 
-<!-- ================= ロビー ================= -->
+<!-- ロビー -->
 <div id="lobby" class="screen hidden">
   <div class="lb-top">
     <div class="lb-logo">POLY PIRATES</div>
-    <div class="lb-right"><span id="lbName"></span><span id="lbOnline"></span></div>
+    <div class="lb-right">
+      <span id="lbName">-</span><span id="lbCredits">0 G</span><span id="lbRecord"></span><span id="lbOnline"></span>
+    </div>
   </div>
-  <div class="lb-chars" id="lbChars"></div>
-  <div class="lb-info" id="lbInfo"></div>
-  <div class="lb-bottom">
-    <div class="lb-mode">モード：爆破（5点先取・4ラウンドで攻守交代）<br>攻撃は火薬樽を設置、防衛は解除せよ</div>
-    <button id="btnMatch" class="big-btn">マッチ開始</button>
+  <div class="panel left pa">
+    <h3>フレンド</h3>
+    <div class="mycode">あなたのコード<b id="myCode">------</b><button id="copyCode" class="mini">コピー</button></div>
+    <div class="addrow"><input id="friendInput" maxlength="8" placeholder="フレンドコード" autocomplete="off"><button id="friendAddBtn" class="mini">申請</button></div>
+    <div id="reqBox"></div>
+    <div class="sec">フレンド一覧</div>
+    <div id="friendList"></div>
   </div>
-  <div id="lbHint">ドラッグでキャラクターを回転</div>
+  <div class="panel right pa">
+    <h3>衣装（スキン）</h3>
+    <div id="skinList"></div>
+    <div class="empty">戦闘で稼いだクレジットで衣装を購入できます。</div>
+  </div>
+  <div class="lb-center">
+    <div id="lbStatus"></div>
+    <button id="joinBtn" class="big-btn">出航する</button>
+    <div id="lbHint">WASD移動 / マウス視点 / 左クリック攻撃 / F 舵・大砲・修理(長押し) / R リロード / 1-3 武器 / C 飛び込み</div>
+  </div>
 </div>
 
-<!-- ================= HUD ================= -->
+<!-- HUD -->
 <div id="hud" class="screen hidden">
-  <div id="topbar">
-    <div class="score" id="scoreMe">0</div>
-    <div id="centerInfo"><div id="roundLabel">ROUND 1</div><div id="timer">0:00</div><div id="roleLabel"></div></div>
-    <div class="score" id="scoreEn">0</div>
+  <div id="shipBars">
+    <div class="sb me hudhide"><div class="row"><span id="meShipName">自船</span><span id="hpMeNum">100</span></div><div class="bar"><i id="hpMeFill"></i></div><small id="holesMe"></small></div>
+    <div id="phaseLabel" class="hudhide"></div>
+    <div class="sb en hudhide"><div class="row"><span id="enShipName">敵船</span><span id="hpEnNum">100</span></div><div class="bar"><i id="hpEnFill"></i></div><small id="holesEn"></small></div>
   </div>
-  <div id="bombInfo" class="hidden"></div>
-  <div id="crosshair" class="ch-cross"><i class="l"></i><i class="r"></i><i class="t"></i><i class="b"></i><i class="c"></i></div>
+  <canvas id="minimap" class="hudhide" width="150" height="150"></canvas>
+  <div id="killfeed" class="hudhide"></div>
+  <div id="crosshair" class="hudhide"><i class="l"></i><i class="r"></i><i class="t"></i><i class="b"></i></div>
   <div id="hitmarker"></div>
-  <div id="scopeOv" class="hidden"></div>
-  <div id="killfeed"></div>
-  <div id="prompt"></div>
-  <div id="progWrap" class="hidden"><div id="progLabel"></div><div id="progBar"><div id="progFill"></div></div></div>
+  <div id="prompt" class="hudhide"></div>
+  <div id="progWrap" class="hudhide hidden"><div id="progLabel"></div><div id="progBar"><div id="progFill"></div></div></div>
   <div id="banner"><div id="bannerMain"></div><div id="bannerSub"></div></div>
-  <div id="toast"></div>
   <div id="dmgFlash"></div>
-  <div id="dmgArrow"></div>
-  <div id="specLabel" class="hidden"></div>
-  <div id="bl">
-    <div id="hpRow"><div id="hpNum">100</div><div style="font-size:14px;color:#cde">HP</div></div>
-    <div id="hpBar"><div id="hpFill"></div></div>
-    <div id="credits"></div>
-  </div>
-  <div id="abil">
-    <div class="slot" id="slotQ"><div class="cd"></div><kbd>Q</kbd><span id="slotQn"></span><div class="cdt"></div></div>
-    <div class="slot" id="slotE"><div class="cd"></div><kbd>E</kbd><span id="slotEn"></span><div class="cdt"></div></div>
-  </div>
-  <div id="br">
-    <div id="wName"></div>
-    <div id="ammo"></div>
-    <div id="reloadTxt"></div>
-  </div>
-  <div id="scoreboard" class="hidden"></div>
-  <div id="buyMenu" class="hidden pa"></div>
-  <div id="pause" class="hidden">
-    <h2>一時停止</h2>
-    <p>クリックでゲームに戻る<br>B：購入メニュー（準備フェーズのみ購入可）</p>
-    <button id="btnLeave" class="sub-btn">ロビーに戻る</button>
-  </div>
-  <div id="matchEnd" class="hidden">
-    <h2 id="meTitle"></h2>
-    <p id="meText"></p>
-    <button id="btnToLobby" class="big-btn">ロビーへ戻る</button>
-    <p style="font-size:13px">このままお待ちいただくと、新しいマッチが自動で始まります</p>
-  </div>
+  <div id="bl" class="hudhide"><div id="hpNum">100</div><div id="hpBar"><div id="hpFill"></div></div><div id="woodRow"></div></div>
+  <div id="br" class="hudhide"><div id="wName"></div><div id="wAmmo"></div><div id="wSlots"></div></div>
+  <div id="helmHud" class="hudhide hidden"><div>帆</div><div id="sailGauge"><div id="sailFill"></div></div><div>舵</div><div id="wheelGauge"><div id="wheelDot"></div></div><div style="margin-top:8px;color:#cde;font-size:12px">W/S 帆<br>A/D 舵</div></div>
+  <div id="deadInfo" class="hudhide hidden"></div>
 </div>
 
-<div id="loading" class="hidden"><div>出港準備中…</div><small>マッチに接続しています</small></div>
+<div id="pause" class="screen hidden pa">
+  <h2>一時停止</h2>
+  <p>画面をクリックして操作を再開できます。<br>W/A/S/D 移動　マウス 視点　左クリック 攻撃／大砲発射　F 舵・大砲・木箱・修理(長押し)<br>R リロード　1/2/3 武器　Space ジャンプ　C 船から飛び込む（海から船に戻るには船体の近くで F）</p>
+  <button id="resumeBtn" class="big-btn">再開</button>
+  <button id="toLobbyBtn" class="sub-btn">ロビーへ戻る</button>
+</div>
+<div id="flash"></div>
+<div id="bars"><i class="t"></i><i class="b"></i></div>
+<div id="toasts"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="/socket.io/socket.io.js"></script>
 <script>
 (function () {
 'use strict';
-
-/* =====================================================================
- *  0. 共通
- * ===================================================================*/
+// =====================================================
+//  ユーティリティ & 共有定数（サーバーと同じ値）
+// =====================================================
 const $ = (id) => document.getElementById(id);
-const rand = (a, b) => a + Math.random() * (b - a);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lerp = (a, b, t) => a + (b - a) * t;
-function angDiff(a, b) {
-  let d = b - a;
-  while (d > Math.PI) d -= Math.PI * 2;
-  while (d < -Math.PI) d += Math.PI * 2;
-  return d;
-}
-const TEAM_COLOR = { A: 0xe5383b, B: 0x3a86ff };
-const TEAM_CSS = { A: '#ff6b70', B: '#6aa8ff' };
-const TEAM_NAME = { A: 'クリムゾン団', B: 'ブルーウェーブ団' };
-const lsGet = (k, d) => { try { return localStorage.getItem(k) || d; } catch (e) { return d; } };
-const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* noop */ } };
+const rand = (a, b) => a + Math.random() * (b - a);
+const wrapA = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
 
+const DECK = 2.0, EYE = 1.6, BALL_SPEED = 58, GRAV = 16, CANNON_RELOAD = 3000, MAX_WOOD = 5, REPAIR_MS = 1800;
+const HULL = [[12.8, 3.6], [11, 4.2], [6, 4.5], [-3, 4.5], [-8, 3.8], [-11.5, 2.2], [-14.5, 0.2]];
+function halfW(z) {
+  if (z > HULL[0][0] || z < HULL[HULL.length - 1][0]) return 0;
+  for (let i = 0; i < HULL.length - 1; i++) {
+    const a = HULL[i], b = HULL[i + 1];
+    if (z <= a[0] && z >= b[0]) { const t = (a[0] - z) / (a[0] - b[0]); return a[1] + (b[1] - a[1]) * t; }
+  }
+  return 0;
+}
+const CANNONS = [];
+[-1, 1].forEach((side) => { [-5, -0.5, 4].forEach((z) => { CANNONS.push({ idx: CANNONS.length, side, z, x: side * 3.3, sx: side * 2.1 }); }); });
+const HELM_POS = { x: 0, z: 9.0 }, HELM_STAND = { x: 0, z: 10.1 };
+const CRATES = [{ x: -2.4, z: 10.8 }, { x: 2.4, z: -9 }];
+const MASTS = [{ x: 0, z: -3, h: 17, s: 1 }, { x: 0, z: -9.5, h: 13, s: 0.8 }, { x: 0, z: 4, h: 11, s: 0.62 }];
+const TEAM_COL = { A: 0xd23a40, B: 0x3a86ff };
+const TEAM_NAME = { A: '赤の海賊船', B: '青の海賊船' };
+const SKINS = {
+  classic: { name: '船乗りの赤外套', cost: 0, color: 0x9c3b2e },
+  navy: { name: '海軍の藍外套', cost: 400, color: 0x2d4b8a },
+  forest: { name: '密林の緑外套', cost: 600, color: 0x2f6b3a },
+  bone: { name: '幽霊船の白外套', cost: 900, color: 0xdad4c0 },
+  shadow: { name: '黒髭の闇外套', cost: 1200, color: 0x23232b },
+  gold: { name: '黄金の呪い', cost: 2000, color: 0xd9a625 }
+};
+function waveH(x, z, t) {
+  return Math.sin(x * 0.07 + t * 0.9) * 0.28 + Math.sin(z * 0.09 + t * 1.1) * 0.22 + Math.sin((x + z) * 0.05 + t * 0.6) * 0.3;
+}
+function cannonDirL(c, yaw, pitch) {
+  const hx = c.side * Math.cos(yaw), hz = -Math.sin(yaw), cp = Math.cos(pitch);
+  return new THREE.Vector3(hx * cp, Math.sin(pitch), hz * cp);
+}
+
+// =====================================================
+//  サウンド（WebAudio 合成）
+// =====================================================
+let AC = null, noiseBuf = null;
+function ac() {
+  if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { AC = null; } }
+  if (AC && AC.state === 'suspended') AC.resume();
+  return AC;
+}
+function getNoise() {
+  const a = ac(); if (!a) return null;
+  if (!noiseBuf) {
+    noiseBuf = a.createBuffer(1, a.sampleRate * 2, a.sampleRate);
+    const d = noiseBuf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  }
+  return noiseBuf;
+}
+function noiseBurst(o) {
+  const a = ac(), nb = getNoise(); if (!a || !nb) return;
+  const dur = o.dur || 0.3, vol = o.vol == null ? 0.5 : o.vol;
+  const s = a.createBufferSource(); s.buffer = nb;
+  const f = a.createBiquadFilter(); f.type = o.type || 'lowpass'; f.Q.value = o.q || 1;
+  f.frequency.setValueAtTime(o.f0 || 800, a.currentTime);
+  f.frequency.exponentialRampToValueAtTime(Math.max(20, o.f1 || 100), a.currentTime + dur);
+  const g = a.createGain(); g.gain.setValueAtTime(vol, a.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, a.currentTime + dur);
+  s.connect(f); f.connect(g); g.connect(a.destination);
+  s.start(0, Math.random(), dur + 0.05);
+}
+function thump(o) {
+  const a = ac(); if (!a) return;
+  const dur = o.dur || 0.4;
+  const os = a.createOscillator(), g = a.createGain();
+  os.type = 'sine';
+  os.frequency.setValueAtTime(o.f0 || 120, a.currentTime);
+  os.frequency.exponentialRampToValueAtTime(o.f1 || 35, a.currentTime + dur);
+  g.gain.setValueAtTime(o.vol == null ? 0.6 : o.vol, a.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, a.currentTime + dur);
+  os.connect(g); g.connect(a.destination); os.start(); os.stop(a.currentTime + dur + 0.05);
+}
+const SFX = {
+  cannon(v) { v = v == null ? 1 : v; noiseBurst({ dur: 0.7, vol: 0.9 * v, f0: 1800, f1: 90 }); thump({ vol: 0.9 * v }); },
+  boom(v) { v = v == null ? 1 : v; noiseBurst({ dur: 1.1, vol: v, f0: 1200, f1: 60 }); thump({ f0: 90, f1: 25, dur: 0.9, vol: v }); },
+  big() { noiseBurst({ dur: 2.8, vol: 1, f0: 1500, f1: 40 }); thump({ f0: 70, f1: 18, dur: 2.2, vol: 1 }); },
+  pistol(v) { v = v == null ? 1 : v; noiseBurst({ dur: 0.18, vol: 0.6 * v, type: 'highpass', f0: 3000, f1: 800 }); thump({ f0: 200, f1: 60, dur: 0.12, vol: 0.4 * v }); },
+  blunder(v) { v = v == null ? 1 : v; noiseBurst({ dur: 0.4, vol: 0.9 * v, f0: 2500, f1: 120 }); thump({ f0: 140, f1: 40, dur: 0.3, vol: 0.7 * v }); },
+  splash(v) { v = v == null ? 1 : v; noiseBurst({ dur: 0.5, vol: 0.35 * v, type: 'bandpass', f0: 1500, f1: 500 }); },
+  wood(v) { v = v == null ? 1 : v; noiseBurst({ dur: 0.25, vol: 0.5 * v, type: 'bandpass', f0: 700, f1: 200, q: 3 }); },
+  hammer() { noiseBurst({ dur: 0.12, vol: 0.5, type: 'bandpass', f0: 1200, f1: 400, q: 4 }); thump({ f0: 300, f1: 120, dur: 0.1, vol: 0.3 }); },
+  swing() { noiseBurst({ dur: 0.15, vol: 0.25, type: 'highpass', f0: 1500, f1: 4000 }); },
+  hit() { thump({ f0: 900, f1: 500, dur: 0.06, vol: 0.25 }); },
+  step() { noiseBurst({ dur: 0.07, vol: 0.12, f0: 500, f1: 150 }); }
+};
+
+// =====================================================
+//  ネットワーク & セーブデータ
+// =====================================================
+const socket = io();
+let token = '';
+try { token = localStorage.getItem('pp_token') || ''; } catch (e) {}
+let profile = null;
+let friendsData = { friends: [], requests: [] };
+let myId = null;
+let appState = 'boot';       // boot | title | lobby | game
+let online = { total: 0, inMatch: 0, phase: 'idle', hpA: 100, hpB: 100 };
+
+function loadBackup() { try { return JSON.parse(localStorage.getItem('pp_backup') || 'null'); } catch (e) { return null; } }
+function toast(text) {
+  const el = document.createElement('div');
+  el.className = 'toast'; el.textContent = text;
+  $('toasts').appendChild(el);
+  setTimeout(() => el.remove(), 3200);
+}
+
+// =====================================================
+//  Three.js 基本セットアップ
+// =====================================================
 const canvas = $('view');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 900);
+camera.rotation.order = 'YXZ';
+const lobbyCam = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 900);
+const gameScene = new THREE.Scene();
+const lobbyScene = new THREE.Scene();
+gameScene.add(camera);
+window.addEventListener('resize', () => {
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  camera.aspect = lobbyCam.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix(); lobbyCam.updateProjectionMatrix();
+});
 
-const socket = io();
-let myId = null;
-let WEAPONS = {}, CHARACTERS = {}, ABILITIES = {}, SITES = [];
-let CFG = { winScore: 5, swapAfter: 4, plantMs: 3500, defuseMs: 6000, defuseRadius: 3.2 };
-let appState = 'title'; // title | lobby | game
-
-const me = { hp: 100, credits: 0, weapon: 'pistol', kills: 0, deaths: 0, alive: false, team: 'A', character: 'captain' };
-const pdata = {};   // 全プレイヤーの公開情報
-const remotes = {}; // 他プレイヤーの3D表示
-let match = { phase: 'waiting', round: 0, score: { A: 0, B: 0 }, attackTeam: 'A', winScore: 5 };
-let phaseEndLocal = 0;
-let bomb = null;
-let lobbyCharacter = lsGet('pp_char', 'captain');
-let playerName = lsGet('pp_name', '');
-
-/* =====================================================================
- *  1. テクスチャ / 海
- * ===================================================================*/
-function canvasTex(w, h, draw) {
-  const c = document.createElement('canvas');
-  c.width = w; c.height = h;
-  draw(c.getContext('2d'), w, h);
-  const t = new THREE.CanvasTexture(c);
-  return t;
+function mat(color, shin) { return new THREE.MeshPhongMaterial({ color, flatShading: true, shininess: shin == null ? 8 : shin }); }
+function canvasTex(w, h, fn) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  fn(c.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(c); return t;
 }
-function woodTexture(base, line) {
+function radialTex(stops) {
+  return canvasTex(64, 64, (g) => {
+    const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    stops.forEach((s) => gr.addColorStop(s[0], s[1]));
+    g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+  });
+}
+const TEX = {
+  fire: radialTex([[0, 'rgba(255,250,200,1)'], [0.3, 'rgba(255,170,40,0.9)'], [0.7, 'rgba(220,60,10,0.4)'], [1, 'rgba(120,20,0,0)']]),
+  smoke: radialTex([[0, 'rgba(80,80,80,0.9)'], [0.6, 'rgba(60,60,60,0.45)'], [1, 'rgba(40,40,40,0)']]),
+  splash: radialTex([[0, 'rgba(255,255,255,0.95)'], [0.6, 'rgba(220,240,255,0.5)'], [1, 'rgba(200,230,255,0)']]),
+  spark: radialTex([[0, 'rgba(255,255,255,1)'], [0.4, 'rgba(255,220,120,0.8)'], [1, 'rgba(255,160,40,0)']])
+};
+let plankTexCache = null;
+function plankTex() {
+  if (plankTexCache) return plankTexCache;
   const t = canvasTex(128, 128, (g, w, h) => {
-    g.fillStyle = base; g.fillRect(0, 0, w, h);
-    for (let r = 0; r < 4; r++) {
-      g.fillStyle = line; g.fillRect(0, r * 32, w, 2);
-      g.fillRect(((r * 53) % 100) + 10, r * 32, 2, 32);
-      g.fillStyle = 'rgba(0,0,0,0.07)';
-      for (let i = 0; i < 6; i++) g.fillRect(Math.random() * w, r * 32 + 4 + Math.random() * 24, 10 + Math.random() * 40, 1);
+    g.fillStyle = '#a8794a'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 8; i++) {
+      g.fillStyle = i % 2 ? '#9c6e42' : '#b2844f'; g.fillRect(i * 16, 0, 16, h);
+      g.fillStyle = 'rgba(40,20,5,0.55)'; g.fillRect(i * 16, 0, 2, h);
+      g.fillStyle = 'rgba(40,20,5,0.25)'; g.fillRect(i * 16 + 3, ((i * 37) % 100) + 5, 10, 2);
     }
   });
-  t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  return t;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(1 / 6, 1 / 6);
+  plankTexCache = t; return t;
 }
-function skullTex(bg, fg) {
-  return canvasTex(256, 256, (g, w, h) => {
-    g.fillStyle = bg; g.fillRect(0, 0, w, h);
-    g.strokeStyle = fg; g.lineWidth = 16; g.lineCap = 'round';
-    g.beginPath(); g.moveTo(44, 150); g.lineTo(212, 214); g.moveTo(212, 150); g.lineTo(44, 214); g.stroke();
-    g.fillStyle = fg;
-    g.beginPath(); g.arc(128, 100, 54, 0, Math.PI * 2); g.fill();
-    g.fillRect(102, 130, 52, 44);
-    g.fillStyle = bg;
-    g.beginPath(); g.arc(106, 100, 14, 0, Math.PI * 2); g.fill();
-    g.beginPath(); g.arc(150, 100, 14, 0, Math.PI * 2); g.fill();
-    g.beginPath(); g.moveTo(128, 112); g.lineTo(119, 130); g.lineTo(137, 130); g.closePath(); g.fill();
-    for (let i = 0; i < 4; i++) g.fillRect(110 + i * 11, 154, 3, 18);
+function sailTex(team) {
+  const col = '#' + TEAM_COL[team].toString(16).padStart(6, '0');
+  return canvasTex(256, 320, (g, w, h) => {
+    g.fillStyle = '#e9dfbf'; g.fillRect(0, 0, w, h);
+    g.fillStyle = col; g.fillRect(0, 0, w, 26); g.fillRect(0, h - 26, w, 26);
+    g.fillStyle = '#1a1209';
+    g.beginPath(); g.arc(128, 140, 46, 0, Math.PI * 2); g.fill();
+    g.fillRect(100, 170, 56, 24);
+    g.fillStyle = '#e9dfbf';
+    g.beginPath(); g.arc(110, 135, 12, 0, 7); g.fill(); g.beginPath(); g.arc(146, 135, 12, 0, 7); g.fill();
+    g.fillRect(124, 150, 8, 12);
+    g.strokeStyle = '#1a1209'; g.lineWidth = 14; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(70, 205); g.lineTo(186, 255); g.moveTo(186, 205); g.lineTo(70, 255); g.stroke();
   });
 }
-function clothTex(color) {
-  return canvasTex(128, 128, (g, w, h) => {
-    g.fillStyle = color; g.fillRect(0, 0, w, h);
-    for (let i = 0; i < 8; i++) { g.fillStyle = 'rgba(0,0,0,0.06)'; g.fillRect(0, i * 16, w, 2); }
-    for (let i = 0; i < 30; i++) { g.fillStyle = 'rgba(80,50,20,0.06)'; g.fillRect(Math.random() * w, Math.random() * h, 12, 12); }
-  });
-}
-function makeSea(color, size, seg) {
-  const geo = new THREE.PlaneGeometry(size, size, seg, seg);
+
+// ---- 海 ----
+function makeSea(scene) {
+  const geo = new THREE.PlaneGeometry(760, 760, 76, 76);
   geo.rotateX(-Math.PI / 2);
-  const pos = geo.attributes.position;
-  const base = new Float32Array(pos.count * 2);
-  for (let i = 0; i < pos.count; i++) { base[i * 2] = pos.getX(i); base[i * 2 + 1] = pos.getZ(i); }
-  const mesh = new THREE.Mesh(geo, new THREE.MeshPhongMaterial({ color, flatShading: true, shininess: 70, specular: 0x446688 }));
+  const m = new THREE.Mesh(geo, new THREE.MeshPhongMaterial({ color: 0x1b78b5, flatShading: true, shininess: 70, specular: 0x446688 }));
+  scene.add(m);
+  const pos = geo.attributes.position, n = pos.count, bx = new Float32Array(n), bz = new Float32Array(n);
+  for (let i = 0; i < n; i++) { bx[i] = pos.getX(i); bz[i] = pos.getZ(i); }
   return {
-    mesh,
+    mesh: m,
     update(t) {
-      for (let i = 0; i < pos.count; i++) {
-        const x = base[i * 2], z = base[i * 2 + 1];
-        pos.setY(i, Math.sin(x * 0.07 + t * 1.1) * 0.35 + Math.cos(z * 0.06 + t * 0.9) * 0.3 + Math.sin((x + z) * 0.13 + t * 1.7) * 0.12);
-      }
+      for (let i = 0; i < n; i++) pos.setY(i, waveH(bx[i], bz[i], t));
       pos.needsUpdate = true;
     }
   };
 }
-function makeLabel(text, color, w, h, font) {
-  const c = document.createElement('canvas');
-  c.width = w || 256; c.height = h || 64;
-  const g = c.getContext('2d');
-  g.font = font || 'bold 30px sans-serif';
-  g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.lineWidth = 7; g.strokeStyle = 'rgba(0,0,0,0.85)';
-  g.strokeText(text, c.width / 2, c.height / 2);
-  g.fillStyle = color; g.fillText(text, c.width / 2, c.height / 2);
-  const t = new THREE.CanvasTexture(c);
-  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true, depthTest: false }));
-  s.renderOrder = 10;
+function addLightsSky(scene) {
+  scene.add(new THREE.HemisphereLight(0xcfe8ff, 0x2a4a6a, 0.8));
+  const sun = new THREE.DirectionalLight(0xfff0d0, 0.95); sun.position.set(-60, 90, 40); scene.add(sun);
+  scene.background = new THREE.Color(0x8fc7e8);
+  scene.fog = new THREE.Fog(0x8fc7e8, 90, 430);
+  const cm = new THREE.MeshLambertMaterial({ color: 0xffffff });
+  for (let i = 0; i < 14; i++) {
+    const g = new THREE.Group();
+    for (let k = 0; k < 4; k++) {
+      const s = new THREE.Mesh(new THREE.IcosahedronGeometry(rand(6, 11), 0), cm);
+      s.position.set(rand(-10, 10), rand(-2, 2), rand(-5, 5)); s.scale.y = 0.55; g.add(s);
+    }
+    const a = rand(0, 6.28), r = rand(120, 330);
+    g.position.set(Math.cos(a) * r, rand(55, 95), Math.sin(a) * r);
+    scene.add(g);
+  }
+  // 海域の縁の島々
+  const rock = mat(0x6d6a60), sand = mat(0xe6d29a), leaf = mat(0x2f8a3a), trunk = mat(0x6b4423);
+  for (let i = 0; i < 9; i++) {
+    const a = (i / 9) * Math.PI * 2 + rand(-0.15, 0.15), r = rand(185, 225);
+    const g = new THREE.Group();
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(rand(14, 22), rand(20, 28), 4, 9), sand); base.position.y = -0.5; g.add(base);
+    const cone = new THREE.Mesh(new THREE.ConeGeometry(rand(7, 12), rand(14, 26), 7), rock); cone.position.set(rand(-4, 4), 8, rand(-4, 4)); g.add(cone);
+    for (let k = 0; k < 3; k++) {
+      const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.45, 6, 5), trunk); tr.position.set(rand(-9, 9), 3, rand(-9, 9));
+      const lf = new THREE.Mesh(new THREE.IcosahedronGeometry(2.6, 0), leaf); lf.position.y = 3.6; tr.add(lf); g.add(tr);
+    }
+    g.position.set(Math.cos(a) * r, 0, Math.sin(a) * r);
+    scene.add(g);
+  }
+}
+const gameSea = makeSea(gameScene); addLightsSky(gameScene);
+const lobbySea = makeSea(lobbyScene); addLightsSky(lobbyScene);
+
+// =====================================================
+//  船モデル
+// =====================================================
+const X_AXIS = new THREE.Vector3(1, 0, 0);
+function sailGeo(w, h, bulge) {
+  const g = new THREE.PlaneGeometry(w, h, 8, 6);
+  const p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i), y = p.getY(i);
+    p.setZ(i, bulge * (1 - Math.pow(x / (w / 2), 2)) * (0.6 + 0.4 * (y / h + 0.5)));
+  }
+  g.computeVertexNormals();
+  return g;
+}
+function buildShip(team) {
+  const root = new THREE.Group();
+  root.rotation.order = 'YXZ';
+  const wood = mat(0x6b4423), dark = mat(0x3e2713), metal = mat(0x2b2b30, 30), gold = mat(0xd9a625, 40);
+  const deckM = new THREE.MeshPhongMaterial({ map: plankTex(), shininess: 4 });
+  const trimM = mat(TEAM_COL[team]);
+
+  const shape = new THREE.Shape();
+  shape.moveTo(HULL[0][1], HULL[0][0]);
+  for (let i = 1; i < HULL.length; i++) shape.lineTo(HULL[i][1], HULL[i][0]);
+  for (let i = HULL.length - 1; i >= 0; i--) shape.lineTo(-HULL[i][1], HULL[i][0]);
+  shape.lineTo(HULL[0][1], HULL[0][0]);
+  const hg = new THREE.ExtrudeGeometry(shape, { depth: 3.4, bevelEnabled: false });
+  hg.rotateX(Math.PI / 2);
+  const hull = new THREE.Mesh(hg, [deckM, wood]); hull.position.y = DECK; root.add(hull);
+  const sg = new THREE.ExtrudeGeometry(shape, { depth: 0.32, bevelEnabled: false });
+  sg.rotateX(Math.PI / 2);
+  const stripe = new THREE.Mesh(sg, trimM); stripe.position.y = DECK - 0.35; stripe.scale.set(1.012, 1, 1.004); root.add(stripe);
+
+  function rail(x1, z1, x2, z2) {
+    const L = Math.hypot(x2 - x1, z2 - z1);
+    const m = new THREE.Mesh(new THREE.BoxGeometry(L + 0.05, 0.9, 0.18), dark);
+    m.position.set((x1 + x2) / 2, DECK + 0.45, (z1 + z2) / 2);
+    m.rotation.y = -Math.atan2(z2 - z1, x2 - x1);
+    root.add(m);
+  }
+  for (let i = 0; i < HULL.length - 1; i++) {
+    rail(HULL[i][1], HULL[i][0], HULL[i + 1][1], HULL[i + 1][0]);
+    rail(-HULL[i][1], HULL[i][0], -HULL[i + 1][1], HULL[i + 1][0]);
+  }
+  rail(-3.6, 12.8, 3.6, 12.8);
+  const bow = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.2, 5, 6), dark);
+  bow.rotation.x = Math.PI / 2 + 0.35; bow.position.set(0, DECK + 0.9, -16.5); root.add(bow);
+  const fig = new THREE.Mesh(new THREE.IcosahedronGeometry(0.45, 0), gold); fig.position.set(0, DECK + 0.4, -14.6); root.add(fig);
+  [-3.4, 3.4].forEach((x) => {
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.25, 1.8, 0.25), dark); post.position.set(x, DECK + 0.9, 12.6); root.add(post);
+    const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffd27a })); lamp.position.set(x, DECK + 1.95, 12.6); root.add(lamp);
+  });
+
+  // マスト & 帆
+  const sails = [];
+  const sMat = new THREE.MeshPhongMaterial({ map: sailTex(team), side: THREE.DoubleSide, flatShading: true, shininess: 2 });
+  let flag = null;
+  MASTS.forEach((m, i) => {
+    const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.34, m.h, 7), dark);
+    mast.position.set(m.x, DECK + m.h / 2, m.z); root.add(mast);
+    const yard = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 8.4 * m.s, 6), dark);
+    yard.rotation.z = Math.PI / 2; yard.position.set(m.x, DECK + m.h * 0.88, m.z); root.add(yard);
+    const sail = new THREE.Mesh(sailGeo(7.6 * m.s, m.h * 0.58, 1.0 * m.s), sMat);
+    sail.position.set(m.x, DECK + m.h * 0.88 - m.h * 0.29, m.z + 0.2); root.add(sail); sails.push(sail);
+    if (i === 0) {
+      flag = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 1.3), new THREE.MeshBasicMaterial({ color: TEAM_COL[team], side: THREE.DoubleSide }));
+      flag.geometry.translate(1.3, 0, 0); flag.position.set(0, DECK + m.h + 0.7, m.z); root.add(flag);
+    }
+  });
+
+  // 舵（ホイール）
+  const wheelG = new THREE.Group(); wheelG.position.set(HELM_POS.x, DECK + 1.1, HELM_POS.z); root.add(wheelG);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.07, 6, 14), wood);
+  const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.2, 8), gold); hub.rotation.x = Math.PI / 2;
+  const wheel = new THREE.Group(); wheel.add(ring); wheel.add(hub);
+  for (let k = 0; k < 4; k++) { const sp = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.3, 0.06), wood); sp.rotation.z = k * Math.PI / 4; wheel.add(sp); }
+  wheelG.add(wheel);
+  const ped = new THREE.Mesh(new THREE.BoxGeometry(0.34, 1.1, 0.34), dark); ped.position.set(HELM_POS.x, DECK + 0.55, HELM_POS.z); root.add(ped);
+
+  // 大砲
+  const cannons = [];
+  CANNONS.forEach((c) => {
+    const g = new THREE.Group(); g.position.set(c.x, DECK + 0.5, c.z);
+    const car = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.4, 0.8), dark); car.position.y = -0.1; g.add(car);
+    [-0.42, 0.42].forEach((dz) => {
+      const w = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.14, 8), wood); w.rotation.x = Math.PI / 2; w.position.set(0, -0.2, dz); g.add(w);
+    });
+    const pivot = new THREE.Group(); pivot.position.y = 0.25;
+    const bg = new THREE.CylinderGeometry(0.2, 0.3, 1.3, 10); bg.rotateZ(-Math.PI / 2); bg.translate(0.65, 0, 0);
+    const barrel = new THREE.Mesh(bg, metal); pivot.add(barrel);
+    const bandG = new THREE.CylinderGeometry(0.31, 0.31, 0.1, 10); bandG.rotateZ(-Math.PI / 2); bandG.translate(0.3, 0, 0);
+    pivot.add(new THREE.Mesh(bandG, gold));
+    g.add(pivot); root.add(g);
+    cannons.push({ group: g, pivot, barrel });
+  });
+
+  // 木箱
+  CRATES.forEach((c) => {
+    const b = new THREE.Mesh(new THREE.BoxGeometry(1, 0.8, 1), mat(0xb98a4e)); b.position.set(c.x, DECK + 0.4, c.z); root.add(b);
+    [-0.25, 0, 0.25].forEach((dz) => {
+      const pl = new THREE.Mesh(new THREE.BoxGeometry(1.25, 0.06, 0.18), mat(0xd9b777)); pl.position.set(c.x, DECK + 0.86 + Math.abs(dz) * 0.2, c.z + dz); pl.rotation.y = rand(-0.2, 0.2); root.add(pl);
+    });
+  });
+  // 樽
+  [[-2.6, 7.5], [2.7, 7.2]].forEach((p) => {
+    const b = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.8, 8), mat(0x7a4a22)); b.position.set(p[0], DECK + 0.4, p[1]); root.add(b);
+  });
+
+  const holeGroup = new THREE.Group(); root.add(holeGroup);
+  return { root, wheel, cannons, sails, flag, holeGroup, holes: new Map() };
+}
+function holeMesh() {
+  const g = new THREE.Group();
+  const d = new THREE.Mesh(new THREE.CircleGeometry(0.75, 10), new THREE.MeshBasicMaterial({ color: 0x120a05 })); d.rotation.x = -Math.PI / 2; g.add(d);
+  const r = new THREE.Mesh(new THREE.RingGeometry(0.72, 0.98, 10), new THREE.MeshBasicMaterial({ color: 0xff8a30 })); r.rotation.x = -Math.PI / 2; r.position.y = 0.01; g.add(r);
+  return g;
+}
+
+// =====================================================
+//  海賊モデル
+// =====================================================
+function buildPirate(skinId, team) {
+  const g = new THREE.Group();
+  const sk = SKINS[skinId] || SKINS.classic;
+  const coat = mat(sk.color), pants = mat(0x2a2320), tone = mat(0xe0b48a), teamM = mat(TEAM_COL[team] || 0xffffff), hatM = mat(0x1a1a1f);
+  function limb(w, h, d, m, x, y) {
+    const p = new THREE.Group(); p.position.set(x, y, 0);
+    const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); b.position.y = -h / 2; p.add(b); g.add(p); return p;
+  }
+  const legL = limb(0.28, 0.8, 0.3, pants, -0.17, 0.8), legR = limb(0.28, 0.8, 0.3, pants, 0.17, 0.8);
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.8, 0.4), coat); torso.position.y = 1.2; g.add(torso);
+  const sash = new THREE.Mesh(new THREE.BoxGeometry(0.74, 0.14, 0.44), teamM); sash.position.y = 0.88; g.add(sash);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 8), tone); head.position.y = 1.72; g.add(head);
+  const hat = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.36, 0.22, 3), hatM); hat.position.y = 1.96; hat.rotation.y = Math.PI; g.add(hat);
+  const band = new THREE.Mesh(new THREE.CylinderGeometry(0.205, 0.37, 0.05, 3), teamM); band.position.y = 1.88; band.rotation.y = Math.PI; g.add(band);
+  const patch = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.08, 0.04), hatM); patch.position.set(0.09, 1.74, -0.21); g.add(patch);
+  const armL = limb(0.2, 0.65, 0.22, coat, -0.46, 1.55), armR = limb(0.2, 0.65, 0.22, coat, 0.46, 1.55);
+  return { group: g, legL, legR, armL, armR };
+}
+function makeTag(text, team) {
+  const t = canvasTex(256, 64, (g, w, h) => {
+    g.font = 'bold 30px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.lineWidth = 6; g.strokeStyle = 'rgba(0,0,0,.85)'; g.strokeText(text, w / 2, h / 2);
+    g.fillStyle = team === 'A' ? '#ff8d92' : '#8dbbff'; g.fillText(text, w / 2, h / 2);
+  });
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true }));
+  s.scale.set(2.8, 0.7, 1); s.position.y = 2.5;
   return s;
 }
-function glowTex() {
-  return canvasTex(64, 64, (g, w, h) => {
-    const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
-    gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.3, 'rgba(255,200,90,0.9)'); gr.addColorStop(1, 'rgba(255,120,0,0)');
-    g.fillStyle = gr; g.fillRect(0, 0, w, h);
-  });
-}
-const GLOW = glowTex();
 
-/* =====================================================================
- *  2. 効果音（Web Audio API・外部ファイルなし）
- * ===================================================================*/
-const SFX = (function () {
-  let ctx = null, master = null, noiseBuf = null, ambTimer = null, ambGain = null;
-  function ensure() {
-    if (!ctx) {
-      const AC = window.AudioContext || window.webkitAudioContext;
-      if (!AC) return false;
-      ctx = new AC();
-      master = ctx.createGain();
-      master.gain.value = 0.55;
-      master.connect(ctx.destination);
-      noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
-      const d = noiseBuf.getChannelData(0);
-      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-    }
-    if (ctx.state === 'suspended') ctx.resume();
-    return true;
+// =====================================================
+//  FX（スプライト / 破片 / 光）
+// =====================================================
+const fxList = [], fxPool = [], debris = [], tracers = [];
+const boomLight = new THREE.PointLight(0xffaa55, 0, 90); gameScene.add(boomLight);
+const debrisGeo = new THREE.BoxGeometry(1, 1, 1);
+const debrisMats = [mat(0x6b4423), mat(0x3e2713), mat(0xa8794a), mat(0x4a2f1a)];
+let shake = 0, timeScale = 1;
+
+function spawnFx(o) {
+  let s = fxPool.pop();
+  if (!s) s = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthWrite: false }));
+  const m = s.material;
+  m.map = o.tex; m.blending = o.add ? THREE.AdditiveBlending : THREE.NormalBlending;
+  m.color.set(o.color == null ? 0xffffff : o.color); m.opacity = o.op == null ? 1 : o.op;
+  s.position.set(o.x, o.y, o.z); s.scale.set(o.size, o.size, 1);
+  gameScene.add(s);
+  fxList.push({ spr: s, age: 0, life: o.life || 1, size0: o.size, grow: o.grow || 0, vx: o.vx || 0, vy: o.vy || 0, vz: o.vz || 0, drag: o.drag || 0, g: o.g || 0, op0: m.opacity });
+}
+function updateFxList(dt) {
+  for (let i = fxList.length - 1; i >= 0; i--) {
+    const f = fxList[i];
+    f.age += dt;
+    if (f.age >= f.life) { gameScene.remove(f.spr); fxPool.push(f.spr); fxList.splice(i, 1); continue; }
+    f.vy -= f.g * dt;
+    const dr = Math.max(0, 1 - f.drag * dt);
+    f.vx *= dr; f.vy *= dr; f.vz *= dr;
+    f.spr.position.x += f.vx * dt; f.spr.position.y += f.vy * dt; f.spr.position.z += f.vz * dt;
+    const k = f.age / f.life, sz = f.size0 + f.grow * f.age;
+    f.spr.scale.set(sz, sz, 1);
+    f.spr.material.opacity = f.op0 * (1 - k) * (1 - k * 0.3);
   }
-  function out(pan) {
-    const g = ctx.createGain();
-    if (pan && ctx.createStereoPanner) {
-      const p = ctx.createStereoPanner();
-      p.pan.value = clamp(pan, -1, 1);
-      g.connect(p); p.connect(master);
-    } else g.connect(master);
-    return g;
-  }
-  function noise(dur, o) {
-    o = o || {};
-    const vol = o.vol === undefined ? 1 : o.vol, t = ctx.currentTime + (o.delay || 0);
-    const src = ctx.createBufferSource();
-    src.buffer = noiseBuf;
-    const f = ctx.createBiquadFilter();
-    f.type = o.type || 'lowpass';
-    f.frequency.setValueAtTime(o.f0 || 2000, t);
-    if (o.f1) f.frequency.exponentialRampToValueAtTime(Math.max(30, o.f1), t + dur);
-    f.Q.value = o.q || 0.7;
-    const env = ctx.createGain();
-    env.gain.setValueAtTime(0.0001, t);
-    env.gain.linearRampToValueAtTime(vol, t + (o.attack || 0.003));
-    env.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    src.connect(f); f.connect(env); env.connect(out(o.pan));
-    src.start(t, Math.random() * 1.2);
-    src.stop(t + dur + 0.05);
-  }
-  function tone(freq, dur, o) {
-    o = o || {};
-    const vol = o.vol === undefined ? 0.3 : o.vol, t = ctx.currentTime + (o.delay || 0);
-    const osc = ctx.createOscillator();
-    osc.type = o.type || 'sine';
-    osc.frequency.setValueAtTime(freq, t);
-    if (o.f1) osc.frequency.exponentialRampToValueAtTime(Math.max(10, o.f1), t + dur);
-    const env = ctx.createGain();
-    env.gain.setValueAtTime(0.0001, t);
-    env.gain.linearRampToValueAtTime(vol, t + (o.attack || 0.004));
-    env.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    osc.connect(env); env.connect(out(o.pan));
-    osc.start(t); osc.stop(t + dur + 0.05);
-  }
-  const S = {
-    init() { return ensure(); },
-    shot(id, v, pan) {
-      if (!ensure()) return;
-      v = v === undefined ? 1 : v; pan = pan || 0;
-      if (id === 'shotgun') {
-        noise(0.5, { vol: 0.95 * v, pan, f0: 2800, f1: 180 });
-        tone(130, 0.32, { type: 'triangle', vol: 0.75 * v, pan, f1: 32 });
-        noise(0.09, { vol: 0.5 * v, pan, type: 'highpass', f0: 3000 });
-      } else if (id === 'rifle') {
-        noise(0.17, { vol: 0.8 * v, pan, f0: 4200, f1: 480 });
-        tone(165, 0.15, { type: 'triangle', vol: 0.55 * v, pan, f1: 50 });
-      } else if (id === 'sniper') {
-        noise(0.9, { vol: 1 * v, pan, f0: 3200, f1: 140 });
-        tone(95, 0.6, { type: 'sawtooth', vol: 0.5 * v, pan, f1: 24 });
-        noise(0.12, { vol: 0.6 * v, pan, type: 'highpass', f0: 4200 });
-      } else {
-        noise(0.22, { vol: 0.7 * v, pan, f0: 3600, f1: 380 });
-        tone(210, 0.12, { type: 'triangle', vol: 0.5 * v, pan, f1: 60 });
-      }
-    },
-    reload() {
-      if (!ensure()) return;
-      noise(0.05, { vol: 0.35, type: 'bandpass', f0: 2200, q: 3 });
-      tone(420, 0.05, { type: 'square', vol: 0.08 });
-      noise(0.06, { vol: 0.4, type: 'bandpass', f0: 1500, q: 3, delay: 0.55 });
-      tone(300, 0.07, { type: 'square', vol: 0.1, delay: 0.55 });
-    },
-    reloadDone() {
-      if (!ensure()) return;
-      noise(0.06, { vol: 0.5, type: 'bandpass', f0: 1800, q: 4 });
-      tone(520, 0.05, { type: 'square', vol: 0.1 });
-    },
-    empty() { if (!ensure()) return; tone(900, 0.03, { type: 'square', vol: 0.1 }); },
-    hit(head, kill) {
-      if (!ensure()) return;
-      if (kill) { tone(900, 0.09, { type: 'triangle', vol: 0.3 }); tone(1350, 0.14, { type: 'triangle', vol: 0.3, delay: 0.07 }); }
-      else if (head) { tone(1900, 0.07, { type: 'triangle', vol: 0.32 }); tone(2400, 0.06, { type: 'triangle', vol: 0.22, delay: 0.04 }); }
-      else tone(1250, 0.05, { type: 'triangle', vol: 0.28 });
-    },
-    hurt() {
-      if (!ensure()) return;
-      noise(0.18, { vol: 0.7, f0: 600, f1: 120 });
-      tone(110, 0.15, { type: 'sine', vol: 0.5, f1: 55 });
-    },
-    explosion(v, pan) {
-      if (!ensure()) return;
-      v = v === undefined ? 1 : v; pan = pan || 0;
-      noise(1.8, { vol: 1.1 * v, pan, f0: 2400, f1: 70, attack: 0.01 });
-      tone(70, 1.2, { type: 'sine', vol: 0.9 * v, pan, f1: 20 });
-      noise(0.4, { vol: 0.5 * v, pan, type: 'highpass', f0: 1500, f1: 400, delay: 0.03 });
-    },
-    plant() {
-      if (!ensure()) return;
-      tone(110, 0.2, { type: 'triangle', vol: 0.7, f1: 50 });
-      noise(0.12, { vol: 0.5, f0: 900, f1: 200 });
-      tone(660, 0.1, { type: 'square', vol: 0.15, delay: 0.18 });
-      tone(880, 0.1, { type: 'square', vol: 0.15, delay: 0.3 });
-      tone(1320, 0.25, { type: 'square', vol: 0.18, delay: 0.42 });
-    },
-    beep(urgent) {
-      if (!ensure()) return;
-      tone(urgent ? 1500 : 1000, 0.07, { type: 'square', vol: 0.12 });
-    },
-    defuse() {
-      if (!ensure()) return;
-      [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.18, { type: 'triangle', vol: 0.3, delay: i * 0.1 }));
-    },
-    interactTick(p) {
-      if (!ensure()) return;
-      tone(300 + p * 500, 0.04, { type: 'square', vol: 0.06 });
-    },
-    whoosh() {
-      if (!ensure()) return;
-      noise(0.45, { vol: 0.6, type: 'bandpass', f0: 400, f1: 3500, q: 1.2, attack: 0.08 });
-    },
-    smoke() {
-      if (!ensure()) return;
-      noise(1.0, { vol: 0.5, type: 'highpass', f0: 2500, f1: 800, attack: 0.1 });
-      tone(90, 0.3, { type: 'triangle', vol: 0.4, f1: 50 });
-    },
-    heal() {
-      if (!ensure()) return;
-      [660, 880, 1175, 1568].forEach((f, i) => tone(f, 0.3, { type: 'sine', vol: 0.18, delay: i * 0.07 }));
-    },
-    haste() {
-      if (!ensure()) return;
-      tone(200, 0.4, { type: 'sawtooth', vol: 0.12, f1: 800 });
-      noise(0.3, { vol: 0.25, type: 'bandpass', f0: 800, f1: 2400, q: 2 });
-    },
-    scan() {
-      if (!ensure()) return;
-      tone(500, 0.5, { type: 'sine', vol: 0.2, f1: 1500 });
-      tone(1500, 0.3, { type: 'sine', vol: 0.15, delay: 0.5, f1: 700 });
-    },
-    throw_() {
-      if (!ensure()) return;
-      noise(0.2, { vol: 0.35, type: 'bandpass', f0: 600, f1: 1800, q: 1 });
-    },
-    step() {
-      if (!ensure()) return;
-      noise(0.07, { vol: 0.12, f0: 500, f1: 200 });
-    },
-    splash() {
-      if (!ensure()) return;
-      noise(0.7, { vol: 0.6, f0: 2000, f1: 200 });
-    },
-    roundWin() {
-      if (!ensure()) return;
-      [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.28, { type: 'triangle', vol: 0.28, delay: i * 0.12 }));
-    },
-    roundLose() {
-      if (!ensure()) return;
-      [392, 330, 262, 196].forEach((f, i) => tone(f, 0.35, { type: 'sawtooth', vol: 0.16, delay: i * 0.16 }));
-    },
-    roundStart() {
-      if (!ensure()) return;
-      tone(440, 0.15, { type: 'square', vol: 0.12 });
-      tone(660, 0.25, { type: 'square', vol: 0.12, delay: 0.18 });
-    },
-    go() {
-      if (!ensure()) return;
-      tone(880, 0.1, { type: 'square', vol: 0.14 });
-      tone(1320, 0.3, { type: 'square', vol: 0.14, delay: 0.1 });
-    },
-    buy() {
-      if (!ensure()) return;
-      tone(1200, 0.06, { type: 'triangle', vol: 0.25 });
-      tone(1800, 0.12, { type: 'triangle', vol: 0.25, delay: 0.06 });
-    },
-    error() { if (!ensure()) return; tone(180, 0.18, { type: 'sawtooth', vol: 0.18 }); },
-    ui() { if (!ensure()) return; tone(700, 0.05, { type: 'triangle', vol: 0.18 }); },
-    startAmbient() {
-      if (!ensure() || ambTimer) return;
-      const src = ctx.createBufferSource();
-      src.buffer = noiseBuf; src.loop = true;
-      const f = ctx.createBiquadFilter();
-      f.type = 'lowpass'; f.frequency.value = 420;
-      ambGain = ctx.createGain(); ambGain.gain.value = 0.05;
-      src.connect(f); f.connect(ambGain); ambGain.connect(master);
-      src.start();
-      let tt = 0;
-      ambTimer = setInterval(() => { tt += 0.1; ambGain.gain.value = 0.05 + Math.sin(tt * 0.9) * 0.03; }, 100);
-    }
-  };
-  return S;
-})();
-
-/* =====================================================================
- *  3. モデル（海賊 / 武器）
- * ===================================================================*/
-function boxMesh(w, h, d, x, y, z, color) {
-  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshLambertMaterial({ color }));
-  m.position.set(x, y, z);
-  return m;
+  boomLight.intensity = Math.max(0, boomLight.intensity - dt * 22);
 }
-function cylMesh(rt, rb, len, x, y, z, color, axis, seg) {
-  const geo = new THREE.CylinderGeometry(rt, rb, len, seg || 8);
-  if (axis === 'z') geo.rotateX(Math.PI / 2);
-  else if (axis === 'x') geo.rotateZ(Math.PI / 2);
-  const m = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ color }));
-  m.position.set(x, y, z);
-  return m;
+function addShake(amount, x, y, z) {
+  const d = Math.hypot(camera.position.x - x, camera.position.y - y, camera.position.z - z);
+  shake = Math.max(shake, amount / (1 + d * 0.04));
 }
-
-// 銃口は -z 方向。guns の rt(上面)は +z 側、rb(下面)は -z 側
-function buildGunMesh(id) {
-  const g = new THREE.Group();
-  const w = WEAPONS[id] || {};
-  const accent = w.color || 0xcccccc, wood = 0x6b4a2b, steel = 0x3a3f4a, brass = 0xc9a227;
-  let len = 0.4;
-  if (id === 'pistol') {
-    g.add(boxMesh(0.05, 0.07, 0.26, 0, 0, -0.1, steel));
-    g.add(boxMesh(0.045, 0.13, 0.06, 0, -0.09, 0.03, wood));
-    g.add(boxMesh(0.03, 0.03, 0.12, 0, 0.03, -0.28, brass));
-    g.add(boxMesh(0.03, 0.04, 0.03, 0, 0.06, -0.02, accent));
-    len = 0.34;
-  } else if (id === 'shotgun') {
-    g.add(boxMesh(0.06, 0.08, 0.4, 0, 0, -0.05, wood));
-    g.add(cylMesh(0.035, 0.1, 0.45, 0, 0.02, -0.4, steel, 'z', 10));
-    g.add(boxMesh(0.05, 0.11, 0.22, 0, -0.05, 0.3, wood));
-    g.add(boxMesh(0.07, 0.02, 0.1, 0, 0.06, -0.02, brass));
-    g.add(boxMesh(0.03, 0.03, 0.06, 0, -0.07, -0.1, accent));
-    len = 0.65;
-  } else if (id === 'rifle') {
-    g.add(boxMesh(0.06, 0.09, 0.55, 0, 0, -0.15, steel));
-    g.add(boxMesh(0.04, 0.04, 0.4, 0, 0.01, -0.62, steel));
-    g.add(boxMesh(0.055, 0.11, 0.25, 0, -0.03, 0.27, wood));
-    g.add(boxMesh(0.045, 0.16, 0.06, 0, -0.12, -0.1, accent));
-    g.add(boxMesh(0.03, 0.05, 0.12, 0, 0.07, -0.15, brass));
-    g.add(boxMesh(0.04, 0.12, 0.05, 0, -0.1, 0.03, wood));
-    len = 0.85;
-  } else {
-    g.add(boxMesh(0.055, 0.09, 0.5, 0, 0, -0.1, wood));
-    g.add(cylMesh(0.025, 0.025, 0.75, 0, 0.02, -0.7, steel, 'z', 8));
-    g.add(boxMesh(0.05, 0.12, 0.26, 0, -0.04, 0.3, wood));
-    g.add(cylMesh(0.035, 0.035, 0.3, 0, 0.1, -0.15, accent, 'z', 10));
-    g.add(boxMesh(0.03, 0.04, 0.03, 0, 0.07, -0.05, steel));
-    len = 1.1;
-  }
-  g.userData.muzzle = new THREE.Vector3(0, 0.02, -len);
-  return g;
+function vd(x, z) { return clamp(1 - Math.hypot(camera.position.x - x, camera.position.z - z) / 190, 0.07, 1); }
+function explosionAt(x, y, z, s) {
+  for (let i = 0; i < 5; i++) spawnFx({ tex: TEX.fire, x: x + rand(-0.5, 0.5) * s, y: y + rand(-0.3, 0.5) * s, z: z + rand(-0.5, 0.5) * s, size: rand(2.5, 4) * s, grow: rand(3, 6) * s, life: rand(0.35, 0.65), vx: rand(-3, 3) * s, vy: rand(1, 5) * s, vz: rand(-3, 3) * s, add: true });
+  for (let i = 0; i < 6; i++) spawnFx({ tex: TEX.smoke, x: x + rand(-1, 1) * s, y: y + rand(0, 1) * s, z: z + rand(-1, 1) * s, size: 2 * s, grow: 3.5 * s, life: rand(1.3, 2.4), vx: rand(-2, 2), vy: rand(2, 5), vz: rand(-2, 2), drag: 0.5, op: 0.7 });
+  for (let i = 0; i < 4; i++) spawnFx({ tex: TEX.spark, x, y, z, size: 0.6 * s, grow: 0, life: rand(0.4, 0.9), vx: rand(-9, 9) * s, vy: rand(2, 10) * s, vz: rand(-9, 9) * s, g: 14, add: true });
+  boomLight.position.set(x, y + 1, z); boomLight.intensity = Math.max(boomLight.intensity, 7 * Math.min(s, 3));
+  addShake(0.55 * s, x, y, z);
 }
-
-const LOOK = {
-  captain:   { coat: 0x8e1b24, skin: 0xe8b88a, hat: 'tricorn', hatColor: 0x15151a },
-  gunner:    { coat: 0x45523f, skin: 0x9a6a48, hat: 'bandana', hatColor: 0xb3262c },
-  navigator: { coat: 0x1f4e79, skin: 0xe6c19a, hat: 'bicorne', hatColor: 0x1b2c44 },
-  surgeon:   { coat: 0xe3dcc8, skin: 0xf0cba6, hat: 'cap', hatColor: 0x2a9d8f }
-};
-const CHAR_CSS = { captain: '#d23a40', gunner: '#6f8a5a', navigator: '#3a7fc0', surgeon: '#2a9d8f' };
-
-function createPirate(charId, teamColor) {
-  const L = LOOK[charId] || LOOK.captain;
-  const M = (c) => new THREE.MeshLambertMaterial({ color: c });
-  const root = new THREE.Group();
-  const body = new THREE.Group();
-  root.add(body);
-
-  const legL = new THREE.Group(), legR = new THREE.Group();
-  [[legL, -0.17], [legR, 0.17]].forEach((pair) => {
-    const lg = pair[0];
-    lg.position.set(pair[1], 0.82, 0);
-    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.23, 0.62, 0.26), M(0x2a2a33));
-    leg.position.y = -0.31; lg.add(leg);
-    const boot = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.26, 0.34), M(0x1c1511));
-    boot.position.set(0, -0.69, -0.03); lg.add(boot);
-    body.add(lg);
-  });
-
-  const torso = new THREE.Group();
-  body.add(torso);
-  torso.add(boxMesh(0.66, 0.62, 0.36, 0, 1.13, 0, L.coat));
-  torso.add(boxMesh(0.7, 0.34, 0.4, 0, 0.86, 0, L.coat));
-  torso.add(boxMesh(0.68, 0.08, 0.38, 0, 0.84, 0, 0x4a2f16));
-  torso.add(boxMesh(0.1, 0.1, 0.02, 0, 0.84, -0.2, 0xe0b030));
-  const sash = boxMesh(0.1, 0.8, 0.4, 0, 1.12, 0, teamColor);
-  sash.rotation.z = 0.7; torso.add(sash);
-  torso.add(boxMesh(0.4, 0.06, 0.04, 0, 1.4, -0.19, 0xe0b030));
-
-  const armL = new THREE.Group(), armR = new THREE.Group();
-  [[armL, -0.42], [armR, 0.42]].forEach((pair) => {
-    const a = pair[0];
-    a.position.set(pair[1], 1.38, 0);
-    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.6, 0.18), M(L.coat));
-    arm.position.y = -0.3; a.add(arm);
-    const cuff = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.1, 0.2), M(0xe0b030));
-    cuff.position.y = -0.55; a.add(cuff);
-    const hand = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 0.14), M(L.skin));
-    hand.position.y = -0.68; a.add(hand);
-    body.add(a);
-  });
-  armR.rotation.x = Math.PI / 2;
-  armL.rotation.x = 1.25; armL.rotation.z = -0.35;
-  const gunMount = new THREE.Group();
-  gunMount.position.set(0, -0.62, 0);
-  gunMount.rotation.x = -Math.PI / 2;
-  armR.add(gunMount);
-
-  const head = new THREE.Group();
-  head.position.set(0, 1.62, 0);
-  body.add(head);
-  head.add(boxMesh(0.3, 0.32, 0.3, 0, 0.1, 0, L.skin));
-  head.add(boxMesh(0.05, 0.05, 0.02, -0.07, 0.14, -0.155, 0x111111));
-  head.add(boxMesh(0.05, 0.05, 0.02, 0.07, 0.14, -0.155, 0x111111));
-
-  if (L.hat === 'tricorn') {
-    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.06, 3), M(L.hatColor));
-    base.position.y = 0.3; base.rotation.y = Math.PI / 2; head.add(base);
-    const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.2, 0.16, 10), M(L.hatColor));
-    crown.position.y = 0.38; head.add(crown);
-    head.add(boxMesh(0.22, 0.03, 0.22, 0, 0.34, 0, 0xe0b030));
-    const feather = boxMesh(0.04, 0.3, 0.1, 0.18, 0.46, 0.05, 0xd23a40);
-    feather.rotation.z = -0.5; head.add(feather);
-    head.add(boxMesh(0.28, 0.14, 0.1, 0, -0.1, -0.12, 0x8a2a10));  // 赤髭
-    head.add(boxMesh(0.1, 0.08, 0.02, 0.07, 0.14, -0.16, 0x000000)); // 眼帯
-  } else if (L.hat === 'bandana') {
-    head.add(boxMesh(0.34, 0.12, 0.34, 0, 0.27, 0, L.hatColor));
-    head.add(boxMesh(0.1, 0.1, 0.1, 0, 0.27, 0.2, L.hatColor));
-    head.add(boxMesh(0.3, 0.1, 0.06, 0, -0.04, -0.14, 0x222222)); // 髭
-  } else if (L.hat === 'bicorne') {
-    head.add(boxMesh(0.64, 0.14, 0.3, 0, 0.32, 0, L.hatColor));
-    head.add(boxMesh(0.3, 0.12, 0.26, 0, 0.42, 0, L.hatColor));
-    head.add(boxMesh(0.66, 0.03, 0.32, 0, 0.27, 0, 0xe0b030));
-  } else {
-    head.add(boxMesh(0.34, 0.12, 0.34, 0, 0.28, 0, L.hatColor));
-    head.add(boxMesh(0.3, 0.12, 0.04, 0, 0.0, -0.16, 0xf5f5f5)); // マスク
-  }
-  if (charId === 'gunner') {
-    body.add(cylMesh(0.18, 0.18, 0.35, 0, 1.0, 0.3, 0x7a4a22, 'y', 10));
-    body.add(boxMesh(0.04, 0.12, 0.04, 0, 1.24, 0.3, 0xffb03a));
-  } else if (charId === 'surgeon') {
-    body.add(boxMesh(0.3, 0.24, 0.12, 0.38, 0.8, 0, 0x6b4a2b));
-    body.add(boxMesh(0.1, 0.03, 0.01, 0.38, 0.8, -0.07, 0xd23a40));
-    body.add(boxMesh(0.03, 0.1, 0.01, 0.38, 0.8, -0.07, 0xd23a40));
-  } else if (charId === 'navigator') {
-    body.add(cylMesh(0.035, 0.035, 0.4, -0.4, 0.7, -0.05, 0xc9a227, 'y', 8));
-  }
-
-  root.userData = { body, torso, legL, legR, armL, armR, head, gunMount, charId };
-  return root;
+function splashFx(x, z) {
+  for (let i = 0; i < 9; i++) spawnFx({ tex: TEX.splash, x: x + rand(-0.4, 0.4), y: 0.3, z: z + rand(-0.4, 0.4), size: rand(1.4, 2.6), grow: 1.2, life: rand(0.7, 1.1), vx: rand(-1.5, 1.5), vy: rand(5, 10), vz: rand(-1.5, 1.5), g: 14, op: 0.9 });
+  const r = new THREE.Mesh(new THREE.RingGeometry(0.5, 0.8, 18), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false }));
+  r.rotation.x = -Math.PI / 2; r.position.set(x, 0.35, z); gameScene.add(r);
+  debris.push({ ring: r, age: 0, life: 1.1, big: 1 });
+  SFX.splash(vd(x, z));
 }
-function setHeldWeapon(model, weaponId) {
-  const gm = model.userData.gunMount;
-  while (gm.children.length) gm.remove(gm.children[0]);
-  gm.add(buildGunMesh(weaponId));
-}
-
-/* =====================================================================
- *  4. ロビー用シーン
- * ===================================================================*/
-const lobbyScene = new THREE.Scene();
-const lobbyCam = new THREE.PerspectiveCamera(38, window.innerWidth / window.innerHeight, 0.1, 900);
-let lobbyModel = null, lobbyYaw = 0, lobbyDrag = false;
-const lobbySea = makeSea(0x1d5f8c, 800, 48);
-
-(function buildLobbyScene() {
-  lobbyScene.background = canvasTex(16, 256, (g, w, h) => {
-    const gr = g.createLinearGradient(0, 0, 0, h);
-    gr.addColorStop(0, '#1b2a5a'); gr.addColorStop(0.42, '#b84a6b'); gr.addColorStop(0.68, '#ff9a5c'); gr.addColorStop(1, '#ffd08a');
-    g.fillStyle = gr; g.fillRect(0, 0, w, h);
-  });
-  lobbyScene.fog = new THREE.Fog(0xe0906a, 30, 260);
-  lobbyScene.add(new THREE.HemisphereLight(0xffc89a, 0x203040, 0.75));
-  const sun = new THREE.DirectionalLight(0xffd9a0, 0.9);
-  sun.position.set(-6, 6, 8); lobbyScene.add(sun);
-  const spot = new THREE.SpotLight(0xfff2d8, 1.1, 30, 0.55, 0.6);
-  spot.position.set(1, 7, 6); spot.target.position.set(-1.6, 1, 0);
-  lobbyScene.add(spot); lobbyScene.add(spot.target);
-  [[3.5, 3.2, 1], [-5, 3.4, -3]].forEach((p) => {
-    const l = new THREE.PointLight(0xffa850, 1.1, 14);
-    l.position.set(p[0], p[1], p[2]); lobbyScene.add(l);
-    const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffc070 }));
-    lamp.position.copy(l.position); lobbyScene.add(lamp);
-  });
-
-  lobbySea.mesh.position.y = -2.2;
-  lobbyScene.add(lobbySea.mesh);
-
-  // 甲板
-  const deckTex = woodTexture('#9a6b3f', '#4b2f17');
-  deckTex.repeat.set(8, 6);
-  const deck = new THREE.Mesh(new THREE.BoxGeometry(28, 1, 20), new THREE.MeshLambertMaterial({ color: 0x7a5230 }));
-  deck.position.set(0, -0.5, -2); lobbyScene.add(deck);
-  const deckTop = new THREE.Mesh(new THREE.PlaneGeometry(28, 20), new THREE.MeshLambertMaterial({ map: deckTex }));
-  deckTop.rotation.x = -Math.PI / 2; deckTop.position.set(0, 0.01, -2); lobbyScene.add(deckTop);
-  // 手すり
-  lobbyScene.add(boxMesh(28, 1.1, 0.3, 0, 0.55, -11.8, 0x5a3a20));
-  lobbyScene.add(boxMesh(0.3, 1.1, 18, -14, 0.55, -3, 0x5a3a20));
-  for (let i = -13; i <= 13; i += 2) lobbyScene.add(boxMesh(0.22, 1.5, 0.22, i, 0.75, -11.8, 0x3d2616));
-  // マスト・帆
-  lobbyScene.add(cylMesh(0.55, 0.7, 26, 6, 12, -6, 0x4a3320, 'y', 12));
-  lobbyScene.add(cylMesh(0.22, 0.22, 14, 6, 17, -6, 0x4a3320, 'x', 8));
-  lobbyScene.add(cylMesh(0.22, 0.22, 14, 6, 8, -6, 0x4a3320, 'x', 8));
-  const sail = new THREE.Mesh(new THREE.PlaneGeometry(13, 8.6), new THREE.MeshLambertMaterial({ map: skullTex('#2b2118', '#f1e3bd'), side: THREE.DoubleSide }));
-  sail.position.set(6, 12.5, -5.7); sail.rotation.y = -0.18; lobbyScene.add(sail);
-  // 樽・箱・大砲
-  [[-8, -8], [-9.3, -7.2], [9, -2], [10.3, -3], [-6, -10]].forEach((p) => {
-    lobbyScene.add(cylMesh(0.5, 0.5, 1.1, p[0], 0.55, p[1], 0x7a4a22, 'y', 10));
-    lobbyScene.add(cylMesh(0.52, 0.52, 0.07, p[0], 0.3, p[1], 0x2a1a0c, 'y', 10));
-    lobbyScene.add(cylMesh(0.52, 0.52, 0.07, p[0], 0.8, p[1], 0x2a1a0c, 'y', 10));
-  });
-  [[-4.5, -9], [8, -8.5], [-11, -4]].forEach((p) => lobbyScene.add(boxMesh(1.6, 1.4, 1.6, p[0], 0.7, p[1], 0xb07a3a)));
-  lobbyScene.add(cylMesh(0.3, 0.38, 2.4, -11.6, 0.9, 1, 0x2a2e38, 'x', 10));
-  lobbyScene.add(boxMesh(1.4, 0.6, 0.9, -11.6, 0.3, 1, 0x4a3320));
-  // 遠景の船
-  function farShip(x, z, s, rot) {
-    const g = new THREE.Group();
-    g.add(boxMesh(6, 2, 22, 0, 0, 0, 0x2a1d12));
-    g.add(cylMesh(0.3, 0.3, 16, 0, 9, -3, 0x2a1d12, 'y', 6));
-    g.add(cylMesh(0.3, 0.3, 12, 0, 8, 5, 0x2a1d12, 'y', 6));
-    const s1 = new THREE.Mesh(new THREE.PlaneGeometry(7, 8), new THREE.MeshLambertMaterial({ color: 0xe8d8b0, side: THREE.DoubleSide }));
-    s1.position.set(0, 10, -2.7); g.add(s1);
-    const s2 = new THREE.Mesh(new THREE.PlaneGeometry(6, 6), new THREE.MeshLambertMaterial({ color: 0xe8d8b0, side: THREE.DoubleSide }));
-    s2.position.set(0, 8.5, 5.3); g.add(s2);
-    g.position.set(x, -1.2, z); g.scale.setScalar(s); g.rotation.y = rot;
-    lobbyScene.add(g);
-  }
-  farShip(-60, -120, 1.6, 0.5);
-  farShip(70, -170, 2.0, -0.3);
-  const sunDisc = new THREE.Mesh(new THREE.CircleGeometry(16, 32), new THREE.MeshBasicMaterial({ color: 0xfff0b0, fog: false }));
-  sunDisc.position.set(-30, 8, -240); lobbyScene.add(sunDisc);
-  // 足元の円盤
-  const pad = new THREE.Mesh(new THREE.CylinderGeometry(1.15, 1.25, 0.08, 36), new THREE.MeshLambertMaterial({ color: 0x2a1d12 }));
-  pad.position.set(-1.6, 0.04, 0); lobbyScene.add(pad);
-  const padRing = new THREE.Mesh(new THREE.TorusGeometry(1.2, 0.04, 8, 48), new THREE.MeshBasicMaterial({ color: 0xf2b632 }));
-  padRing.rotation.x = Math.PI / 2; padRing.position.set(-1.6, 0.09, 0); lobbyScene.add(padRing);
-})();
-
-function setLobbyCharacter(id) {
-  lobbyCharacter = id;
-  lsSet('pp_char', id);
-  if (lobbyModel) lobbyScene.remove(lobbyModel);
-  lobbyModel = createPirate(id, 0xf2b632);
-  setHeldWeapon(lobbyModel, 'rifle');
-  lobbyModel.position.set(-1.6, 0.08, 0);
-  lobbyModel.scale.setScalar(1.15);
-  lobbyScene.add(lobbyModel);
-  document.querySelectorAll('.lb-card').forEach((el) => el.classList.toggle('sel', el.dataset.id === id));
-  renderLobbyInfo();
-}
-
-function buildLobbyUI() {
-  const wrap = $('lbChars');
-  wrap.innerHTML = '';
-  Object.keys(CHARACTERS).forEach((id) => {
-    const c = CHARACTERS[id];
-    const el = document.createElement('div');
-    el.className = 'lb-card';
-    el.dataset.id = id;
-    el.innerHTML = '<div class="lb-chip" style="background:' + (CHAR_CSS[id] || '#888') + '"></div><div><b>' + c.name + '</b><small>' + c.role + '　Q:' + ABILITIES[c.q].name + ' / E:' + ABILITIES[c.e].name + '</small></div>';
-    el.addEventListener('click', () => { SFX.ui(); setLobbyCharacter(id); });
-    wrap.appendChild(el);
-  });
-  if (!CHARACTERS[lobbyCharacter]) lobbyCharacter = 'captain';
-}
-function renderLobbyInfo() {
-  const c = CHARACTERS[lobbyCharacter];
-  if (!c) return;
-  const q = ABILITIES[c.q], e = ABILITIES[c.e];
-  $('lbInfo').innerHTML =
-    '<h2>' + c.name + '</h2><span class="role">' + c.role + '</span><p>' + c.desc + '</p>' +
-    '<div class="lb-ab"><kbd>Q</kbd><div><b>' + q.name + '</b><br><span>' + q.desc + '（CT ' + Math.round(q.cooldown / 1000) + '秒）</span></div></div>' +
-    '<div class="lb-ab"><kbd>E</kbd><div><b>' + e.name + '</b><br><span>' + e.desc + '（CT ' + Math.round(e.cooldown / 1000) + '秒）</span></div></div>';
-}
-
-/* =====================================================================
- *  5. ゲームシーン（海賊船マップ）
- * ===================================================================*/
-const gameScene = new THREE.Scene();
-gameScene.background = new THREE.Color(0x8cc3e8);
-gameScene.fog = new THREE.Fog(0x9ccbea, 70, 290);
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.05, 700);
-gameScene.add(camera);
-gameScene.add(new THREE.HemisphereLight(0xd6ecff, 0x6a5a48, 0.95));
-const sunLight = new THREE.DirectionalLight(0xfff0d0, 0.85);
-sunLight.position.set(30, 60, 20);
-gameScene.add(sunLight);
-const gameSea = makeSea(0x1e6f9f, 700, 56);
-gameSea.mesh.position.y = -1.3;
-gameScene.add(gameSea.mesh);
-
-const colliders = [];
-const mapMeshes = [];
-const MASTS = [];
-const MAT = {
-  hull: new THREE.MeshLambertMaterial({ color: 0x5b3a22 }),
-  deck: new THREE.MeshLambertMaterial({ color: 0x9a6b3f }),
-  rail: new THREE.MeshLambertMaterial({ color: 0x6b4a2b }),
-  dark: new THREE.MeshLambertMaterial({ color: 0x2c2c34 }),
-  plank: new THREE.MeshLambertMaterial({ color: 0x8a6035 }),
-  crate: new THREE.MeshLambertMaterial({ color: 0xb07a3a }),
-  barrel: new THREE.MeshLambertMaterial({ color: 0x7a4a22 }),
-  band: new THREE.MeshLambertMaterial({ color: 0x2a1a0c }),
-  mast: new THREE.MeshLambertMaterial({ color: 0x4a3320 }),
-  gold: new THREE.MeshLambertMaterial({ color: 0xe0b030 }),
-  edge: new THREE.LineBasicMaterial({ color: 0x3a2210 })
-};
-
-function addBox(x0, x1, y0, y1, z0, z1, mat, opt) {
-  opt = opt || {};
-  const geo = new THREE.BoxGeometry(x1 - x0, y1 - y0, z1 - z0);
-  const m = new THREE.Mesh(geo, mat || MAT.deck);
-  m.position.set((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
-  m.visible = opt.visible !== false;
-  m.matrixAutoUpdate = false;
-  m.updateMatrix();
+function spawnDebris(x, y, z, size, vx, vy, vz, life, burn) {
+  const m = new THREE.Mesh(debrisGeo, debrisMats[(Math.random() * debrisMats.length) | 0]);
+  m.scale.set(size * rand(0.5, 1.6), size * rand(0.12, 0.3), size * rand(0.4, 1.2));
+  m.position.set(x, y, z); m.rotation.set(rand(0, 6), rand(0, 6), rand(0, 6));
   gameScene.add(m);
-  if (opt.edges) {
-    const e = new THREE.LineSegments(new THREE.EdgesGeometry(geo), MAT.edge);
-    e.position.copy(m.position); e.matrixAutoUpdate = false; e.updateMatrix();
-    gameScene.add(e);
-  }
-  if (opt.solid !== false) {
-    colliders.push({ minX: x0, maxX: x1, minY: y0, maxY: y1, minZ: z0, maxZ: z1 });
-    mapMeshes.push(m);
-  }
-  return m;
+  debris.push({ mesh: m, vx, vy, vz, sx: rand(-5, 5), sy: rand(-5, 5), sz: rand(-5, 5), age: 0, life, burn: !!burn, float: false, floatT: 0 });
 }
-function deckPlane(x0, x1, z0, z1, y, tex) {
-  const t = tex.clone();
-  t.needsUpdate = true;
-  t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  t.repeat.set(Math.max(1, (x1 - x0) / 3), Math.max(1, (z1 - z0) / 3));
-  const p = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0, z1 - z0), new THREE.MeshLambertMaterial({ map: t }));
-  p.rotation.x = -Math.PI / 2;
-  p.position.set((x0 + x1) / 2, y + 0.012, (z0 + z1) / 2);
-  gameScene.add(p);
-}
-function addCrate(x, z, s, h, y0) {
-  addBox(x - s / 2, x + s / 2, y0, y0 + h, z - s / 2, z + s / 2, MAT.crate, { edges: true });
-}
-function addBarrelProp(x, z, y0) {
-  addBox(x - 0.42, x + 0.42, y0, y0 + 1.1, z - 0.42, z + 0.42, MAT.barrel, { visible: false });
-  const m = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 1.1, 10), MAT.barrel);
-  m.position.set(x, y0 + 0.55, z); gameScene.add(m);
-  [0.22, 0.88].forEach((yy) => {
-    const b = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.07, 10), MAT.band);
-    b.position.set(x, y0 + yy, z); gameScene.add(b);
-  });
-}
-function addCannon(x, z, y0) {
-  addBox(x - 0.95, x + 0.95, y0, y0 + 0.85, z - 0.45, z + 0.45, MAT.dark, { visible: false });
-  const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.34, 2.0, 12), MAT.dark);
-  barrel.rotation.z = Math.PI / 2; barrel.position.set(x, y0 + 0.62, z); gameScene.add(barrel);
-  [-0.4, 0.4].forEach((dz) => {
-    const w = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.12, 12), MAT.rail);
-    w.rotation.x = Math.PI / 2; w.position.set(x, y0 + 0.34, z + dz); gameScene.add(w);
-  });
-  const base = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.2, 0.7), MAT.rail);
-  base.position.set(x, y0 + 0.3, z); gameScene.add(base);
-}
-const RAIL_GAPS = [[-22.6, -19.4], [-4.4, -1.6]];
-function railRange(x0, x1, z0, z1, top, useGaps) {
-  let ranges = [[z0, z1]];
-  if (useGaps) {
-    RAIL_GAPS.forEach((g) => {
-      const next = [];
-      ranges.forEach((r) => {
-        if (g[1] <= r[0] || g[0] >= r[1]) next.push(r);
-        else {
-          if (g[0] > r[0]) next.push([r[0], g[0]]);
-          if (g[1] < r[1]) next.push([g[1], r[1]]);
-        }
-      });
-      ranges = next;
-    });
-  }
-  ranges.forEach((r) => addBox(x0, x1, 0, top, r[0], r[1], MAT.rail));
-}
-
-function addMast(cx, z, top, withNest, sailW, sailH, sailY, flagTex) {
-  // 見た目は円柱、判定は非表示のボックス
-  addBox(cx - 0.5, cx + 0.5, 0, top, z - 0.5, z + 0.5, MAT.mast, { visible: false });
-  const m = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.55, top, 12), MAT.mast);
-  m.position.set(cx, top / 2, z); gameScene.add(m);
-  if (sailW) {
-    const yard = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, sailW + 1.6, 8), MAT.mast);
-    yard.rotation.z = Math.PI / 2; yard.position.set(cx, sailY + sailH, z + 0.7); gameScene.add(yard);
-    const sail = new THREE.Mesh(new THREE.PlaneGeometry(sailW, sailH),
-      new THREE.MeshLambertMaterial({ map: flagTex, side: THREE.DoubleSide }));
-    sail.position.set(cx, sailY + sailH / 2, z + 0.7); gameScene.add(sail);
-  }
-  if (withNest) {
-    // 見張り台（中央に穴：マストをWキーで登る）
-    const y0 = 7.7, y1 = 8.0, h = 1.4, o = 3.0, z0 = z;
-    addBox(cx - o, cx + o, y0, y1, z0 - o, z0 - h, MAT.plank, { edges: true });
-    addBox(cx - o, cx + o, y0, y1, z0 + h, z0 + o, MAT.plank, { edges: true });
-    addBox(cx - o, cx - h, y0, y1, z0 - h, z0 + h, MAT.plank, { edges: true });
-    addBox(cx + h, cx + o, y0, y1, z0 - h, z0 + h, MAT.plank, { edges: true });
-    // 低い縁（見た目のみ）
-    [[0, -o], [0, o]].forEach((p) => addBox(cx - o, cx + o, y1, y1 + 0.35, z0 + p[1] - 0.06, z0 + p[1] + 0.06, MAT.rail, { solid: false }));
-    [[-o, 0], [o, 0]].forEach((p) => addBox(cx + p[0] - 0.06, cx + p[0] + 0.06, y1, y1 + 0.35, z0 - o, z0 + o, MAT.rail, { solid: false }));
-    MASTS.push({ x: cx, z: z0, top: y1, base: 0 });
-  }
-}
-
-function buildShip(cx, inner, flagTex) {
-  // inner: 相手の船へ向かう方向 (+1 / -1)
-  const x0 = cx - 6, x1 = cx + 6;
-  const woodTex = woodTexture('#a0713f', '#4b2f17');
-
-  addBox(x0, x1, -3.2, 0, -26, 26, MAT.hull);               // 船体（メインデッキ高さ 0）
-  deckPlane(x0, x1, -17, 12, 0, woodTex);
-  addBox(x0, x1, 0, 0.55, -26, -17, MAT.deck);              // 船首楼
-  addBox(x0, x1, 0.55, 1.1, -26, -18, MAT.deck);
-  deckPlane(x0, x1, -26, -18, 1.1, woodTex);
-  addBox(x0, x1, 0, 0.55, 12, 26, MAT.deck);                // 船尾楼への階段
-  addBox(x0, x1, 0.55, 1.1, 13, 26, MAT.deck);
-  addBox(x0, x1, 1.1, 1.65, 14, 26, MAT.deck);
-  addBox(x0, x1, 1.65, 2.2, 15, 26, MAT.deck);
-  deckPlane(x0, x1, 15, 26, 2.2, woodTex);
-
-  // 船首のとがり（見た目のみ）
-  const shape = new THREE.Shape();
-  shape.moveTo(-6, 0); shape.lineTo(6, 0); shape.lineTo(0, 10); shape.lineTo(-6, 0);
-  const bowGeo = new THREE.ExtrudeGeometry(shape, { depth: 3.2, bevelEnabled: false });
-  bowGeo.rotateX(-Math.PI / 2); bowGeo.translate(0, -3.2, 0);
-  const bow = new THREE.Mesh(bowGeo, MAT.hull);
-  bow.position.set(cx, 0, -26); gameScene.add(bow);
-  const spr = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.22, 9, 8), MAT.mast);
-  spr.rotation.x = Math.PI / 2 - 0.25; spr.position.set(cx, 1.6, -30); gameScene.add(spr);
-
-  // 舷窓・金ライン（見た目のみ）
-  for (let z = -18; z <= 22; z += 5) {
-    [x0 - 0.03, x1 + 0.03].forEach((x) => addBox(x - 0.02, x + 0.02, -1.9, -1.0, z, z + 1.1, MAT.dark, { solid: false }));
-  }
-  addBox(x0 - 0.04, x0, -0.5, -0.3, -26, 26, MAT.gold, { solid: false });
-  addBox(x1, x1 + 0.04, -0.5, -0.3, -26, 26, MAT.gold, { solid: false });
-
-  // 手すり
-  const segs = [[-26, -18, 2.2], [-18, -17, 1.65], [-17, 12, 1.1], [12, 15, 2.4], [15, 26, 3.3]];
-  const outerX = inner > 0 ? [x0, x0 + 0.25] : [x1 - 0.25, x1];
-  const innerX = inner > 0 ? [x1 - 0.25, x1] : [x0, x0 + 0.25];
-  segs.forEach((s) => {
-    railRange(outerX[0], outerX[1], s[0], s[1], s[2], false);
-    railRange(innerX[0], innerX[1], s[0], s[1], s[2], true);
-  });
-  addBox(x0, x1, 0, 3.3, 25.75, 26, MAT.rail);   // 船尾の壁
-  addBox(x0, x1, 0, 2.2, -26, -25.75, MAT.rail);  // 船首の壁
-  addBox(x0 + 1, x1 - 1, 2.2, 3.6, 25.4, 25.75, MAT.hull, { solid: false });
-
-  // マスト
-  addMast(cx, 4, 22, true, 10.5, 8.5, 11.5, flagTex);
-  addMast(cx, -11, 18, false, 9.5, 7, 9.5, clothTex('#e8d8b0'));
-  addMast(cx, 23.5, 14, false, 7.5, 5, 8, clothTex('#d8c69a'));
-  // 旗
-  const flag = new THREE.Mesh(new THREE.PlaneGeometry(3, 1.8), new THREE.MeshLambertMaterial({ map: skullTex('#111', '#eee'), side: THREE.DoubleSide }));
-  flag.position.set(cx + 1.5, 21, 4); gameScene.add(flag);
-
-  // 遮蔽物（dx は相手の船方向が +）
-  const X = (dx) => cx + dx * inner;
-  addCrate(X(-3.2), -8, 1.6, 1.4, 0);
-  addCrate(X(3), -13, 1.4, 1.1, 0);
-  addCrate(X(-1.5), 8.5, 1.8, 1.8, 0);
-  addCrate(X(3.6), 1.5, 1.3, 1.3, 0);
-  addCrate(X(-3.5), 16.2, 1.4, 1.2, 2.2);
-  addCrate(X(3.5), 16.2, 1.4, 1.2, 2.2);
-  addCrate(X(-2.0), -24, 1.5, 1.3, 1.1);
-  addCrate(X(2.2), -19.2, 1.3, 1.1, 1.1);
-  addBarrelProp(X(-3.6), -1.5, 0);
-  addBarrelProp(X(1), 10.5, 0);
-  addBarrelProp(X(-4), 5, 0);
-  addBarrelProp(X(-4), -21.5, 1.1);
-  addBarrelProp(X(0.5), -25.2, 1.1);
-  addBarrelProp(X(-4.2), -6.5, 0);
-  addBarrelProp(X(-4.2), -5.6, 0);
-  [-14, -5.8, 6.8].forEach((z) => addCannon(X(-4.6), z, 0));
-}
-
-function buildGameWorld() {
-  const flagTex = skullTex('#e8dcc0', '#1c1410');
-  buildShip(-11, +1, flagTex);   // 攻撃側の船
-  buildShip(11, -1, flagTex);    // 防衛側の船
-
-  // 橋（渡り板）
-  const woodTex = woodTexture('#8a6035', '#3a2210');
-  addBox(-5.3, 5.3, 0.85, 1.1, -22, -20, MAT.plank, { edges: true });    // 船首楼の渡り板
-  addBox(-5.3, 5.3, -0.25, 0, -4, -2, MAT.plank, { edges: true });       // 中央の渡り板
-  addBox(-9.2, 9.2, 7.7, 8.0, 3.3, 4.7, MAT.plank, { edges: true });     // マスト間の高い綱橋
-  deckPlane(-5, 5, -22, -20, 1.1, woodTex);
-  deckPlane(-5, 5, -4, -2, 0, woodTex);
-  // 橋のロープ（見た目のみ）
-  [-20.1, -21.9].forEach((z) => addBox(-5, 5, 1.1, 1.18, z - 0.03, z + 0.03, MAT.rail, { solid: false }));
-
-  // サイト表示
-  SITES.forEach((s) => {
-    const ring = new THREE.Mesh(new THREE.RingGeometry(s.r - 0.18, s.r, 48), new THREE.MeshBasicMaterial({ color: 0xf2b632, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false }));
-    ring.rotation.x = -Math.PI / 2; ring.position.set(s.x, s.y + 0.04, s.z); gameScene.add(ring);
-    const x = new THREE.Mesh(new THREE.CircleGeometry(s.r - 0.2, 40), new THREE.MeshBasicMaterial({ color: 0xf2b632, transparent: true, opacity: 0.1, side: THREE.DoubleSide, depthWrite: false }));
-    x.rotation.x = -Math.PI / 2; x.position.set(s.x, s.y + 0.035, s.z); gameScene.add(x);
-    const label = makeLabel(s.id, '#ffd873', 128, 128, 'bold 90px serif');
-    label.scale.set(2.4, 2.4, 1); label.position.set(s.x, s.y + 4.2, s.z); gameScene.add(label);
-  });
-
-  // 遠景：島と雲
-  const islandMat = new THREE.MeshLambertMaterial({ color: 0x4a7a3a });
-  const sandMat = new THREE.MeshLambertMaterial({ color: 0xe0cd96 });
-  [[-150, -120, 22], [170, -160, 30], [120, 190, 18], [-190, 140, 26]].forEach((p) => {
-    const sand = new THREE.Mesh(new THREE.CylinderGeometry(p[2] * 1.1, p[2] * 1.4, 3, 12), sandMat);
-    sand.position.set(p[0], -0.5, p[1]); gameScene.add(sand);
-    const hill = new THREE.Mesh(new THREE.ConeGeometry(p[2] * 0.7, p[2] * 0.6, 8), islandMat);
-    hill.position.set(p[0], p[2] * 0.3 + 1, p[1]); gameScene.add(hill);
-  });
-  const cloudMat = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.9 });
-  for (let i = 0; i < 14; i++) {
-    const c = new THREE.Group();
-    for (let k = 0; k < 4; k++) {
-      const s = new THREE.Mesh(new THREE.SphereGeometry(rand(6, 11), 8, 6), cloudMat);
-      s.position.set(k * 9 - 14, rand(-1, 2), rand(-4, 4)); s.scale.y = 0.5; c.add(s);
+function updateDebris(dt, t) {
+  for (let i = debris.length - 1; i >= 0; i--) {
+    const d = debris[i];
+    d.age += dt;
+    if (d.ring) {
+      const k = d.age / d.life; d.ring.scale.setScalar(1 + k * 7 * d.big); d.ring.material.opacity = 0.8 * (1 - k);
+      if (k >= 1) { gameScene.remove(d.ring); debris.splice(i, 1); }
+      continue;
     }
-    const a = rand(0, Math.PI * 2), d = rand(150, 320);
-    c.position.set(Math.cos(a) * d, rand(55, 90), Math.sin(a) * d);
-    gameScene.add(c);
+    if (d.age > d.life) { gameScene.remove(d.mesh); debris.splice(i, 1); continue; }
+    const m = d.mesh;
+    if (!d.float) {
+      d.vy -= GRAV * dt;
+      m.position.x += d.vx * dt; m.position.y += d.vy * dt; m.position.z += d.vz * dt;
+      m.rotation.x += d.sx * dt; m.rotation.y += d.sy * dt; m.rotation.z += d.sz * dt;
+      if (m.position.y < 0.1 && d.vy < 0) { d.float = true; if (Math.random() < 0.4) splashFx(m.position.x, m.position.z); }
+    } else {
+      d.floatT += dt;
+      const wy = waveH(m.position.x, m.position.z, t) + 0.1 - Math.max(0, d.floatT - 5) * 0.25;
+      m.position.y = lerp(m.position.y, wy, 0.2);
+      m.position.x += d.vx * dt * 0.1; m.position.z += d.vz * dt * 0.1;
+      d.vx *= 0.97; d.vz *= 0.97;
+      m.rotation.x *= 0.96; m.rotation.z *= 0.96;
+      if (d.burn && d.floatT < 9 && Math.random() < dt * 6) {
+        spawnFx({ tex: TEX.fire, x: m.position.x, y: m.position.y + 0.3, z: m.position.z, size: rand(1.2, 2.2), grow: 0.8, life: 0.7, vy: 2, add: true });
+        if (Math.random() < 0.5) spawnFx({ tex: TEX.smoke, x: m.position.x, y: m.position.y + 0.6, z: m.position.z, size: 1.6, grow: 2.5, life: 2, vy: 3, drag: 0.4, op: 0.6 });
+      }
+    }
   }
-  gameScene.updateMatrixWorld(true);
+}
+function tracerFx(o, d, color, len) {
+  const geo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(o.x, o.y - 0.15, o.z), new THREE.Vector3(o.x + d.x * len, o.y - 0.15 + d.y * len, o.z + d.z * len)]);
+  const l = new THREE.Line(geo, new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.9 }));
+  gameScene.add(l); tracers.push({ l, age: 0 });
+}
+function updateTracers(dt) {
+  for (let i = tracers.length - 1; i >= 0; i--) {
+    const t = tracers[i]; t.age += dt;
+    t.l.material.opacity = 0.9 * (1 - t.age / 0.12);
+    if (t.age > 0.12) { gameScene.remove(t.l); t.l.geometry.dispose(); tracers.splice(i, 1); }
+  }
 }
 
-/* =====================================================================
- *  6. プレイヤー物理
- * ===================================================================*/
-const PR = 0.38, PH = 1.75, EYE = 1.62, STEP = 0.62, GRAV = 24, JUMP = 7.2;
-const P = { x: 0, y: 2.2, z: 20, vy: 0, yaw: 0, pitch: 0, onGround: true, speed: 0 };
+// =====================================================
+//  ゲーム状態
+// =====================================================
+const me = { alive: false, hp: 100, wood: 0, team: 'A', credits: 0, mount: null, respawn: 0, kills: 0, deaths: 0 };
+const P = { ship: null, x: 0, y: DECK, z: 0, vx: 0, vy: 0, vz: 0, yaw: 0, pitch: 0, onGround: true, wheel: 0, throttle: 0 };
+const shipViews = {}, remotes = {}, pdata = {}, ballMeshes = {};
+let netPhase = 'idle';
+let lastSnapAt = 0;
+const cin = { active: false, team: null, t0: 0, blasted: false, focus: new THREE.Vector3(), ang: 0, nextBoom: 0 };
 const keys = {};
+let mouseDown = false;
+let curWeapon = 'pistol', reloading = false, reloadEnd = 0, lastShotT = 0, kick = 0, swing = 0;
+const WEAP = {
+  pistol: { name: 'フリントロック', mag: 6, reload: 1800, rate: 450 },
+  blunder: { name: 'ブランダーバス', mag: 2, reload: 2600, rate: 1100 },
+  cutlass: { name: 'カットラス', mag: 0, reload: 0, rate: 600, melee: true }
+};
+const ammo = { pistol: 6, blunder: 2 };
+let holdRepair = null, hammerT = 0;
+let lastSend = 0, lastHelmSend = 0, lastHelmVal = '';
+let walkT = 0, stepT = 0, splashedFlag = false;
 
-function collidesAt(x, y, z) {
-  for (let i = 0; i < colliders.length; i++) {
-    const b = colliders[i];
-    if (x + PR > b.minX && x - PR < b.maxX && z + PR > b.minZ && z - PR < b.maxZ && y + PH > b.minY && y + STEP < b.maxY) return true;
-  }
-  return false;
-}
-function groundAt(x, z, y) {
-  let g = -Infinity;
-  for (let i = 0; i < colliders.length; i++) {
-    const b = colliders[i];
-    if (x > b.minX && x < b.maxX && z > b.minZ && z < b.maxZ && b.maxY <= y + STEP + 0.001 && b.maxY > g) g = b.maxY;
-  }
-  return g;
-}
-let hasteUntil = 0, scanUntil = 0;
-function stepOnce(h, mv) {
-  const speed = (mv.walk ? 3.3 : 6.2) * (performance.now() < hasteUntil ? 1.45 : 1);
-  const fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw), rx = Math.cos(P.yaw), rz = -Math.sin(P.yaw);
-  let dx = fx * mv.fwd + rx * mv.str, dz = fz * mv.fwd + rz * mv.str;
-  const len = Math.hypot(dx, dz);
-  if (len > 0) { dx = dx / len * speed * h; dz = dz / len * speed * h; } else { dx = 0; dz = 0; }
-  P.speed = len > 0 ? speed : 0;
-  if (dx !== 0 && !collidesAt(P.x + dx, P.y, P.z)) P.x += dx;
-  if (dz !== 0 && !collidesAt(P.x, P.y, P.z + dz)) P.z += dz;
-
-  // マストを登る（マストに向かってWキー）
-  let climbing = false;
-  if (mv.fwd > 0) {
-    for (let i = 0; i < MASTS.length; i++) {
-      const m = MASTS[i];
-      if (Math.abs(P.x - m.x) < 1.5 && Math.abs(P.z - m.z) < 1.5 && P.y <= m.top + 0.001 && P.y > m.base - 0.5) {
-        const tx = m.x - P.x, tz = m.z - P.z, tl = Math.hypot(tx, tz) || 1;
-        if ((tx * fx + tz * fz) / tl > 0.45) {
-          climbing = true;
-          if (P.y < m.top) P.y = Math.min(m.top, P.y + 3.4 * h);
-          break;
-        }
-      }
-    }
-  }
-  if (climbing) { P.vy = 0; P.onGround = false; return; }
-
-  if (mv.jump && P.onGround) { P.vy = JUMP; P.onGround = false; }
-  P.vy = Math.max(-40, P.vy - GRAV * h);
-  const ny = P.y + P.vy * h;
-  const g = groundAt(P.x, P.z, P.y);
-  const was = P.onGround;
-  if (P.vy <= 0 && g > -Infinity && (ny <= g + 0.001 || (was && P.y - g <= 0.58))) {
-    P.y = g; P.vy = 0; P.onGround = true;
-  } else {
-    P.y = ny; P.onGround = false;
-  }
-}
-function stepPlayer(dt, mv) {
-  const sub = Math.max(1, Math.ceil(dt / (1 / 90)));
-  const h = dt / sub;
-  for (let i = 0; i < sub; i++) stepOnce(h, mv);
-  P.y = Math.max(P.y, -40);
-}
-
-function doBlink() {
-  const dirx = -Math.sin(P.yaw), dirz = -Math.cos(P.yaw);
-  let good = null;
-  for (let s = 0.5; s <= 9.01; s += 0.5) {
-    const nx = P.x + dirx * s, nz = P.z + dirz * s;
-    if (collidesAt(nx, P.y, nz)) break;
-    const g = groundAt(nx, nz, P.y);
-    if (g > -Infinity) good = { x: nx, z: nz, y: g };
-  }
-  blinkFx(P.x, P.y, P.z);
-  if (good) { P.x = good.x; P.z = good.z; P.y = Math.max(P.y, good.y); P.vy = 0; }
-  blinkFx(P.x, P.y, P.z);
-}
-
-/* =====================================================================
- *  7. エフェクト
- * ===================================================================*/
-const fx = [];
-function addFx(obj, life, update, onEnd) {
-  gameScene.add(obj);
-  fx.push({ obj, life, max: life, update, onEnd });
-}
-function updateFx(dt) {
-  for (let i = fx.length - 1; i >= 0; i--) {
-    const f = fx[i];
-    f.life -= dt;
-    const k = 1 - Math.max(0, f.life) / f.max;
-    if (f.update) f.update(f, k, dt);
-    if (f.life <= 0) {
-      gameScene.remove(f.obj);
-      if (f.onEnd) f.onEnd(f);
-      fx.splice(i, 1);
-    }
-  }
-}
-function clearFx() {
-  fx.forEach((f) => gameScene.remove(f.obj));
-  fx.length = 0;
-}
-function tracer(a, b, color, life) {
-  const g = new THREE.BufferGeometry().setFromPoints([a, b]);
-  const m = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.95 });
-  addFx(new THREE.Line(g, m), life || 0.07, (f, k) => { m.opacity = 0.95 * (1 - k); }, () => { g.dispose(); m.dispose(); });
-}
-function sparkAt(p, color) {
-  const m = new THREE.Mesh(new THREE.SphereGeometry(0.09, 6, 5), new THREE.MeshBasicMaterial({ color: color || 0xffe0a0, transparent: true }));
-  m.position.copy(p);
-  addFx(m, 0.16, (f, k) => { m.scale.setScalar(1 + k * 2.2); m.material.opacity = 1 - k; });
-}
-function blinkFx(x, y, z) {
-  const m = new THREE.Mesh(new THREE.TorusGeometry(0.7, 0.08, 8, 24), new THREE.MeshBasicMaterial({ color: 0x9fe8ff, transparent: true }));
-  m.position.set(x, y + 0.9, z); m.rotation.x = Math.PI / 2;
-  addFx(m, 0.45, (f, k) => { m.scale.setScalar(1 + k * 2.4); m.position.y = y + 0.4 + k * 1.6; m.material.opacity = 1 - k; });
-}
-let shake = 0;
-function explosionFx(x, y, z, r) {
-  const ball = new THREE.Mesh(new THREE.SphereGeometry(1, 14, 10), new THREE.MeshBasicMaterial({ color: 0xffa030, transparent: true, opacity: 0.95 }));
-  ball.position.set(x, y + 0.5, z);
-  const light = new THREE.PointLight(0xff8a30, 3, 26);
-  ball.add(light);
-  addFx(ball, 0.7, (f, k) => {
-    ball.scale.setScalar(0.4 + k * r * 0.9);
-    ball.material.opacity = 0.95 * (1 - k);
-    light.intensity = 3 * (1 - k);
-    ball.material.color.setHex(k < 0.35 ? 0xfff0a0 : 0xff6a1a);
+function initShipViews() {
+  ['A', 'B'].forEach((k) => {
+    const obj = buildShip(k); gameScene.add(obj.root);
+    shipViews[k] = { obj, x: 0, z: 0, h: 0, tx: 0, tz: 0, th: 0, hp: 100, holes: [], cn: [], speed: 0, throttle: 0, wheel: 0, helm: 0, sunk: false, init: false, ph: k === 'A' ? 0 : 2 };
   });
-  const smoke = new THREE.Mesh(new THREE.SphereGeometry(1, 10, 8), new THREE.MeshBasicMaterial({ color: 0x2a2a2a, transparent: true, opacity: 0.6, depthWrite: false }));
-  smoke.position.set(x, y + 0.8, z);
-  addFx(smoke, 1.6, (f, k) => { smoke.scale.setScalar(1 + k * r * 0.8); smoke.position.y = y + 0.8 + k * 3; smoke.material.opacity = 0.6 * (1 - k); });
-  for (let i = 0; i < 22; i++) {
-    const d = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.16, 0.16), new THREE.MeshBasicMaterial({ color: Math.random() < 0.5 ? 0xffc040 : 0x6b4a2b, transparent: true }));
-    d.position.set(x, y + 0.6, z);
-    const v = new THREE.Vector3(rand(-1, 1), rand(0.6, 2), rand(-1, 1)).multiplyScalar(rand(4, 10));
-    addFx(d, rand(0.6, 1.1), (f, k, dt) => {
-      v.y -= 18 * dt; d.position.addScaledVector(v, dt); d.rotation.x += dt * 8; d.material.opacity = 1 - k;
+}
+initShipViews();
+
+// ---- 一人称ビューモデル ----
+const gunView = new THREE.Group(); camera.add(gunView);
+const vmWeapons = {};
+(function () {
+  const dark = mat(0x2a2320), metal = mat(0x3b3b44, 30), wood = mat(0x7a4a22), brass = mat(0xd9a625, 40), steel = mat(0xcfd6dd, 60), coat = mat(0x9c3b2e);
+  const sleeve = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.5), coat); sleeve.position.set(0, -0.04, 0.12);
+  const pistol = new THREE.Group();
+  pistol.add(new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.06, 0.36), metal)).position.set(0, 0.03, -0.1);
+  const grip = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.14, 0.07), wood); grip.position.set(0, -0.07, 0.06); grip.rotation.x = 0.3; pistol.add(grip);
+  pistol.add(sleeve.clone());
+  const blunder = new THREE.Group();
+  const bb = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.035, 0.5, 8), metal); bb.rotation.x = Math.PI / 2; bb.position.set(0, 0.02, -0.15); blunder.add(bb);
+  const stock = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.1, 0.3), wood); stock.position.set(0, -0.03, 0.22); blunder.add(stock);
+  blunder.add(sleeve.clone());
+  const cutlass = new THREE.Group();
+  const blade = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.07, 0.72), steel); blade.position.set(0, 0.04, -0.4); cutlass.add(blade);
+  const hilt = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.025, 0.04), brass); hilt.position.set(0, 0.04, -0.03); cutlass.add(hilt);
+  const hnd = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, 0.16), wood); hnd.position.set(0, 0.04, 0.07); cutlass.add(hnd);
+  cutlass.add(sleeve.clone());
+  vmWeapons.pistol = pistol; vmWeapons.blunder = blunder; vmWeapons.cutlass = cutlass;
+  Object.values(vmWeapons).forEach((w) => { w.visible = false; gunView.add(w); });
+})();
+const flashSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: TEX.fire, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0 }));
+flashSprite.scale.set(0.5, 0.5, 1); flashSprite.position.set(0, 0.04, -0.55); gunView.add(flashSprite);
+const muzzleLight = new THREE.PointLight(0xffc070, 0, 14); muzzleLight.position.set(0, 0, -0.6); gunView.add(muzzleLight);
+
+// ---- 砲弾の弾道予測ライン ----
+const arcGeo = new THREE.BufferGeometry();
+arcGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(60 * 3), 3));
+const arcLine = new THREE.Line(arcGeo, new THREE.LineBasicMaterial({ color: 0xffe08a, transparent: true, opacity: 0.75, depthTest: false }));
+arcLine.frustumCulled = false; arcLine.visible = false; gameScene.add(arcLine);
+
+// =====================================================
+//  ロビー 3D
+// =====================================================
+const lobbyShips = [];
+(function () {
+  const a = buildShip('A'), b = buildShip('B');
+  a.root.position.set(0, 0, 0); a.root.rotation.y = 0.5;
+  b.root.position.set(-62, 0, -70); b.root.rotation.y = -0.7;
+  lobbyScene.add(a.root); lobbyScene.add(b.root); lobbyShips.push(a, b);
+})();
+let lobbyPirate = null, previewSkin = 'classic';
+function rebuildLobbyPirate() {
+  if (lobbyPirate) lobbyShips[0].root.remove(lobbyPirate.group);
+  lobbyPirate = buildPirate(previewSkin, 'A');
+  lobbyPirate.group.position.set(1.2, DECK, 5.5);
+  lobbyPirate.group.rotation.y = Math.PI * 0.85;
+  lobbyShips[0].root.add(lobbyPirate.group);
+}
+rebuildLobbyPirate();
+const _v = new THREE.Vector3(), _v2 = new THREE.Vector3(), _dir = new THREE.Vector3();
+function updateLobby(dt, t) {
+  lobbySea.update(t);
+  lobbyShips.forEach((s, i) => {
+    s.root.position.y = waveH(s.root.position.x, s.root.position.z, t) * 0.7;
+    s.root.rotation.z = Math.sin(t * 0.6 + i) * 0.025; s.root.rotation.x = Math.sin(t * 0.8 + i) * 0.012;
+    s.wheel.rotation.z = Math.sin(t * 0.5) * 0.4;
+    s.sails.forEach((sl, k) => { sl.rotation.y = Math.sin(t * 0.7 + k) * 0.04; });
+    if (s.flag) s.flag.rotation.y = Math.sin(t * 3) * 0.35;
+  });
+  lobbyPirate.group.rotation.y = Math.PI * 0.85 + Math.sin(t * 0.5) * 0.35;
+  lobbyPirate.armR.rotation.x = Math.sin(t * 1.2) * 0.1;
+  lobbyShips[0].root.updateMatrixWorld(true);
+  const pw = lobbyShips[0].root.localToWorld(_v.set(1.2, DECK + 1.25, 5.5)).clone();
+  const ang = 0.55 + Math.sin(t * 0.25) * 0.35;
+  lobbyCam.position.set(pw.x + Math.sin(ang) * 4.2 + 0.4, pw.y + 0.35, pw.z + Math.cos(ang) * 4.2 + 0.4);
+  lobbyCam.lookAt(pw);
+}
+
+// =====================================================
+//  UI（タイトル / ロビー / フレンド / スキン）
+// =====================================================
+function showScreen(name) {
+  appState = name;
+  $('title').classList.toggle('hidden', name !== 'title');
+  $('lobby').classList.toggle('hidden', name !== 'lobby');
+  $('hud').classList.toggle('hidden', name !== 'game');
+  if (name !== 'game') { $('pause').classList.add('hidden'); document.body.classList.remove('cinema'); }
+}
+function updateLobbyUi() {
+  if (!profile) return;
+  $('lbName').textContent = profile.name;
+  $('lbCredits').textContent = profile.credits.toLocaleString() + ' G';
+  $('lbRecord').textContent = `${profile.wins}勝 ${profile.losses}敗 / ${profile.kills}キル`;
+  $('myCode').textContent = profile.code;
+  me.credits = profile.credits;
+  renderSkins();
+}
+function updateOnlineUi() {
+  $('lbOnline').textContent = `オンライン ${online.total}人`;
+  const busy = online.phase !== 'idle';
+  $('lbStatus').textContent = busy
+    ? `海戦進行中：${online.inMatch}人が参加中（赤 ${online.hpA}% / 青 ${online.hpB}%）  ― いつでも途中参加できます`
+    : '海は静まり返っている…出航すると、CPUの海賊が仲間と敵になって戦ってくれます';
+}
+function renderSkins() {
+  if (!profile) return;
+  const box = $('skinList'); box.innerHTML = '';
+  Object.keys(SKINS).forEach((id) => {
+    const s = SKINS[id], owned = profile.skins.includes(id);
+    const el = document.createElement('div');
+    el.className = 'skin pa' + (previewSkin === id ? ' sel' : '');
+    el.innerHTML = `<div class="chip" style="background:#${s.color.toString(16).padStart(6, '0')}"></div><div><b>${s.name}</b><small>${owned ? '所持済み' : s.cost.toLocaleString() + ' G'}</small></div>`;
+    const tag = document.createElement('span'); tag.className = 'tag';
+    if (profile.skin === id) tag.textContent = '装備中';
+    else if (owned) { const b = document.createElement('button'); b.className = 'mini ok'; b.textContent = '装備'; b.onclick = (e) => { e.stopPropagation(); socket.emit('equipSkin', id); }; tag.appendChild(b); }
+    else { const b = document.createElement('button'); b.className = 'mini'; b.textContent = '購入'; b.onclick = (e) => { e.stopPropagation(); socket.emit('buySkin', id); }; tag.appendChild(b); }
+    el.appendChild(tag);
+    el.onclick = () => { previewSkin = id; rebuildLobbyPirate(); renderSkins(); };
+    box.appendChild(el);
+  });
+}
+function renderFriends() {
+  const rb = $('reqBox'); rb.innerHTML = '';
+  if (friendsData.requests.length) {
+    const h = document.createElement('div'); h.className = 'sec'; h.textContent = 'フレンド申請'; rb.appendChild(h);
+    friendsData.requests.forEach((r) => {
+      const row = document.createElement('div'); row.className = 'frow';
+      row.innerHTML = `<span class="nm"></span>`; row.querySelector('.nm').textContent = r.name;
+      const ok = document.createElement('button'); ok.className = 'mini ok'; ok.textContent = '承認'; ok.onclick = () => socket.emit('friendRespond', { code: r.code, accept: true });
+      const ng = document.createElement('button'); ng.className = 'mini ng'; ng.textContent = '拒否'; ng.onclick = () => socket.emit('friendRespond', { code: r.code, accept: false });
+      row.appendChild(ok); row.appendChild(ng); rb.appendChild(row);
     });
   }
-  const dist = Math.hypot(P.x - x, P.z - z);
-  if (dist < 40) shake = Math.max(shake, (1 - dist / 40) * (r > 8 ? 1.4 : 0.8));
-  const pan = clamp(((x - P.x) * Math.cos(P.yaw) + (z - P.z) * -Math.sin(P.yaw)) / 25, -1, 1);
-  SFX.explosion(clamp(1.2 - dist / 70, 0.25, 1.2), pan);
-}
-
-// 煙幕
-const smokes = [];
-function addSmoke(d) {
-  const g = new THREE.Group();
-  const mat = new THREE.MeshLambertMaterial({ color: 0xcfcfcf, transparent: true, opacity: 0.93, depthWrite: false });
-  for (let i = 0; i < 9; i++) {
-    const s = new THREE.Mesh(new THREE.SphereGeometry(d.r * rand(0.42, 0.62), 12, 9), mat);
-    s.position.set(rand(-1, 1) * d.r * 0.5, rand(0, 1.4), rand(-1, 1) * d.r * 0.5);
-    g.add(s);
-  }
-  g.position.set(d.x, d.y + 1.0, d.z);
-  g.scale.setScalar(0.1);
-  gameScene.add(g);
-  smokes.push({ id: d.id, group: g, mat, born: performance.now(), life: d.duration });
-  SFX.smoke();
-}
-function updateSmokes(now) {
-  for (let i = smokes.length - 1; i >= 0; i--) {
-    const s = smokes[i];
-    const age = now - s.born;
-    if (age >= s.life) { gameScene.remove(s.group); s.mat.dispose(); smokes.splice(i, 1); continue; }
-    const grow = clamp(age / 700, 0, 1);
-    s.group.scale.setScalar(0.1 + 0.9 * grow);
-    const remain = s.life - age;
-    s.mat.opacity = remain < 1500 ? 0.93 * (remain / 1500) : 0.93;
-    s.group.rotation.y += 0.002;
-  }
-}
-function clearSmokes() {
-  smokes.forEach((s) => { gameScene.remove(s.group); s.mat.dispose(); });
-  smokes.length = 0;
-}
-
-// 炸裂樽（投擲アニメーション）
-function throwBarrel(from, to, delay) {
-  const m = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.4, 10), MAT.barrel);
-  const spark = new THREE.Sprite(new THREE.SpriteMaterial({ map: GLOW, transparent: true, depthWrite: false }));
-  spark.scale.set(0.7, 0.7, 1); spark.position.y = 0.3; m.add(spark);
-  const a = new THREE.Vector3(from.x, from.y, from.z), b = new THREE.Vector3(to.x, to.y + 0.3, to.z);
-  const dur = delay / 1000 * 0.85;
-  m.position.copy(a);
-  addFx(m, dur, (f, k) => {
-    m.position.lerpVectors(a, b, k);
-    m.position.y += Math.sin(k * Math.PI) * 2.4;
-    m.rotation.x += 0.3; m.rotation.z += 0.2;
+  const fl = $('friendList'); fl.innerHTML = '';
+  if (!friendsData.friends.length) { fl.innerHTML = '<div class="empty">まだフレンドがいません。コードを交換して追加しましょう。</div>'; return; }
+  friendsData.friends.slice().sort((a, b) => (b.online - a.online)).forEach((f) => {
+    const row = document.createElement('div'); row.className = 'frow';
+    row.innerHTML = `<span class="dot ${f.inMatch ? 'bt' : f.online ? 'on' : ''}"></span><span class="nm"></span><small>${f.inMatch ? '戦闘中' : f.online ? 'ロビー' : 'オフライン'}</small>`;
+    row.querySelector('.nm').textContent = f.name;
+    if (f.inMatch) { const b = document.createElement('button'); b.className = 'mini ok'; b.textContent = '合流'; b.onclick = () => joinGame(f.code); row.appendChild(b); }
+    const x = document.createElement('button'); x.className = 'mini ng'; x.textContent = '×'; x.title = 'フレンド解除';
+    x.onclick = () => { if (confirm(`${f.name} をフレンドから外しますか？`)) socket.emit('friendRemove', f.code); };
+    row.appendChild(x); fl.appendChild(row);
   });
-  SFX.throw_();
 }
+$('copyCode').onclick = () => {
+  if (!profile) return;
+  try { navigator.clipboard.writeText(profile.code); toast('フレンドコードをコピーしました'); } catch (e) { toast('コード: ' + profile.code); }
+};
+$('friendAddBtn').onclick = () => { const v = $('friendInput').value.trim(); if (v) { socket.emit('friendAdd', v); $('friendInput').value = ''; } };
+$('friendInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('friendAddBtn').click(); });
+$('startBtn').onclick = () => {
+  ac();
+  const n = $('nameInput').value.trim();
+  if (n && profile && n !== profile.name) socket.emit('setName', n);
+  try { localStorage.setItem('pp_name', n); } catch (e) {}
+  showScreen('lobby');
+};
+$('nameInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('startBtn').click(); });
+function joinGame(friendCode) {
+  ac();
+  $('joinBtn').disabled = true;
+  socket.emit('join', { friendCode: friendCode || null });
+  setTimeout(() => { $('joinBtn').disabled = false; }, 4000);
+}
+$('joinBtn').onclick = () => joinGame(null);
+$('resumeBtn').onclick = () => requestLock();
+$('toLobbyBtn').onclick = () => leaveGame();
 
-// 爆弾（樽）
-function spawnBombVisual(x, y, z, timeLeft) {
-  removeBombVisual();
-  const g = new THREE.Group();
-  g.add(cylMesh(0.5, 0.5, 0.9, 0, 0.45, 0, 0x7a4a22, 'y', 12));
-  [0.2, 0.7].forEach((yy) => g.add(cylMesh(0.52, 0.52, 0.08, 0, yy, 0, 0x2a1a0c, 'y', 12)));
-  g.add(boxMesh(0.55, 0.12, 0.55, 0, 0.92, 0, 0xd23a40));
-  g.add(cylMesh(0.03, 0.03, 0.35, 0, 1.15, 0, 0x222222, 'y', 6));
-  const spark = new THREE.Sprite(new THREE.SpriteMaterial({ map: GLOW, transparent: true, depthWrite: false }));
-  spark.scale.set(0.9, 0.9, 1); spark.position.y = 1.35; g.add(spark);
-  const light = new THREE.PointLight(0xff4020, 1.4, 12);
-  light.position.y = 1.2; g.add(light);
-  g.position.set(x, y, z);
-  gameScene.add(g);
-  bomb = { x, y, z, group: g, spark, light, explodeLocal: performance.now() + timeLeft, nextBeep: 0, total: 35000 };
-}
-function removeBombVisual() {
-  if (bomb && bomb.group) gameScene.remove(bomb.group);
-  bomb = null;
-}
+// =====================================================
+//  ソケットイベント（共通）
+// =====================================================
+socket.on('connect', () => {
+  myId = socket.id;
+  $('loadMsg').textContent = 'セーブデータを読み込み中…';
+  let nm = ''; try { nm = localStorage.getItem('pp_name') || ''; } catch (e) {}
+  socket.emit('auth', { token, name: nm, backup: loadBackup() });
+});
+socket.on('disconnect', () => { toast('サーバーとの接続が切れました'); if (appState === 'game') leaveGame(true); });
+socket.on('profile', (d) => {
+  if (d.token) { token = d.token; try { localStorage.setItem('pp_token', token); } catch (e) {} }
+  profile = d.profile;
+  try { localStorage.setItem('pp_backup', JSON.stringify(profile)); } catch (e) {}
+  if (!previewSkin || !profile.skins.includes(previewSkin)) previewSkin = profile.skin;
+  if (appState === 'boot') {
+    $('nameInput').value = profile.name === '海賊' ? '' : profile.name;
+    previewSkin = profile.skin; rebuildLobbyPirate();
+    $('loading').classList.add('hidden'); showScreen('title');
+  }
+  updateLobbyUi();
+});
+socket.on('friends', (d) => { friendsData = d; renderFriends(); });
+socket.on('notice', (t) => toast(t));
+socket.on('online', (d) => { online = d; updateOnlineUi(); });
 
-/* =====================================================================
- *  8. 他プレイヤー
- * ===================================================================*/
-const hitMat = new THREE.MeshBasicMaterial({ visible: false });
-function addRemote(id, p) {
-  const root = createPirate(p.character, TEAM_COLOR[p.team] || 0xffffff);
-  setHeldWeapon(root, p.weapon || 'pistol');
-  const bodyHit = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.5, 0.55), hitMat);
-  bodyHit.position.y = 0.75; bodyHit.userData = { pid: id, head: false };
-  const headHit = new THREE.Mesh(new THREE.SphereGeometry(0.27, 8, 6), hitMat);
-  headHit.position.y = 1.7; headHit.userData = { pid: id, head: true };
-  root.add(bodyHit, headHit);
-  const label = makeLabel(p.name, TEAM_CSS[p.team] || '#fff');
-  label.scale.set(1.9, 0.48, 1); label.position.y = 2.3; root.add(label);
-  const scanMark = makeLabel('▼', '#ff3030', 64, 64, 'bold 48px sans-serif');
-  scanMark.scale.set(0.8, 0.8, 1); scanMark.position.y = 2.8; scanMark.visible = false; root.add(scanMark);
-  root.position.set(p.x, p.y, p.z);
-  root.rotation.y = p.rotationY || 0;
-  gameScene.add(root);
-  remotes[id] = {
-    id, root, bodyHit, headHit, label, scanMark, weapon: p.weapon, character: p.character, team: p.team,
-    tx: p.x, ty: p.y, tz: p.z, tyaw: p.rotationY || 0, pitch: p.pitch || 0, phase: 0, speed: 0
-  };
-  root.visible = !!p.alive;
-  updateRemoteLabelVisibility(remotes[id]);
+// =====================================================
+//  試合に入る / 出る
+// =====================================================
+function enterGame(d) {
+  me.team = d.team; me.alive = true; me.mount = null;
+  applyState(d.st);
+  P.ship = d.ship; P.x = d.x; P.y = d.y; P.z = d.z; P.vx = P.vy = P.vz = 0; P.onGround = true;
+  P.yaw = d.h; P.pitch = 0;
+  Object.keys(shipViews).forEach((k) => { shipViews[k].init = false; });
+  curWeapon = 'pistol'; ammo.pistol = 6; ammo.blunder = 2; reloading = false;
+  showScreen('game');
+  $('meShipName').textContent = TEAM_NAME[me.team] + '（自船）';
+  $('enShipName').textContent = TEAM_NAME[me.team === 'A' ? 'B' : 'A'];
+  banner('出航！', '敵船を沈めろ ― 先に大破した方の負け', '', 3500);
+  requestLock();
 }
-function updateRemoteLabelVisibility(r) {
-  r.label.visible = (r.team === me.team);
+function leaveGame(silent) {
+  if (!silent) socket.emit('leave');
+  if (document.pointerLockElement) document.exitPointerLock();
+  clearRemotes();
+  resetVisuals();
+  cin.active = false;
+  me.alive = false; me.mount = null; holdRepair = null;
+  showScreen('lobby');
+  updateOnlineUi();
 }
-function removeRemote(id) {
-  const r = remotes[id];
-  if (!r) return;
-  gameScene.remove(r.root);
-  delete remotes[id];
-}
+socket.on('joined', (d) => { $('joinBtn').disabled = false; enterGame(d); });
 function clearRemotes() {
-  Object.keys(remotes).forEach(removeRemote);
-  Object.keys(pdata).forEach((k) => delete pdata[k]);
+  Object.keys(remotes).forEach((id) => { const r = remotes[id]; if (r.m.group.parent) r.m.group.parent.remove(r.m.group); delete remotes[id]; });
+  Object.keys(pdata).forEach((id) => { delete pdata[id]; });
+  Object.keys(ballMeshes).forEach((id) => { gameScene.remove(ballMeshes[id].mesh); delete ballMeshes[id]; });
 }
-function applyPublic(id, p) {
-  pdata[id] = p;
-  if (id === myId) return;
-  let r = remotes[id];
-  if (r && (r.character !== p.character || r.team !== p.team)) { removeRemote(id); r = null; }
-  if (!r) { addRemote(id, p); r = remotes[id]; }
-  r.tx = p.x; r.ty = p.y; r.tz = p.z; r.tyaw = p.rotationY || 0; r.pitch = p.pitch || 0;
-  if (r.weapon !== p.weapon) { r.weapon = p.weapon; setHeldWeapon(r.root, p.weapon); }
-  r.root.visible = !!p.alive && id !== specId;
+function resetVisuals() {
+  ['A', 'B'].forEach((k) => { shipViews[k].obj.root.visible = true; shipViews[k].sunk = false; });
+  for (let i = debris.length - 1; i >= 0; i--) { const d = debris[i]; gameScene.remove(d.mesh || d.ring); }
+  debris.length = 0;
+  for (let i = fxList.length - 1; i >= 0; i--) { gameScene.remove(fxList[i].spr); fxPool.push(fxList[i].spr); }
+  fxList.length = 0;
+  document.body.classList.remove('cinema');
+  timeScale = 1;
 }
-function syncPlayers(list, teleport) {
-  Object.keys(list).forEach((id) => {
-    applyPublic(id, list[id]);
-    if (teleport && remotes[id]) {
-      const r = remotes[id];
-      r.root.position.set(r.tx, r.ty, r.tz);
-      r.root.rotation.y = r.tyaw;
+
+// =====================================================
+//  スナップショット受信
+// =====================================================
+socket.on('snap', (s) => {
+  if (appState !== 'game') return;
+  netPhase = s.ph; lastSnapAt = performance.now();
+  ['A', 'B'].forEach((k) => {
+    const v = shipViews[k], d = s.sh[k];
+    v.tx = d.x; v.tz = d.z; v.th = d.h; v.speed = d.sp; v.throttle = d.th; v.wheel = d.wh;
+    v.hp = d.hp; v.holes = d.hl; v.helm = d.hm; v.cn = d.cn; v.sunk = !!d.sk;
+    if (!v.init) { v.x = d.x; v.z = d.z; v.h = d.h; v.init = true; }
+    if (v.sunk && v.obj.root.visible && !cin.active) v.obj.root.visible = false;
+  });
+  const seen = {};
+  s.pl.forEach((d) => { pdata[d.id] = d; seen[d.id] = 1; if (d.id !== myId) ensureRemote(d); });
+  Object.keys(pdata).forEach((id) => {
+    if (!seen[id]) {
+      delete pdata[id];
+      const r = remotes[id]; if (r) { if (r.m.group.parent) r.m.group.parent.remove(r.m.group); delete remotes[id]; }
     }
   });
-  Object.keys(remotes).forEach((id) => { if (!list[id]) removeRemote(id); });
-  Object.keys(pdata).forEach((id) => { if (!list[id]) delete pdata[id]; });
-}
-function updateRemotes(dt, now) {
-  const k = 1 - Math.exp(-dt * 14);
-  Object.keys(remotes).forEach((id) => {
-    const r = remotes[id];
-    const o = r.root.userData;
-    const px = r.root.position.x, pz = r.root.position.z;
-    r.root.position.x = lerp(px, r.tx, k);
-    r.root.position.y = lerp(r.root.position.y, r.ty, k);
-    r.root.position.z = lerp(pz, r.tz, k);
-    r.root.rotation.y += angDiff(r.root.rotation.y, r.tyaw) * k;
-    const sp = Math.hypot(r.root.position.x - px, r.root.position.z - pz) / Math.max(dt, 0.001);
-    r.speed = lerp(r.speed, sp, 0.2);
-    r.phase += dt * clamp(r.speed, 0, 7) * 1.6;
-    const amp = clamp(r.speed / 5, 0, 1) * 0.7;
-    o.legL.rotation.x = Math.sin(r.phase) * amp;
-    o.legR.rotation.x = -Math.sin(r.phase) * amp;
-    o.body.position.y = Math.abs(Math.sin(r.phase)) * 0.04 * clamp(r.speed / 5, 0, 1);
-    o.head.rotation.x = clamp(r.pitch, -0.8, 0.8);
-    o.armR.rotation.x = Math.PI / 2 + clamp(r.pitch, -1, 1) * 0.9;
-    const d = pdata[id];
-    r.scanMark.visible = !!(d && d.alive && d.team !== me.team && now < scanUntil);
-  });
-}
-
-/* =====================================================================
- *  9. 武器・射撃・アビリティ（クライアント側）
- * ===================================================================*/
-const rc = new THREE.Raycaster();
-const gunView = new THREE.Group();
-camera.add(gunView);
-gunView.position.set(0.27, -0.25, -0.5);
-let viewMuzzle = new THREE.Vector3(0, 0, -0.4);
-const flashSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: GLOW, transparent: true, depthWrite: false, opacity: 0 }));
-flashSprite.scale.set(0.45, 0.45, 1);
-gunView.add(flashSprite);
-const muzzleLight = new THREE.PointLight(0xffb060, 0, 9);
-camera.add(muzzleLight);
-
-let curWeapon = 'pistol', mag = 12, reloading = false, reloadEnd = 0, lastShot = 0;
-let recoilAccum = 0, kick = 0, scoped = false;
-let mouseDown = false, firedSinceDown = false, rmb = false;
-let buyOpen = false, interactHeld = false, interactProg = { kind: null, progress: 0 };
-const abilityReadyAt = { q: 0, e: 0 };
-let specId = null;
-let deathPos = null;
-let lastTickProg = 0;
-
-function setWeapon(id) {
-  if (!WEAPONS[id]) return;
-  curWeapon = id;
-  mag = WEAPONS[id].mag;
-  reloading = false;
-  while (gunView.children.length > 1) gunView.remove(gunView.children[1]);
-  const gm = buildGunMesh(id);
-  gunView.add(gm);
-  gm.add(boxMesh(0.07, 0.07, 0.14, 0, -0.08, 0.05, 0xe8b88a));
-  viewMuzzle = gm.userData.muzzle.clone();
-  flashSprite.position.copy(viewMuzzle);
-  $('crosshair').className = 'ch-' + (WEAPONS[id].crosshair || 'cross');
-  $('wName').textContent = WEAPONS[id].name;
-}
-function currentRole() { return me.team === match.attackTeam ? 'attack' : 'defend'; }
-function isLocked() { return document.pointerLockElement === canvas; }
-function canAct() {
-  return appState === 'game' && me.alive && isLocked() && (match.phase === 'live' || match.phase === 'planted') && !buyOpen && !interactHeld;
-}
-function startReload() {
-  const w = WEAPONS[curWeapon];
-  if (reloading || mag >= w.mag) return;
-  reloading = true;
-  reloadEnd = performance.now() + w.reload;
-  SFX.reload();
-}
-
-const _fwd = new THREE.Vector3(), _right = new THREE.Vector3(), _up = new THREE.Vector3(), _o = new THREE.Vector3();
-function enemyRayList() {
-  const arr = mapMeshes.slice();
-  Object.keys(remotes).forEach((id) => {
-    const d = pdata[id];
-    if (d && d.alive && d.team !== me.team) arr.push(remotes[id].bodyHit, remotes[id].headHit);
-  });
-  return arr;
-}
-function tryShoot(now) {
-  const w = WEAPONS[curWeapon];
-  if (reloading) return;
-  if (now - lastShot < w.rate) return;
-  if (mag <= 0) { SFX.empty(); lastShot = now; startReload(); return; }
-  lastShot = now;
-  firedSinceDown = true;
-  mag--;
-
-  camera.updateMatrixWorld(true);
-  camera.getWorldPosition(_o);
-  camera.getWorldDirection(_fwd);
-  _right.set(1, 0, 0).applyQuaternion(camera.quaternion);
-  _up.set(0, 1, 0).applyQuaternion(camera.quaternion);
-
-  let spread = w.spread;
-  if (w.scope && scoped) spread = 0.0012;
-  else {
-    if (P.speed > 0.5 && !(w.scope && scoped)) spread += w.scope ? 0.05 : 0.008;
-    if (!P.onGround) spread += 0.03;
-  }
-  spread += recoilAccum * 0.5;
-
-  const list = enemyRayList();
-  const hits = {};
-  const muzzleW = viewMuzzle.clone();
-  gunView.localToWorld(muzzleW);
-  let tracerCount = 0;
-  for (let i = 0; i < w.pellets; i++) {
-    const ang = Math.random() * Math.PI * 2, rad = Math.sqrt(Math.random()) * spread;
-    const dir = _fwd.clone().addScaledVector(_right, Math.cos(ang) * rad).addScaledVector(_up, Math.sin(ang) * rad).normalize();
-    rc.set(_o, dir);
-    rc.far = 220;
-    const res = rc.intersectObjects(list, false);
-    let end = _o.clone().addScaledVector(dir, 120);
-    if (res.length) {
-      end = res[0].point.clone();
-      const ud = res[0].object.userData;
-      if (ud && ud.pid) {
-        const h = hits[ud.pid] || (hits[ud.pid] = { targetId: ud.pid, n: 0, h: 0 });
-        if (ud.head) h.h++; else h.n++;
-      } else {
-        sparkAt(end, 0xffe0a0);
-      }
+  const now = performance.now(), live = {};
+  s.bl.forEach((b) => {
+    live[b[0]] = 1;
+    let bm = ballMeshes[b[0]];
+    if (!bm) {
+      bm = { mesh: new THREE.Mesh(new THREE.SphereGeometry(0.32, 8, 6), mat(0x222226, 40)), trail: 0 };
+      gameScene.add(bm.mesh); ballMeshes[b[0]] = bm;
     }
-    if (tracerCount < 3) { tracer(muzzleW, end, WEAPONS[curWeapon].color || 0xffe0a0, 0.06); tracerCount++; }
-  }
-  socket.emit('shoot', {
-    origin: { x: _o.x, y: _o.y, z: _o.z },
-    direction: { x: _fwd.x, y: _fwd.y, z: _fwd.z },
-    hits: Object.keys(hits).map((k) => hits[k])
+    bm.x = b[1]; bm.y = b[2]; bm.z = b[3]; bm.vx = b[4]; bm.vy = b[5]; bm.vz = b[6]; bm.t = now;
   });
-
-  // 反動・演出
-  P.pitch = clamp(P.pitch + w.recoil * (scoped ? 0.5 : 1) * rand(0.8, 1.2), -1.5, 1.5);
-  P.yaw += rand(-0.3, 0.3) * w.recoil;
-  recoilAccum = Math.min(0.06, recoilAccum + w.recoil * 0.6);
-  kick = Math.min(1, kick + (w.id === 'sniper' ? 1 : w.id === 'shotgun' ? 0.9 : 0.4));
-  flashSprite.material.opacity = 1;
-  muzzleLight.intensity = 2.2;
-  SFX.shot(w.id, 0.9, 0);
-  if (mag <= 0) startReload();
+  Object.keys(ballMeshes).forEach((id) => { if (!live[id]) { gameScene.remove(ballMeshes[id].mesh); delete ballMeshes[id]; } });
+});
+function ensureRemote(d) {
+  let r = remotes[d.id];
+  if (r && r.skin !== d.sk) { if (r.m.group.parent) r.m.group.parent.remove(r.m.group); delete remotes[d.id]; r = null; }
+  if (!r) {
+    const m = buildPirate(d.sk, d.t);
+    const tag = makeTag(d.n, d.t); m.group.add(tag);
+    r = { m, x: d.x, y: d.y, z: d.z, parentKey: null, skin: d.sk, phase: rand(0, 6), spd: 0 };
+    remotes[d.id] = r;
+  }
+  return r;
+}
+function updateRemotes(dt) {
+  const kk = 1 - Math.exp(-dt * 14);
+  Object.keys(remotes).forEach((id) => {
+    const r = remotes[id], d = pdata[id]; if (!d) return;
+    const key = d.s || 0;
+    if (r.parentKey !== key) {
+      if (r.m.group.parent) r.m.group.parent.remove(r.m.group);
+      (key ? shipViews[key].obj.root : gameScene).add(r.m.group);
+      r.parentKey = key; r.x = d.x; r.y = d.y; r.z = d.z;
+    }
+    const ox = r.x, oz = r.z;
+    r.x = lerp(r.x, d.x, kk); r.y = lerp(r.y, d.y, kk); r.z = lerp(r.z, d.z, kk);
+    r.spd = lerp(r.spd, Math.hypot(r.x - ox, r.z - oz) / Math.max(dt, 0.001), 0.2);
+    const g = r.m.group;
+    g.position.set(r.x, r.y, r.z);
+    g.rotation.y = d.yw - (key ? shipViews[key].h : 0);
+    g.visible = !!d.a;
+    r.phase += dt * clamp(r.spd, 0, 6) * 2.4;
+    const sw = Math.sin(r.phase) * clamp(r.spd / 4, 0, 1) * 0.8;
+    r.m.legL.rotation.x = sw; r.m.legR.rotation.x = -sw;
+    if (d.m) { r.m.armL.rotation.x = -1.2; r.m.armR.rotation.x = -1.2; }
+    else { r.m.armL.rotation.x = -sw * 0.8; r.m.armR.rotation.x = sw * 0.8 - (d.w === 'cutlass' ? 0.5 : 0.9); }
+    if (!key) { r.m.legL.rotation.x = r.m.legR.rotation.x = Math.sin(performance.now() * 0.006 + r.phase) * 0.5; }
+  });
 }
 
-function aimPoint(maxD) {
-  camera.updateMatrixWorld(true);
-  camera.getWorldPosition(_o);
-  camera.getWorldDirection(_fwd);
-  rc.set(_o, _fwd);
-  rc.far = maxD;
-  const res = rc.intersectObjects(mapMeshes, false);
-  let p;
-  if (res.length) p = res[0].point.clone().addScaledVector(_fwd, -0.4);
-  else p = _o.clone().addScaledVector(_fwd, maxD);
-  return { x: p.x, y: p.y, z: p.z };
+// =====================================================
+//  サーバーイベント（試合中）
+// =====================================================
+function applyState(st) {
+  if (!st) return;
+  const prevMount = me.mount;
+  me.hp = st.hp; me.wood = st.wood; me.alive = st.alive; me.team = st.team || me.team;
+  me.credits = st.credits; me.respawn = st.respawn; me.kills = st.kills; me.deaths = st.deaths;
+  me.mount = st.mount;
+  if (me.mount && (!prevMount || prevMount.type !== me.mount.type || prevMount.idx !== me.mount.idx)) enterMount();
+  if (!me.mount && prevMount) P.vy = 0;
 }
-function useAbility(slot) {
-  if (!canAct()) return;
-  const ch = CHARACTERS[me.character];
-  if (!ch) return;
-  const ab = ABILITIES[ch[slot]];
-  if (performance.now() < abilityReadyAt[slot]) { SFX.error(); return; }
-  const aim = aimPoint(ab.id === 'smoke' ? 40 : 30);
-  socket.emit('ability', { slot, aim });
+function enterMount() {
+  const sv = P.ship ? shipViews[P.ship] : null; if (!sv) return;
+  holdRepair = null;
+  if (me.mount.type === 'helm') {
+    P.x = HELM_STAND.x; P.z = HELM_STAND.z; P.y = DECK; P.vy = 0;
+    P.wheel = sv.wheel; P.throttle = sv.throttle; P.yaw = sv.h; P.pitch = -0.05;
+  } else {
+    const c = CANNONS[me.mount.idx];
+    P.x = c.sx; P.z = c.z; P.y = DECK; P.vy = 0;
+    P.yaw = c.side > 0 ? sv.h - Math.PI / 2 : sv.h + Math.PI / 2; P.pitch = 0.1;
+  }
+  toast(me.mount.type === 'helm' ? '舵を握った！ W/S:帆 A/D:舵' : '大砲に着いた！ クリックで発射');
 }
-function onAbilityOk(d) {
-  const ab = ABILITIES[d.ability];
-  abilityReadyAt[d.slot] = performance.now() + d.cooldown;
-  switch (d.ability) {
-    case 'blink': doBlink(); SFX.whoosh(); break;
-    case 'haste': SFX.haste(); break;
-    case 'heal': break;
-    case 'scan': break;
+socket.on('st', applyState);
+socket.on('respawn', (d) => {
+  me.alive = true; me.mount = null; holdRepair = null;
+  P.ship = d.ship; P.x = d.x; P.y = d.y; P.z = d.z; P.vx = P.vy = P.vz = 0; P.onGround = true; P.yaw = d.h; P.pitch = 0;
+  ammo.pistol = 6; ammo.blunder = 2; reloading = false;
+});
+socket.on('eject', (d) => { P.ship = null; P.x = d.x; P.y = d.y; P.z = d.z; P.vy = 3; P.vx = rand(-2, 2); P.vz = rand(-2, 2); me.mount = null; });
+socket.on('gone', (d) => { delete pdata[d.id]; const r = remotes[d.id]; if (r) { if (r.m.group.parent) r.m.group.parent.remove(r.m.group); delete remotes[d.id]; } });
+socket.on('phase', (d) => { netPhase = d.phase; });
+socket.on('battleStart', () => {
+  resetVisuals(); cin.active = false;
+  Object.keys(shipViews).forEach((k) => { shipViews[k].init = false; });
+  if (appState === 'game') { banner('再戦開始！', '新たな海戦が始まる', '', 3000); if (!isLocked() && !$('pause').classList.contains('hidden') === false) {} }
+});
+socket.on('sinkStart', (d) => {
+  if (appState !== 'game') return;
+  cin.active = true; cin.team = d.team; cin.t0 = performance.now(); cin.blasted = false; cin.nextBoom = cin.t0 + 500; cin.ang = rand(0, 6.28);
+  holdRepair = null; mouseDown = false;
+  document.body.classList.add('cinema');
+  banner(TEAM_NAME[d.team] + 'が大破！', 'もう船は持たない…', d.team === me.team ? 'lose' : 'win', 4200);
+  $('pause').classList.add('hidden');
+});
+socket.on('result', (d) => {
+  banner(d.win ? 'VICTORY' : 'DEFEAT', (d.win ? '敵船を撃沈した！' : '船を失った…') + `  報酬 +${d.reward} G`, d.win ? 'win' : 'lose', 6000);
+});
+socket.on('dmg', (d) => {
+  const f = $('dmgFlash'); f.classList.add('on'); void f.offsetWidth; f.classList.remove('on');
+  shake = Math.max(shake, 0.25); SFX.hit();
+});
+socket.on('hitm', (d) => {
+  const h = $('hitmarker'); h.className = d.kill ? 'kill on' : d.head ? 'head on' : 'on';
+  setTimeout(() => { h.classList.remove('on'); }, 90); SFX.hit();
+});
+socket.on('feed', (d) => {
+  const el = document.createElement('div'); el.className = 'kf';
+  const wn = { pistol: 'ピストル', blunder: 'ブランダーバス', cutlass: 'カットラス', cannon: '大砲' }[d.w] || '';
+  const c = (t) => (t === 'A' ? '#ff8d92' : '#8dbbff');
+  el.innerHTML = d.k
+    ? `<span style="color:${c(d.kt)}"></span><em>[${wn}]</em><span style="color:${c(d.vt)}"></span>`
+    : `<span style="color:${c(d.vt)}"></span><em>海に沈んだ</em>`;
+  const sp = el.querySelectorAll('span');
+  if (d.k) { sp[0].textContent = d.k; sp[1].textContent = d.v; } else sp[0].textContent = d.v;
+  $('killfeed').appendChild(el);
+  setTimeout(() => el.remove(), 5000);
+  while ($('killfeed').children.length > 5) $('killfeed').firstChild.remove();
+});
+socket.on('shot', (d) => {
+  if (appState !== 'game') return;
+  tracerFx(d.o, d.d, d.w === 'cutlass' ? 0xcfd6dd : 0xffe9a8, d.w === 'cutlass' ? 0.01 : 45);
+  const v = vd(d.o.x, d.o.z);
+  if (d.w === 'cutlass') SFX.swing(); else if (d.w === 'blunder') SFX.blunder(v * 0.8); else SFX.pistol(v * 0.8);
+  if (d.w !== 'cutlass') spawnFx({ tex: TEX.fire, x: d.o.x + d.d.x, y: d.o.y - 0.1, z: d.o.z + d.d.z, size: 0.8, grow: 0, life: 0.07, add: true });
+});
+socket.on('fx', (f) => {
+  if (appState !== 'game') return;
+  switch (f.t) {
+    case 'fire': {
+      explosionAt(f.x, f.y, f.z, 0.6);
+      for (let i = 0; i < 7; i++) spawnFx({ tex: TEX.smoke, x: f.x, y: f.y, z: f.z, size: 1.6, grow: 3, life: rand(1.5, 2.6), vx: f.dx * rand(3, 10) + rand(-1, 1), vy: rand(0.5, 2), vz: f.dz * rand(3, 10) + rand(-1, 1), drag: 0.8, op: 0.65 });
+      SFX.cannon(vd(f.x, f.z));
+      addShake(0.5, f.x, f.y, f.z);
+      break;
+    }
+    case 'shipHit': {
+      explosionAt(f.x, f.y, f.z, 1.1);
+      for (let i = 0; i < 9; i++) spawnDebris(f.x, f.y, f.z, rand(0.2, 0.6), rand(-6, 6), rand(3, 10), rand(-6, 6), 3.5, false);
+      SFX.boom(vd(f.x, f.z)); SFX.wood(vd(f.x, f.z));
+      const mine = shipViews[me.team] && (f.s === me.team);
+      addShake(mine ? 1.8 : 1.0, f.x, f.y, f.z);
+      if (mine) { const fl = $('dmgFlash'); fl.classList.add('on'); void fl.offsetWidth; fl.classList.remove('on'); toast('船体に被弾！ 穴を塞げ！'); }
+      break;
+    }
+    case 'splash': splashFx(f.x, f.z); break;
+    case 'boom': explosionAt(f.x, f.y, f.z, 1.0); SFX.boom(vd(f.x, f.z)); break;
+    case 'fixed': {
+      const sv = shipViews[f.s]; SFX.hammer();
+      if (sv) { sv.obj.root.updateMatrixWorld(); }
+      break;
+    }
+    case 'blast': bigBlast(f.s); break;
+    case 'swing': SFX.swing(); break;
     default: break;
   }
-  toast(ab.name + ' 発動');
-}
+});
 
-/* =====================================================================
- *  10. HUD / UI
- * ===================================================================*/
-let bannerTimer = null, toastTimer = null, hitTimer = null, dmgTimer = null;
-function showBanner(main, sub, cls, ms) {
-  const b = $('banner');
-  $('bannerMain').textContent = main;
-  $('bannerSub').textContent = sub || '';
-  b.className = 'show ' + (cls || '');
-  clearTimeout(bannerTimer);
-  bannerTimer = setTimeout(() => { b.className = ''; }, ms || 2400);
-}
-function toast(text) {
-  const t = $('toast');
-  t.textContent = text;
-  t.classList.add('on');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('on'), 1600);
-}
-function hitMarker(head, kill) {
-  const h = $('hitmarker');
-  h.className = 'on' + (kill ? ' kill' : head ? ' head' : '');
-  clearTimeout(hitTimer);
-  hitTimer = setTimeout(() => { h.className = ''; }, 120);
-}
-function damageFx(from) {
-  const f = $('dmgFlash');
-  f.classList.add('on');
-  clearTimeout(dmgTimer);
-  dmgTimer = setTimeout(() => f.classList.remove('on'), 80);
-  if (from) {
-    const ang = Math.atan2(from.x - P.x, -(from.z - P.z)); // 世界の方位
-    const rel = ang + P.yaw;
-    const a = $('dmgArrow');
-    a.style.transform = 'rotate(' + rel + 'rad)';
-    a.classList.add('on');
-    setTimeout(() => a.classList.remove('on'), 90);
+// =====================================================
+//  シネマティック：大爆発
+// =====================================================
+function bigBlast(team) {
+  const v = shipViews[team], root = v.obj.root;
+  root.updateMatrixWorld(true);
+  const c = root.localToWorld(new THREE.Vector3(0, 3, 0));
+  cin.focus.copy(c); cin.blasted = true; cin.active = true; cin.team = team; if (!cin.t0) cin.t0 = performance.now();
+  root.visible = false;
+  explosionAt(c.x, c.y + 2, c.z, 4.5);
+  for (let i = 0; i < 22; i++) spawnFx({ tex: TEX.fire, x: c.x + rand(-6, 6), y: c.y + rand(0, 6), z: c.z + rand(-6, 6), size: rand(6, 11), grow: rand(8, 16), life: rand(0.8, 1.6), vx: rand(-14, 14), vy: rand(4, 18), vz: rand(-14, 14), drag: 0.6, add: true });
+  for (let i = 0; i < 20; i++) spawnFx({ tex: TEX.smoke, x: c.x + rand(-7, 7), y: c.y + rand(0, 5), z: c.z + rand(-7, 7), size: rand(5, 9), grow: rand(5, 9), life: rand(3.5, 6), vx: rand(-6, 6), vy: rand(6, 16), vz: rand(-6, 6), drag: 0.5, op: 0.85 });
+  for (let i = 0; i < 40; i++) spawnFx({ tex: TEX.spark, x: c.x, y: c.y + 2, z: c.z, size: 0.9, life: rand(1, 2.2), vx: rand(-26, 26), vy: rand(6, 30), vz: rand(-26, 26), g: 16, add: true });
+  for (let i = 0; i < 80; i++) {
+    const loc = new THREE.Vector3(rand(-3.5, 3.5), rand(0, 3), rand(-13, 12));
+    const w = root.localToWorld(loc);
+    const dx = w.x - c.x, dz = w.z - c.z, l = Math.hypot(dx, dz) || 1, sp = rand(5, 20);
+    spawnDebris(w.x, w.y, w.z, rand(0.5, 2.0), dx / l * sp + rand(-3, 3), rand(10, 28), dz / l * sp + rand(-3, 3), rand(14, 22), Math.random() < 0.3);
   }
-  SFX.hurt();
-}
-function weaponLabel(w) {
-  if (WEAPONS[w]) return WEAPONS[w].name;
-  if (w === 'grenade') return '炸裂樽';
-  if (w === 'drown') return '溺死';
-  return '事故';
-}
-function addKillfeed(d) {
-  const killer = d.killerId ? pdata[d.killerId] : null;
-  const victim = pdata[d.id];
-  const el = document.createElement('div');
-  el.className = 'kf' + (d.killerId === myId ? ' me' : '');
-  const kc = killer ? TEAM_CSS[killer.team] : '#fff', vc = victim ? TEAM_CSS[victim.team] : '#fff';
-  el.innerHTML = '<span style="color:' + kc + '">' + esc(d.killerName) + '</span><em>[' + weaponLabel(d.weapon) + (d.headshot ? ' ☠' : '') + ']</em><span style="color:' + vc + '">' + esc(d.victimName) + '</span>';
-  $('killfeed').appendChild(el);
-  setTimeout(() => el.remove(), 5500);
-  while ($('killfeed').children.length > 6) $('killfeed').removeChild($('killfeed').firstChild);
-}
-function esc(s) {
-  return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-}
-function fmtTime(ms) {
-  const s = Math.max(0, Math.ceil(ms / 1000));
-  return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+  const ring = new THREE.Mesh(new THREE.RingGeometry(1, 2.2, 32), new THREE.MeshBasicMaterial({ color: 0xffe0a0, transparent: true, opacity: 0.9, side: THREE.DoubleSide, depthWrite: false }));
+  ring.rotation.x = -Math.PI / 2; ring.position.set(c.x, 0.5, c.z); gameScene.add(ring);
+  debris.push({ ring, age: 0, life: 2.2, big: 9 });
+  boomLight.position.set(c.x, c.y + 4, c.z); boomLight.intensity = 40;
+  const fl = $('flash'); fl.classList.add('on'); void fl.offsetWidth; fl.classList.remove('on');
+  timeScale = 0.2; shake = 3.2;
+  SFX.big();
 }
 
+// =====================================================
+//  入力
+// =====================================================
+function isLocked() { return document.pointerLockElement === canvas; }
+function requestLock() { try { canvas.requestPointerLock(); } catch (e) {} }
+document.addEventListener('pointerlockchange', () => {
+  if (appState !== 'game') return;
+  const locked = isLocked();
+  $('pause').classList.toggle('hidden', locked || cin.active);
+  if (!locked) { mouseDown = false; if (holdRepair) stopRepair(); }
+});
+canvas.addEventListener('click', () => { if (appState === 'game' && !isLocked() && !cin.active) requestLock(); });
+window.addEventListener('mousemove', (e) => {
+  if (!isLocked() || appState !== 'game' || cin.active) return;
+  P.yaw -= e.movementX * 0.0022;
+  P.pitch = clamp(P.pitch - e.movementY * 0.0022, -1.5, 1.5);
+});
+window.addEventListener('mousedown', (e) => {
+  if (appState !== 'game' || e.button !== 0) return;
+  if (!isLocked()) return;
+  mouseDown = true;
+  if (!canAct()) return;
+  if (me.mount && me.mount.type === 'cannon') { socket.emit('fire'); return; }
+  if (!me.mount) tryShoot(performance.now());
+});
+window.addEventListener('mouseup', () => { mouseDown = false; });
+function typing() { const a = document.activeElement; return a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA'); }
+window.addEventListener('keydown', (e) => {
+  if (typing()) return;
+  keys[e.code] = true;
+  if (e.code === 'Space' || e.code === 'Tab') e.preventDefault();
+  if (appState !== 'game' || e.repeat) return;
+  if (e.code === 'KeyF') onInteractKey();
+  if (e.code === 'KeyR') startReload(performance.now());
+  if (e.code === 'Digit1') switchWeapon('pistol');
+  if (e.code === 'Digit2') switchWeapon('blunder');
+  if (e.code === 'Digit3') switchWeapon('cutlass');
+  if (e.code === 'KeyC') diveOverboard();
+  if (e.code === 'Space' && me.mount && me.mount.type === 'helm') socket.emit('use', { kind: 'dismount' });
+});
+window.addEventListener('keyup', (e) => {
+  keys[e.code] = false;
+  if (e.code === 'KeyF' && holdRepair) stopRepair();
+});
+function canAct() { return appState === 'game' && me.alive && netPhase === 'live' && !cin.active && isLocked(); }
+
+// =====================================================
+//  武器
+// =====================================================
+function switchWeapon(w) {
+  if (!me.alive || me.mount || curWeapon === w) return;
+  curWeapon = w; reloading = false; kick = 0;
+}
+function startReload(now) {
+  const w = WEAP[curWeapon];
+  if (!w || w.melee || reloading || ammo[curWeapon] >= w.mag || !me.alive) return;
+  reloading = true; reloadEnd = now + w.reload;
+}
+function tryShoot(now) {
+  const w = WEAP[curWeapon];
+  if (!w || reloading || now - lastShotT < w.rate) return;
+  if (!w.melee) {
+    if (ammo[curWeapon] <= 0) { startReload(now); return; }
+    ammo[curWeapon]--;
+  }
+  lastShotT = now;
+  camera.updateMatrixWorld();
+  camera.getWorldDirection(_dir);
+  const o = camera.position;
+  socket.emit('shoot', { w: curWeapon, o: { x: o.x, y: o.y, z: o.z }, d: { x: _dir.x, y: _dir.y, z: _dir.z } });
+  if (w.melee) { swing = 1; SFX.swing(); }
+  else {
+    kick = curWeapon === 'blunder' ? 1.6 : 1;
+    flashSprite.material.opacity = 1; muzzleLight.intensity = 4;
+    if (curWeapon === 'blunder') SFX.blunder(); else SFX.pistol();
+    tracerFx({ x: o.x + _dir.x * 0.6, y: o.y + 0.1, z: o.z + _dir.z * 0.6 }, _dir, 0xffe9a8, 45);
+    P.pitch = clamp(P.pitch + (curWeapon === 'blunder' ? 0.045 : 0.014), -1.5, 1.5);
+    if (ammo[curWeapon] <= 0) startReload(now);
+  }
+}
+
+// =====================================================
+//  インタラクト（舵 / 大砲 / 木箱 / 修理 / 乗船）
+// =====================================================
+function worldToShipLocal(v, wx, wz) {
+  const c = Math.cos(v.h), s = Math.sin(v.h), dx = wx - v.x, dz = wz - v.z;
+  return { x: dx * c - dz * s, z: dx * s + dz * c };
+}
 function interactHint() {
-  if (appState !== 'game' || !me.alive) return null;
-  const role = currentRole();
-  if (match.phase === 'live' && role === 'attack' && !bomb) {
-    const s = SITES.find((s2) => Math.hypot(P.x - s2.x, P.z - s2.z) <= s2.r && Math.abs(P.y - s2.y) < 2.6);
-    if (s) return { kind: 'plant', text: '[F] 長押しで火薬樽を設置（サイト ' + s.id + '）' };
+  if (appState !== 'game' || !me.alive || cin.active || netPhase !== 'live') return null;
+  if (me.mount) return { kind: 'dismount', ok: true, label: '[F] 降りる' };
+  if (P.ship) {
+    const sv = shipViews[P.ship]; let best = null;
+    const consider = (d, o) => { if (d < 2.5 && (!best || d < best.d)) { o.d = d; best = o; } };
+    sv.holes.forEach((h) => {
+      const d = Math.hypot(P.x - h[1], P.z - h[2]);
+      consider(d - 0.5, me.wood > 0
+        ? { kind: 'repair', id: h[0], ok: true, label: '[F] 長押しで穴を修理（木材 -1）' }
+        : { kind: 'repair', id: h[0], ok: false, label: '穴を塞ぐ木材がない（木箱で補給）' });
+    });
+    consider(Math.hypot(P.x - HELM_POS.x, P.z - HELM_POS.z) - 0.2,
+      sv.helm && sv.helm !== myId && pdata[sv.helm] && !pdata[sv.helm].b ? { kind: 'helm', ok: false, label: '舵は使用中' } : { kind: 'helm', ok: true, label: '[F] 舵を握る' });
+    CANNONS.forEach((c) => {
+      const op = sv.cn[c.idx] ? sv.cn[c.idx][3] : 0;
+      const busy = op && pdata[op] && !pdata[op].b;
+      consider(Math.hypot(P.x - c.sx, P.z - c.z), busy ? { kind: 'cannon', idx: c.idx, ok: false, label: '大砲は使用中' } : { kind: 'cannon', idx: c.idx, ok: true, label: '[F] 大砲に乗る' });
+    });
+    CRATES.forEach((c) => consider(Math.hypot(P.x - c.x, P.z - c.z), { kind: 'wood', ok: me.wood < MAX_WOOD, label: me.wood < MAX_WOOD ? `[F] 木材を補給（${me.wood}/${MAX_WOOD}）` : '木材は満タン' }));
+    return best;
   }
-  if (match.phase === 'planted' && role === 'defend' && bomb) {
-    if (Math.hypot(P.x - bomb.x, P.z - bomb.z) <= CFG.defuseRadius && Math.abs(P.y - bomb.y) < 2.6) return { kind: 'defuse', text: '[F] 長押しで樽を解除' };
+  // 海上：近くの船によじ登る
+  for (const k of ['A', 'B']) {
+    const v = shipViews[k]; if (v.sunk || !v.init) continue;
+    const l = worldToShipLocal(v, P.x, P.z);
+    const hw = halfW(clamp(l.z, -14, 12.5)) + 2.8;
+    if (Math.abs(l.x) <= hw && l.z > -16 && l.z < 14.5 && P.y < 1.6) return { kind: 'climb', ship: k, ok: true, label: '[F] 船によじ登る', lx: l.x, lz: l.z };
   }
   return null;
 }
-
-function updateHud(now) {
-  const my = me.team, en = my === 'A' ? 'B' : 'A';
-  $('scoreMe').textContent = match.score[my];
-  $('scoreEn').textContent = match.score[en];
-  $('scoreMe').style.borderBottomColor = TEAM_CSS[my];
-  $('scoreEn').style.borderBottomColor = TEAM_CSS[en];
-  $('roundLabel').textContent = 'ROUND ' + match.round + '　（' + match.winScore + '点先取）';
-  const remain = Math.max(0, phaseEndLocal - now);
-  const ph = match.phase;
-  if (ph === 'buy') { $('timer').textContent = fmtTime(remain); $('roleLabel').textContent = '準備フェーズ：B で購入'; }
-  else if (ph === 'live') { $('timer').textContent = fmtTime(remain); $('roleLabel').textContent = currentRole() === 'attack' ? '攻撃：樽を設置せよ' : '防衛：サイトを守れ'; }
-  else if (ph === 'planted') { $('timer').textContent = '💣'; $('roleLabel').textContent = currentRole() === 'attack' ? '樽を守り切れ！' : '樽を解除せよ！'; }
-  else if (ph === 'roundEnd') { $('timer').textContent = '--'; $('roleLabel').textContent = 'ラウンド終了'; }
-  else if (ph === 'matchEnd') { $('timer').textContent = '--'; $('roleLabel').textContent = 'マッチ終了'; }
-  else { $('timer').textContent = '--'; $('roleLabel').textContent = '待機中'; }
-
-  const bi = $('bombInfo');
-  if (bomb && (ph === 'planted')) {
-    bi.classList.remove('hidden');
-    bi.textContent = '🔥 樽が点火！ 爆発まで ' + Math.max(0, (bomb.explodeLocal - now) / 1000).toFixed(1) + ' 秒';
-  } else bi.classList.add('hidden');
-
-  $('hpNum').textContent = Math.max(0, Math.round(me.hp));
-  $('hpFill').style.width = clamp(me.hp, 0, 100) + '%';
-  $('hpFill').style.background = me.hp > 40 ? 'linear-gradient(90deg,#3ddc84,#9dffb0)' : 'linear-gradient(90deg,#e03030,#ff8a5a)';
-  $('credits').textContent = '⚜ ' + me.credits;
-
-  const ch = CHARACTERS[me.character];
-  if (ch) {
-    ['q', 'e'].forEach((slot) => {
-      const ab = ABILITIES[ch[slot]];
-      const slotEl = $(slot === 'q' ? 'slotQ' : 'slotE');
-      const rem = Math.max(0, abilityReadyAt[slot] - now);
-      $(slot === 'q' ? 'slotQn' : 'slotEn').textContent = ab.name;
-      slotEl.querySelector('.cd').style.height = (rem / ab.cooldown * 100) + '%';
-      slotEl.querySelector('.cdt').textContent = rem > 0 ? Math.ceil(rem / 1000) : '';
-      slotEl.classList.toggle('rdy', rem <= 0 && me.alive);
-    });
+function onInteractKey() {
+  const h = interactHint(); if (!h || !h.ok) return;
+  switch (h.kind) {
+    case 'dismount': socket.emit('use', { kind: 'dismount' }); break;
+    case 'helm': socket.emit('use', { kind: 'helm' }); break;
+    case 'cannon': socket.emit('use', { kind: 'cannon', idx: h.idx }); break;
+    case 'wood': socket.emit('use', { kind: 'wood' }); SFX.wood(); break;
+    case 'repair': holdRepair = { id: h.id, start: performance.now() }; socket.emit('repair', { id: h.id, on: true }); break;
+    case 'climb': {
+      const v = shipViews[h.ship], hw = Math.max(0.6, halfW(clamp(h.lz, -12, 11.5)) - 0.8);
+      P.ship = h.ship; P.x = clamp(h.lx, -hw, hw); P.z = clamp(h.lz, -12, 11.5); P.y = DECK; P.vy = 0; P.vx = P.vz = 0; P.onGround = true;
+      break;
+    }
+    default: break;
   }
-  const w = WEAPONS[curWeapon];
-  if (w) {
-    $('ammo').innerHTML = mag + '<small> / ' + w.mag + '</small>';
-    $('reloadTxt').textContent = reloading ? 'リロード中…' : (mag === 0 ? 'R でリロード' : '');
-  }
-
-  const hint = interactHint();
-  $('prompt').textContent = (hint && !interactHeld && canActLoose()) ? hint.text : '';
-  const pw = $('progWrap');
-  if (interactProg.kind) {
-    pw.classList.remove('hidden');
-    $('progLabel').textContent = interactProg.kind === 'plant' ? '火薬樽を設置中…' : '樽を解除中…';
-    $('progFill').style.width = (interactProg.progress * 100) + '%';
-  } else pw.classList.add('hidden');
-
-  const sl = $('specLabel');
-  if (!me.alive && appState === 'game') {
-    sl.classList.remove('hidden');
-    const t = specId && pdata[specId] ? pdata[specId].name : null;
-    sl.textContent = t ? '観戦中：' + t + '（クリックで切替）' : '撃破されました';
-  } else sl.classList.add('hidden');
 }
-function canActLoose() {
-  return me.alive && isLocked() && !buyOpen && (match.phase === 'live' || match.phase === 'planted');
+function stopRepair() { holdRepair = null; socket.emit('repair', { id: 0, on: false }); }
+function diveOverboard() {
+  if (!P.ship || me.mount || !me.alive) return;
+  const hw = halfW(P.z) - 0.45;
+  if (Math.abs(P.x) < hw - 0.9) { toast('船の縁に寄って C で飛び込めます'); return; }
+  const v = shipViews[P.ship]; v.obj.root.updateMatrixWorld();
+  const w = v.obj.root.localToWorld(new THREE.Vector3(P.x, P.y, P.z));
+  const sgn = P.x >= 0 ? 1 : -1, c = Math.cos(v.h), s = Math.sin(v.h);
+  P.vx = sgn * c * 4.5; P.vz = -sgn * s * 4.5; P.vy = 4.5;
+  P.ship = null; P.x = w.x; P.z = w.z; P.y = DECK + 0.4; P.onGround = false;
 }
 
-function renderScoreboard() {
-  const sb = $('scoreboard');
-  const rows = (team) => Object.keys(pdata).filter((id) => pdata[id].team === team).map((id) => {
-    const p = pdata[id];
-    return '<tr class="' + (p.alive ? '' : 'dead') + (id === myId ? ' you' : '') + '"><td>' + esc(p.name) + (p.isBot ? '（見習い）' : '') + '</td><td>' +
-      (CHARACTERS[p.character] ? CHARACTERS[p.character].name : '') + '</td><td>' + (p.kills || 0) + '</td><td>' + (p.deaths || 0) + '</td></tr>';
-  }).join('');
-  const my = me.team, en = my === 'A' ? 'B' : 'A';
-  const role = (t) => (t === match.attackTeam ? '攻撃' : '防衛');
-  const tbl = (t) => '<h3 style="color:' + TEAM_CSS[t] + '">' + TEAM_NAME[t] + '（' + role(t) + '）　' + match.score[t] + ' 点</h3>' +
-    '<table><tr><th>名前</th><th>キャラ</th><th>K</th><th>D</th></tr>' + rows(t) + '</table>';
-  sb.innerHTML = tbl(my) + tbl(en);
-}
-
-function renderBuyMenu() {
-  const bm = $('buyMenu');
-  const ids = Object.keys(WEAPONS).sort((a, b) => WEAPONS[a].cost - WEAPONS[b].cost);
-  let html = '<h2><span>武器購入</span><span style="color:var(--gold2)">⚜ ' + me.credits + '</span></h2>' +
-    '<div class="bm-sub">' + (match.phase === 'buy' ? '数字キー 1〜4 か クリックで購入　／　B で閉じる' : '購入できるのは準備フェーズ中のみです（B で閉じる）') + '</div><div class="bm-grid">';
-  ids.forEach((id, i) => {
-    const w = WEAPONS[id];
-    const owned = me.weapon === id;
-    const poor = !owned && me.credits < w.cost;
-    html += '<div class="bm-card' + (owned ? ' owned' : '') + (poor ? ' poor' : '') + '" data-w="' + id + '">' +
-      '<span class="bm-key">' + (i + 1) + '</span><b>' + w.name + '</b><div class="tp">' + w.type + '</div>' +
-      '<div class="cost">' + (w.cost === 0 ? '無料' : '⚜ ' + w.cost) + '</div>' +
-      '<div class="st">ダメージ ' + w.damage + (w.pellets > 1 ? ' ×' + w.pellets : '') + '<br>連射 ' + Math.round(60000 / w.rate) + ' 発/分<br>装弾 ' + w.mag + ' 発' + (owned ? '<br><b style="color:#3ddc84">装備中</b>' : '') + '</div></div>';
-  });
-  html += '</div>';
-  bm.innerHTML = html;
-  bm.querySelectorAll('.bm-card').forEach((el) => el.addEventListener('click', () => buyWeapon(el.dataset.w)));
-}
-function buyWeapon(id) {
-  if (!WEAPONS[id]) return;
-  socket.emit('buy', id);
-}
-function toggleBuy(force) {
-  const next = force === undefined ? !buyOpen : force;
-  if (next && appState !== 'game') return;
-  buyOpen = next;
-  $('buyMenu').classList.toggle('hidden', !buyOpen);
-  if (buyOpen) renderBuyMenu();
-  updateOverlays();
-}
-function updateOverlays() {
-  const showPause = appState === 'game' && !isLocked() && !buyOpen && $('matchEnd').classList.contains('hidden');
-  $('pause').classList.toggle('hidden', !showPause);
-  $('scopeOv').classList.toggle('hidden', !scoped);
-}
-
-/* =====================================================================
- *  11. 観戦
- * ===================================================================*/
-function cycleSpectate(dir) {
-  const cands = Object.keys(remotes).filter((id) => pdata[id] && pdata[id].alive);
-  const mates = cands.filter((id) => pdata[id].team === me.team);
-  const list = mates.length ? mates : cands;
-  if (!list.length) { specId = null; return; }
-  const i = list.indexOf(specId);
-  specId = list[(i + dir + list.length) % list.length];
-}
-
-/* =====================================================================
- *  12. ネットワーク
- * ===================================================================*/
-socket.on('init', (d) => {
-  myId = d.id;
-  WEAPONS = d.weapons; CHARACTERS = d.characters; ABILITIES = d.abilities; SITES = d.sites; CFG = d.config;
-  if (!gameBuilt) { buildGameWorld(); gameBuilt = true; }
-  buildLobbyUI();
-  setLobbyCharacter(CHARACTERS[lobbyCharacter] ? lobbyCharacter : 'captain');
-  const b = $('btnPlay');
-  b.disabled = false;
-  b.textContent = '出港する';
-});
-let gameBuilt = false;
-socket.on('connect_error', () => { $('btnPlay').textContent = 'サーバーに接続できません'; });
-socket.on('disconnect', () => { toast('サーバーとの接続が切れました'); });
-socket.on('online', (d) => { $('lbOnline').textContent = 'オンライン ' + d.total + '人（試合中 ' + d.inMatch + '人）'; });
-socket.on('notice', (t) => { toast(t); SFX.error(); });
-
-function applyState(s) {
-  const prevAlive = me.alive;
-  Object.assign(me, { hp: s.hp, credits: s.credits, weapon: s.weapon, kills: s.kills, deaths: s.deaths, alive: s.alive, team: s.team, character: s.character });
-  const now = performance.now();
-  abilityReadyAt.q = now + s.q;
-  abilityReadyAt.e = now + s.e;
-  if (s.haste > 0) hasteUntil = now + s.haste;
-  if (appState === 'game' && s.weapon !== curWeapon) setWeapon(s.weapon);
-  if (prevAlive && !s.alive) onMyDeath();
-  if (buyOpen) renderBuyMenu();
-}
-function onMyDeath() {
-  deathPos = { x: P.x, y: P.y, z: P.z };
-  interactHeld = false; interactProg = { kind: null, progress: 0 };
-  scoped = false; mouseDown = false; rmb = false;
-  cycleSpectate(1);
-}
-socket.on('state', applyState);
-
-socket.on('joined', (d) => {
-  $('loading').classList.add('hidden');
-  me.team = d.team;
-  clearRemotes(); clearSmokes(); clearFx(); removeBombVisual();
-  match = d.match;
-  phaseEndLocal = performance.now() + d.match.timeLeft;
-  syncPlayers(d.players, true);
-  applyState(d.you);
-  d.smokes.forEach(addSmoke);
-  if (d.match.bomb) spawnBombVisual(d.match.bomb.x, d.match.bomb.y, d.match.bomb.z, d.match.bomb.timeLeft);
-  const mine = d.players[myId];
-  if (mine) { P.x = mine.x; P.y = mine.y; P.z = mine.z; P.yaw = 0; P.pitch = 0; P.vy = 0; P.onGround = true; }
-  enterGame();
-});
-socket.on('newPlayer', (d) => applyPublic(d.id, d.player));
-socket.on('playerMoved', (d) => applyPublic(d.id, d.player));
-socket.on('disconnectPlayer', (id) => {
-  removeRemote(id); delete pdata[id];
-  if (specId === id) cycleSpectate(1);
-});
-socket.on('matchState', (d) => {
-  const prev = match.phase;
-  match = d;
-  phaseEndLocal = performance.now() + d.timeLeft;
-  if (d.bomb && !bomb) spawnBombVisual(d.bomb.x, d.bomb.y, d.bomb.z, d.bomb.timeLeft);
-  if (!d.bomb && bomb) removeBombVisual();
-  if (d.bomb && bomb) bomb.explodeLocal = performance.now() + d.bomb.timeLeft;
-  if (prev !== d.phase && appState === 'game') {
-    if (d.phase === 'live') { showBanner('戦闘開始', currentRole() === 'attack' ? 'サイトへ向かい、火薬樽を設置せよ' : 'サイトを守り抜け', '', 1800); SFX.go(); }
-  }
-});
-socket.on('roundStart', (d) => {
-  match.round = d.round; match.attackTeam = d.attackTeam; match.score = d.score; match.phase = 'buy';
-  clearSmokes(); removeBombVisual();
-  scanUntil = 0; hasteUntil = 0;
-  interactHeld = false; interactProg = { kind: null, progress: 0 };
-  syncPlayers(d.players, true);
-  const mine = d.players[myId];
-  if (mine) {
-    P.x = mine.x; P.y = mine.y; P.z = mine.z; P.yaw = 0; P.pitch = 0; P.vy = 0; P.onGround = true;
-    me.alive = true;
-    specId = null;
-    setWeapon(me.weapon);
-  }
-  Object.keys(remotes).forEach((id) => updateRemoteLabelVisibility(remotes[id]));
-  if (appState === 'game') {
-    $('matchEnd').classList.add('hidden');
-    showBanner('ROUND ' + d.round, currentRole() === 'attack' ? '🏴‍☠️ あなたは攻撃側（海賊）' : '⚓ あなたは防衛側（海軍）', '', 2600);
-    SFX.roundStart();
-    if (!isLocked() && !buyOpen) updateOverlays();
-  }
-});
-socket.on('sidesSwapped', () => { if (appState === 'game') toast('攻守交代！'); });
-socket.on('roundEnd', (d) => {
-  match.score = d.score;
-  match.phase = d.matchOver ? 'matchEnd' : 'roundEnd';
-  interactHeld = false; interactProg = { kind: null, progress: 0 };
-  const win = d.winnerTeam === me.team;
-  const reasons = { eliminated: '敵を全滅させた', time: '時間切れ', exploded: '樽が爆発した', defused: '樽を解除した' };
-  const reasonLose = { eliminated: '全滅した', time: '時間切れ', exploded: '樽が爆発した', defused: '樽を解除された' };
-  if (appState === 'game' && !d.matchOver) {
-    showBanner(win ? 'ROUND WIN' : 'ROUND LOSE', (win ? reasons : reasonLose)[d.reason] || '', win ? 'win' : 'lose', 3600);
-    if (win) SFX.roundWin(); else SFX.roundLose();
-  }
-});
-socket.on('matchEnd', (d) => {
-  if (appState !== 'game') return;
-  const win = d.winnerTeam === me.team;
-  $('meTitle').innerHTML = '<span class="big">' + (win ? 'VICTORY' : 'DEFEAT') + '</span>';
-  $('meText').innerHTML = (win ? '海賊王への道が開けた！' : '次は必ず宝を奪おう…') + '<br>' + TEAM_NAME.A + ' ' + d.score.A + ' - ' + d.score.B + ' ' + TEAM_NAME.B;
-  $('matchEnd').classList.remove('hidden');
-  if (isLocked()) document.exitPointerLock();
-  updateOverlays();
-  if (win) SFX.roundWin(); else SFX.roundLose();
-});
-socket.on('targetDied', (d) => {
-  if (pdata[d.id]) pdata[d.id].alive = false;
-  if (remotes[d.id]) remotes[d.id].root.visible = false;
-  addKillfeed(d);
-  if (d.id === specId) cycleSpectate(1);
-});
-socket.on('hitConfirm', (d) => { hitMarker(d.headshot, d.killed); SFX.hit(d.headshot, d.killed); });
-socket.on('damaged', (d) => damageFx(d.from));
-socket.on('playerShot', (d) => {
-  const r = remotes[d.id];
-  if (!r || appState !== 'game') return;
-  const start = new THREE.Vector3(r.root.position.x, r.root.position.y + 1.4, r.root.position.z);
-  const dir = new THREE.Vector3(d.direction.x, d.direction.y, d.direction.z).normalize();
-  start.addScaledVector(dir, 0.7);
-  const end = start.clone().addScaledVector(dir, 45);
-  tracer(start, end, d.color || 0xffe0a0, 0.08);
-  const dist = Math.hypot(r.root.position.x - P.x, r.root.position.z - P.z);
-  const pan = clamp(((r.root.position.x - P.x) * Math.cos(P.yaw) + (r.root.position.z - P.z) * -Math.sin(P.yaw)) / 20, -1, 1);
-  SFX.shot(d.weapon, clamp(1.1 - dist / 80, 0.12, 1), pan);
-});
-socket.on('buyResult', (d) => {
-  if (d.ok) { SFX.buy(); toast(WEAPONS[d.weapon].name + ' を購入'); setWeapon(d.weapon); if (buyOpen) renderBuyMenu(); }
-  else { SFX.error(); toast(d.message || '購入できません'); }
-});
-socket.on('interactProgress', (d) => {
-  interactProg = d;
-  if (d.kind) {
-    if (d.progress - lastTickProg > 0.08 || d.progress < lastTickProg) { SFX.interactTick(d.progress); lastTickProg = d.progress; }
-  } else {
-    lastTickProg = 0;
-    if (interactHeld) interactHeld = false;
-  }
-});
-socket.on('bombPlanted', (d) => {
-  spawnBombVisual(d.x, d.y, d.z, d.timeLeft);
-  match.phase = 'planted';
-  interactHeld = false; interactProg = { kind: null, progress: 0 };
-  SFX.plant();
-  if (appState === 'game') showBanner('樽を設置！', 'サイト ' + d.site + '（' + d.siteName + '）　' + (currentRole() === 'attack' ? '守り抜け！' : '解除せよ！'), '', 2400);
-});
-socket.on('bombDefused', () => {
-  SFX.defuse();
-  removeBombVisual();
-});
-socket.on('bombExploded', (d) => {
-  explosionFx(d.x, d.y, d.z, 14);
-  removeBombVisual();
-});
-socket.on('explosion', (d) => { explosionFx(d.x, d.y, d.z, d.r); });
-socket.on('smoke', (d) => addSmoke(d));
-socket.on('grenade', (d) => throwBarrel(d.from, d.to, d.delay));
-socket.on('abilityResult', (d) => {
-  if (d.ok) onAbilityOk(d);
-  else { SFX.error(); toast(d.message || '使用できません'); }
-});
-socket.on('haste', (d) => { hasteUntil = performance.now() + d.duration; });
-socket.on('scan', (d) => { scanUntil = performance.now() + d.duration; SFX.scan(); toast('敵の位置を透視中'); });
-socket.on('healFx', (d) => {
-  const m = new THREE.Mesh(new THREE.RingGeometry(0.2, d.r, 40), new THREE.MeshBasicMaterial({ color: 0x66ffaa, transparent: true, side: THREE.DoubleSide, depthWrite: false }));
-  m.rotation.x = -Math.PI / 2; m.position.set(d.x, d.y + 0.1, d.z);
-  addFx(m, 0.8, (f, k) => { m.scale.setScalar(0.3 + k * 0.7); m.material.opacity = 0.7 * (1 - k); });
-  SFX.heal();
-});
-
-/* =====================================================================
- *  13. 画面遷移
- * ===================================================================*/
-function enterLobby() {
-  appState = 'lobby';
-  $('title').classList.add('hidden');
-  $('hud').classList.add('hidden');
-  $('lobby').classList.remove('hidden');
-  $('lbName').textContent = '⚓ ' + playerName;
-  setLobbyCharacter(lobbyCharacter);
-  SFX.startAmbient();
-}
-function enterGame() {
-  appState = 'game';
-  $('lobby').classList.add('hidden');
-  $('title').classList.add('hidden');
-  $('hud').classList.remove('hidden');
-  $('matchEnd').classList.add('hidden');
-  setWeapon(me.weapon);
-  toggleBuy(false);
-  specId = null;
-  if (!me.alive) cycleSpectate(1);
-  try { const r = canvas.requestPointerLock(); if (r && r.catch) r.catch(() => {}); } catch (e) { /* noop */ }
-  updateOverlays();
-  if (match.phase === 'buy') showBanner('準備フェーズ', 'B キーで武器を購入しよう', '', 2600);
-  else if (!me.alive) showBanner('観戦モード', '次のラウンドから参加します', '', 2600);
-}
-function leaveToLobby() {
-  socket.emit('leaveMatch');
-  if (isLocked()) document.exitPointerLock();
-  clearRemotes(); clearSmokes(); clearFx(); removeBombVisual();
-  me.alive = false;
-  toggleBuy(false);
-  $('matchEnd').classList.add('hidden');
-  $('pause').classList.add('hidden');
-  enterLobby();
-}
-
-$('btnPlay').addEventListener('click', () => {
-  SFX.init();
-  const v = $('nameInput').value.trim();
-  playerName = v || playerName || ('海賊' + Math.floor(Math.random() * 900 + 100));
-  lsSet('pp_name', playerName);
-  socket.emit('setProfile', { name: playerName, character: lobbyCharacter });
-  enterLobby();
-});
-$('nameInput').value = playerName;
-$('nameInput').addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter' && !$('btnPlay').disabled) $('btnPlay').click(); });
-$('btnMatch').addEventListener('click', () => {
-  SFX.init(); SFX.ui();
-  $('loading').classList.remove('hidden');
-  socket.emit('joinMatch', { name: playerName, character: lobbyCharacter });
-  setTimeout(() => $('loading').classList.add('hidden'), 6000);
-});
-$('btnLeave').addEventListener('click', (e) => { e.stopPropagation(); leaveToLobby(); });
-$('btnToLobby').addEventListener('click', leaveToLobby);
-$('pause').addEventListener('click', () => {
-  try { const r = canvas.requestPointerLock(); if (r && r.catch) r.catch(() => {}); } catch (e) { /* noop */ }
-});
-document.addEventListener('pointerlockchange', () => {
-  if (!isLocked()) { mouseDown = false; rmb = false; scoped = false; if (interactHeld) { interactHeld = false; socket.emit('interact', { on: false }); } }
-  updateOverlays();
-});
-
-/* =====================================================================
- *  14. 入力
- * ===================================================================*/
-document.addEventListener('mousemove', (e) => {
-  if (appState === 'lobby' && lobbyDrag) { lobbyYaw += e.movementX * 0.01; return; }
-  if (appState !== 'game' || !isLocked() || !me.alive) return;
-  const s = 0.0022 * (camera.fov / 75);
-  P.yaw -= e.movementX * s;
-  P.pitch = clamp(P.pitch - e.movementY * s, -1.5, 1.5);
-});
-document.addEventListener('mousedown', (e) => {
-  if (appState === 'lobby' && e.target === canvas) { lobbyDrag = true; return; }
-  if (appState !== 'game' || !isLocked()) return;
-  if (e.button === 0) {
-    mouseDown = true; firedSinceDown = false;
-    if (!me.alive) cycleSpectate(1);
-  }
-  if (e.button === 2) rmb = true;
-});
-document.addEventListener('mouseup', (e) => {
-  lobbyDrag = false;
-  if (e.button === 0) mouseDown = false;
-  if (e.button === 2) rmb = false;
-});
-document.addEventListener('contextmenu', (e) => e.preventDefault());
-document.addEventListener('keydown', (e) => {
-  if (e.target && e.target.tagName === 'INPUT') return;
-  keys[e.code] = true;
-  if (appState !== 'game') return;
-  if (e.code === 'Tab') { e.preventDefault(); renderScoreboard(); $('scoreboard').classList.remove('hidden'); return; }
-  if (e.code === 'KeyB') { toggleBuy(); return; }
-  if (buyOpen && /^Digit[1-4]$/.test(e.code)) {
-    const ids = Object.keys(WEAPONS).sort((a, b) => WEAPONS[a].cost - WEAPONS[b].cost);
-    buyWeapon(ids[parseInt(e.code.slice(5), 10) - 1]);
+// =====================================================
+//  ローカルプレイヤーの移動
+// =====================================================
+function stepLocal(dt, t, active) {
+  if (!me.alive) return;
+  const mounted = !!me.mount;
+  if (mounted) {
+    if (me.mount.type === 'helm' && active) {
+      const a = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0);
+      if (a) P.wheel = clamp(P.wheel + a * 1.6 * dt, -1, 1); else P.wheel += clamp(-P.wheel, -1.1 * dt, 1.1 * dt);
+      const s = (keys.KeyW ? 1 : 0) - (keys.KeyS ? 1 : 0);
+      P.throttle = clamp(P.throttle + s * 0.4 * dt, 0, 1);
+      const val = P.wheel.toFixed(2) + '|' + P.throttle.toFixed(2);
+      const now = performance.now();
+      if (val !== lastHelmVal && now - lastHelmSend > 80) { lastHelmSend = now; lastHelmVal = val; socket.emit('helm', { wheel: P.wheel, throttle: P.throttle }); }
+      P.pitch = clamp(P.pitch, -0.6, 0.6);
+    }
+    if (me.mount.type === 'cannon' && P.ship) {
+      const sv = shipViews[P.ship], c = CANNONS[me.mount.idx];
+      const out = c.side > 0 ? sv.h - Math.PI / 2 : sv.h + Math.PI / 2;
+      let psi = c.side > 0 ? wrapA(P.yaw - out) : wrapA(out - P.yaw);
+      psi = clamp(psi, -0.6, 0.6);
+      P.yaw = c.side > 0 ? out + psi : out - psi;
+      P.pitch = clamp(P.pitch, -0.1, 0.6);
+    }
     return;
   }
-  if (e.repeat) return;
-  if (e.code === 'KeyR' && canAct()) startReload();
-  if (e.code === 'KeyQ') useAbility('q');
-  if (e.code === 'KeyE') useAbility('e');
-  if (e.code === 'KeyF' && !interactHeld && canActLoose()) {
-    const h = interactHint();
-    if (h) { interactHeld = true; socket.emit('interact', { on: true }); }
-    else toast('ここでは使えません');
-  }
-  if (e.code === 'Space') e.preventDefault();
-});
-document.addEventListener('keyup', (e) => {
-  keys[e.code] = false;
-  if (e.code === 'Tab') $('scoreboard').classList.add('hidden');
-  if (e.code === 'KeyF' && interactHeld) {
-    interactHeld = false;
-    socket.emit('interact', { on: false });
-  }
-});
-window.addEventListener('blur', () => { Object.keys(keys).forEach((k) => { keys[k] = false; }); });
-window.addEventListener('resize', () => {
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix();
-  lobbyCam.aspect = window.innerWidth / window.innerHeight; lobbyCam.updateProjectionMatrix();
-});
+  let fwd = 0, str = 0;
+  if (active) { fwd = (keys.KeyW ? 1 : 0) - (keys.KeyS ? 1 : 0); str = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0); }
+  if (holdRepair) { fwd = 0; str = 0; }
+  const jump = active && !!keys.Space;
+  const sy = Math.sin(P.yaw), cy = Math.cos(P.yaw);
+  let mx = -sy * fwd + cy * str, mz = -cy * fwd - sy * str;
+  const ml = Math.hypot(mx, mz); if (ml > 1) { mx /= ml; mz /= ml; }
+  const moving = ml > 0.01;
 
-/* =====================================================================
- *  15. メインループ
- * ===================================================================*/
-let lastTime = performance.now(), lastSend = 0, stepTimer = 0, splashed = false;
-const camPos = new THREE.Vector3();
-let camYaw = 0, camPitch = 0;
-
-function updateLobby(dt, t) {
-  lobbySea.update(t);
-  if (appState === 'title') {
-    const a = t * 0.1;
-    lobbyCam.position.set(Math.sin(a) * 11, 3.2, 9 + Math.cos(a) * 3);
-    lobbyCam.lookAt(-0.5, 2.2, -2);
-    if (lobbyModel) lobbyModel.visible = false;
-  } else {
-    lobbyCam.position.set(0.9, 1.5, 6.2);
-    lobbyCam.lookAt(-0.55, 1.2, 0);
-    if (lobbyModel) {
-      lobbyModel.visible = true;
-      const o = lobbyModel.userData;
-      lobbyModel.rotation.y = 0.35 + lobbyYaw + Math.sin(t * 0.5) * 0.08;
-      o.body.position.y = Math.sin(t * 1.8) * 0.012;
-      o.head.rotation.y = Math.sin(t * 0.7) * 0.12;
-      o.armL.rotation.z = -0.35 + Math.sin(t * 1.8) * 0.03;
+  if (P.ship) {
+    const sv = shipViews[P.ship];
+    const spd = keys.ShiftLeft ? 2.4 : 4.6, c = Math.cos(sv.h), s = Math.sin(sv.h);
+    P.x += (mx * c - mz * s) * spd * dt;
+    P.z += (mx * s + mz * c) * spd * dt;
+    if (P.onGround && jump) { P.vy = 5.2; P.onGround = false; }
+    P.vy -= 16 * dt; P.y += P.vy * dt;
+    if (P.y <= DECK) { P.y = DECK; P.vy = 0; P.onGround = true; } else P.onGround = false;
+    P.z = clamp(P.z, -12.4, 12.0);
+    const hw = Math.max(0.4, halfW(P.z) - 0.45);
+    P.x = clamp(P.x, -hw, hw);
+    MASTS.forEach((m) => {
+      const dx = P.x - m.x, dz = P.z - m.z, d = Math.hypot(dx, dz);
+      if (d < 0.75) { const k = 0.75 / (d || 0.01); P.x = m.x + dx * k; P.z = m.z + dz * k; }
+    });
+    if (moving && P.onGround) {
+      stepT += dt * (keys.ShiftLeft ? 0.6 : 1);
+      if (stepT > 0.42) { stepT = 0; SFX.step(); }
     }
+    P._moving = moving;
+  } else {
+    const airborne = P.y > waveH(P.x, P.z, t) - 0.7 + 0.12;
+    if (!airborne) { P.x += mx * 3.0 * dt; P.z += mz * 3.0 * dt; P.vx = P.vz = 0; }
+    else { P.x += P.vx * dt; P.z += P.vz * dt; P.vx *= 0.995; P.vz *= 0.995; }
+    P.vy -= 16 * dt; P.y += P.vy * dt;
+    let landed = false;
+    for (const k of ['A', 'B']) {
+      const v = shipViews[k]; if (v.sunk || !v.init) continue;
+      const l = worldToShipLocal(v, P.x, P.z);
+      if (Math.abs(l.x) <= halfW(l.z) - 0.2 && l.z > -12.5 && l.z < 12.4 && P.y <= DECK + 0.15 && P.y >= DECK - 1.2 && P.vy <= 0) {
+        P.ship = k; P.x = l.x; P.z = l.z; P.y = DECK; P.vy = 0; P.onGround = true; P.vx = P.vz = 0; landed = true; break;
+      }
+    }
+    if (!landed) {
+      const wy = waveH(P.x, P.z, t) - 0.7;
+      if (P.y <= wy) {
+        if (P.vy < -3 && !splashedFlag) { splashedFlag = true; splashFx(P.x, P.z); }
+        P.y = wy; P.vy = 0; P.vx = P.vz = 0;
+      } else if (P.y > wy + 0.3) splashedFlag = false;
+      if (P.y <= wy + 0.05 && P.vy === 0) splashedFlag = false;
+      const r = Math.hypot(P.x, P.z); if (r > 168) { P.x *= 168 / r; P.z *= 168 / r; }
+    }
+    P._moving = moving;
   }
 }
 
+// =====================================================
+//  ゲーム更新
+// =====================================================
+const camPos = new THREE.Vector3();
+function updateShipViews(dt, t) {
+  const kk = 1 - Math.exp(-dt * 10);
+  ['A', 'B'].forEach((k) => {
+    const v = shipViews[k]; if (!v.init) return;
+    v.x = lerp(v.x, v.tx, kk); v.z = lerp(v.z, v.tz, kk); v.h += wrapA(v.th - v.h) * kk;
+    const root = v.obj.root;
+    if (!root.visible) return;
+    root.position.set(v.x, waveH(v.x, v.z, t) * 0.7 + Math.sin(t * 1.3 + v.ph) * 0.05, v.z);
+    root.rotation.set(Math.sin(t * 0.8 + v.ph) * 0.012 - v.speed * 0.003, v.h, Math.sin(t * 0.6 + v.ph * 1.7) * 0.025 + v.wheel * v.speed * 0.004);
+    v.obj.wheel.rotation.z = -v.wheel * 2.4;
+    v.obj.sails.forEach((sl, i) => { sl.rotation.y = Math.sin(t * 0.9 + i) * 0.03; sl.scale.z = 0.7 + v.throttle * 0.6; });
+    if (v.obj.flag) v.obj.flag.rotation.y = Math.sin(t * 4) * 0.35;
+    CANNONS.forEach((c, i) => {
+      const cn = v.cn[i]; if (!cn) return;
+      const dir = cannonDirL(c, cn[0], cn[1]);
+      v.obj.cannons[i].pivot.quaternion.setFromUnitVectors(X_AXIS, dir);
+      const rec = Math.max(0, (cn[2] - (CANNON_RELOAD - 350)) / 350);
+      v.obj.cannons[i].barrel.position.x = -rec * 0.35;
+    });
+    // 穴
+    const have = {};
+    v.holes.forEach((h) => {
+      have[h[0]] = 1;
+      let m = v.obj.holes.get(h[0]);
+      if (!m) { m = holeMesh(); v.obj.holeGroup.add(m); v.obj.holes.set(h[0], m); }
+      m.position.set(h[1], DECK + 0.03, h[2]);
+      if (Math.random() < dt * 2.2) {
+        const wp = root.localToWorld(new THREE.Vector3(h[1], DECK + 0.4, h[2]));
+        spawnFx({ tex: TEX.smoke, x: wp.x, y: wp.y, z: wp.z, size: 0.9, grow: 1.6, life: 1.6, vy: 1.8, drag: 0.3, op: 0.5 });
+      }
+    });
+    v.obj.holes.forEach((m, id) => { if (!have[id]) { v.obj.holeGroup.remove(m); v.obj.holes.delete(id); } });
+    // 大破寸前は炎上
+    if (v.hp < 35 && Math.random() < dt * 8) {
+      const wp = root.localToWorld(new THREE.Vector3(rand(-3, 3), DECK + 0.5, rand(-10, 10)));
+      spawnFx({ tex: TEX.fire, x: wp.x, y: wp.y, z: wp.z, size: rand(1.5, 2.8), grow: 1, life: 0.7, vy: 3, add: true });
+      spawnFx({ tex: TEX.smoke, x: wp.x, y: wp.y + 1, z: wp.z, size: 2, grow: 3, life: 2.4, vy: 4, drag: 0.3, op: 0.7 });
+    }
+  });
+}
+const _t1 = new THREE.Vector3();
+function playerWorldEye(out) {
+  if (P.ship) {
+    const r = shipViews[P.ship].obj.root; r.updateMatrixWorld(true);
+    return r.localToWorld(out.set(P.x, P.y + EYE, P.z));
+  }
+  return out.set(P.x, P.y + EYE, P.z);
+}
+function updateArc() {
+  if (!(me.mount && me.mount.type === 'cannon' && P.ship && me.alive && !cin.active)) { arcLine.visible = false; return; }
+  const sv = shipViews[P.ship], c = CANNONS[me.mount.idx];
+  sv.obj.root.updateMatrixWorld(true);
+  const m = sv.obj.root.localToWorld(new THREE.Vector3(c.side * 3.9, DECK + 0.85, c.z));
+  camera.getWorldDirection(_dir);
+  let vx = _dir.x * BALL_SPEED + (-Math.sin(sv.h) * sv.speed), vy = _dir.y * BALL_SPEED, vz = _dir.z * BALL_SPEED + (-Math.cos(sv.h) * sv.speed);
+  const pos = arcGeo.attributes.position; let x = m.x, y = m.y, z = m.z, n = 0;
+  for (let i = 0; i < 60; i++) {
+    pos.setXYZ(i, x, y, z); n = i + 1;
+    vy -= GRAV * 0.1; x += vx * 0.1; y += vy * 0.1; z += vz * 0.1;
+    if (y < 0) { pos.setXYZ(i + 1 < 60 ? i + 1 : i, x, 0, z); n = Math.min(60, i + 2); break; }
+  }
+  arcGeo.setDrawRange(0, n); pos.needsUpdate = true; arcLine.visible = true;
+}
+function updateBalls(dt) {
+  const now = performance.now();
+  Object.keys(ballMeshes).forEach((id) => {
+    const b = ballMeshes[id], e = Math.min(0.3, (now - b.t) / 1000);
+    b.mesh.position.set(b.x + b.vx * e, b.y + b.vy * e - 0.5 * GRAV * e * e, b.z + b.vz * e);
+    b.trail -= dt;
+    if (b.trail <= 0) { b.trail = 0.035; spawnFx({ tex: TEX.smoke, x: b.mesh.position.x, y: b.mesh.position.y, z: b.mesh.position.z, size: 0.9, grow: 1.4, life: 1.0, drag: 1, op: 0.45 }); }
+  });
+}
 function updateGame(dt, t, now) {
+  const fdt = dt * timeScale;
+  timeScale = Math.min(1, timeScale + dt * 0.7);
   gameSea.update(t);
-  const w = WEAPONS[curWeapon];
+  updateShipViews(fdt, t);
+  const w = WEAP[curWeapon];
+  const active = canAct() && !holdRepair;
+  stepLocal(dt, t, canAct());
 
-  // ---- 移動 ----
-  const active = isLocked() && me.alive;
-  if (me.alive) {
-    const moving = active && match.phase !== 'buy' && !interactHeld;
-    const mv = {
-      fwd: moving ? ((keys.KeyW ? 1 : 0) - (keys.KeyS ? 1 : 0)) : 0,
-      str: moving ? ((keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0)) : 0,
-      jump: moving && !!keys.Space,
-      walk: !!keys.ShiftLeft || !!keys.ShiftRight
-    };
-    if (!moving) P.speed = 0;
-    stepPlayer(dt, mv);
-    if (P.y < -1.5 && !splashed) { splashed = true; SFX.splash(); }
-    if (P.y >= -1.5) splashed = false;
-    if (P.onGround && P.speed > 0 && !mv.walk) {
-      stepTimer += dt;
-      if (stepTimer > 0.4) { stepTimer = 0; SFX.step(); }
-    }
-    if (now - lastSend > 50 && match.phase !== 'buy') {
-      lastSend = now;
-      socket.emit('move', { x: P.x, y: P.y, z: P.z, rotationY: P.yaw, pitch: P.pitch });
+  // ---- 修理（長押し） ----
+  if (holdRepair) {
+    const sv = P.ship ? shipViews[P.ship] : null;
+    const hole = sv ? sv.holes.find((h) => h[0] === holdRepair.id) : null;
+    if (!keys.KeyF || !hole || me.wood < 1 || me.mount || !me.alive || Math.hypot(P.x - hole[1], P.z - hole[2]) > 2.6) stopRepair();
+    else {
+      hammerT -= dt; if (hammerT <= 0) { hammerT = 0.42; SFX.hammer(); }
     }
   }
 
-  // ---- 設置・解除の継続判定 ----
-  if (interactHeld) {
-    const h = interactHint();
-    if (!h || !keys.KeyF || !me.alive) { interactHeld = false; socket.emit('interact', { on: false }); }
-  }
-
-  // ---- 射撃・リロード ----
-  scoped = !!(rmb && w && w.scope && me.alive && isLocked() && !buyOpen && (match.phase === 'live' || match.phase === 'planted'));
-  if (reloading && now >= reloadEnd) { reloading = false; mag = w.mag; SFX.reloadDone(); }
-  if (mouseDown && canAct() && w) {
-    if (w.auto || !firedSinceDown) tryShoot(now);
-  }
-  recoilAccum = Math.max(0, recoilAccum - dt * 0.08);
-  kick = Math.max(0, kick - dt * 7);
+  // ---- リロード ----
+  if (reloading && now >= reloadEnd) { reloading = false; ammo[curWeapon] = w.mag; }
+  kick = Math.max(0, kick - dt * 7); swing = Math.max(0, swing - dt * 4.5);
   flashSprite.material.opacity = Math.max(0, flashSprite.material.opacity - dt * 14);
   muzzleLight.intensity = Math.max(0, muzzleLight.intensity - dt * 30);
 
-  // ---- カメラ ----
-  let targetFov = scoped ? 20 : 75;
-  if (Math.abs(camera.fov - targetFov) > 0.1) {
-    camera.fov = lerp(camera.fov, targetFov, 1 - Math.exp(-dt * 18));
-    camera.updateProjectionMatrix();
+  // ---- 位置送信 ----
+  if (me.alive && now - lastSend > 50 && netPhase !== 'idle') {
+    lastSend = now;
+    const msg = { ship: P.ship, x: P.x, y: P.y, z: P.z, yaw: P.yaw, pitch: P.pitch, w: curWeapon };
+    if (me.mount && me.mount.type === 'cannon' && P.ship) {
+      const sv = shipViews[P.ship], c = CANNONS[me.mount.idx], out = c.side > 0 ? sv.h - Math.PI / 2 : sv.h + Math.PI / 2;
+      msg.cy = c.side > 0 ? wrapA(P.yaw - out) : wrapA(out - P.yaw); msg.cp = P.pitch;
+    }
+    socket.emit('move', msg);
   }
-  if (me.alive) {
-    camPos.set(P.x, P.y + EYE, P.z);
-    camYaw = P.yaw; camPitch = P.pitch;
-    gunView.visible = !scoped;
+
+  // ---- カメラ ----
+  let fov = 75;
+  if (cin.active) {
+    const el = (now - cin.t0) / 1000;
+    const v = shipViews[cin.team];
+    if (!cin.blasted) {
+      v.obj.root.updateMatrixWorld(true);
+      v.obj.root.localToWorld(cin.focus.set(0, 3, 0));
+      if (now >= cin.nextBoom) {
+        const p = v.obj.root.localToWorld(new THREE.Vector3(rand(-3, 3), rand(1, 5), rand(-12, 11)));
+        explosionAt(p.x, p.y, p.z, rand(1.6, 2.6));
+        for (let i = 0; i < 6; i++) spawnDebris(p.x, p.y, p.z, rand(0.3, 0.9), rand(-8, 8), rand(6, 16), rand(-8, 8), 5, false);
+        SFX.boom(0.9);
+        cin.nextBoom = now + rand(150, 420) * (1 - Math.min(0.5, el / 9));
+      }
+    }
+    const ang = cin.ang + el * 0.22, rad = (cin.blasted ? 54 : 36) + el * 1.2, hgt = 10 + el * 1.1;
+    camera.position.set(cin.focus.x + Math.cos(ang) * rad, cin.focus.y + hgt, cin.focus.z + Math.sin(ang) * rad);
+    camera.lookAt(cin.focus.x, cin.focus.y + 1, cin.focus.z);
+    fov = 52; gunView.visible = false;
+  } else if (me.alive) {
+    playerWorldEye(camPos);
+    camera.position.copy(camPos);
+    camera.rotation.set(P.pitch, P.yaw, 0);
+    gunView.visible = !me.mount;
   } else {
     gunView.visible = false;
-    const sr = specId ? remotes[specId] : null;
-    if (sr && pdata[specId] && pdata[specId].alive) {
-      camPos.set(sr.root.position.x, sr.root.position.y + EYE, sr.root.position.z);
-      camYaw = sr.root.rotation.y; camPitch = sr.pitch;
-    } else if (deathPos) {
-      camPos.set(deathPos.x, Math.max(deathPos.y, 0) + EYE, deathPos.z);
+    const sv = shipViews[me.team];
+    if (sv && sv.init && sv.obj.root.visible) {
+      sv.obj.root.updateMatrixWorld(true);
+      const a = t * 0.15;
+      sv.obj.root.localToWorld(camPos.set(Math.sin(a) * 6, 9, 15));
+      camera.position.copy(camPos);
+      const look = sv.obj.root.localToWorld(_t1.set(0, 2, 0));
+      camera.lookAt(look);
     }
   }
-  // 観戦対象のモデルは非表示にする
-  Object.keys(remotes).forEach((id) => {
-    const d = pdata[id];
-    remotes[id].root.visible = !!(d && d.alive) && !( !me.alive && id === specId );
-  });
-  if (shake > 0.001) {
-    camPos.x += rand(-1, 1) * shake * 0.12; camPos.y += rand(-1, 1) * shake * 0.12; camPos.z += rand(-1, 1) * shake * 0.12;
+  if (Math.abs(camera.fov - fov) > 0.1) { camera.fov = lerp(camera.fov, fov, 1 - Math.exp(-dt * 6)); camera.updateProjectionMatrix(); }
+  if (shake > 0.002) {
+    camera.position.x += rand(-1, 1) * shake * 0.12; camera.position.y += rand(-1, 1) * shake * 0.12; camera.position.z += rand(-1, 1) * shake * 0.12;
     shake *= Math.pow(0.02, dt);
   }
-  camera.position.copy(camPos);
-  camera.rotation.order = 'YXZ';
-  camera.rotation.set(camPitch, camYaw, 0);
 
-  // ---- 一人称の銃アニメ ----
-  const bob = P.onGround ? Math.sin(now * 0.012) * 0.006 * clamp(P.speed / 6, 0, 1) : 0;
-  let gy = -0.25 + bob, gz = -0.5 + kick * 0.08, gx = 0.27, rx = kick * 0.12, rz = 0;
+  // ---- 一人称ビューモデル ----
+  Object.keys(vmWeapons).forEach((k) => { vmWeapons[k].visible = (k === curWeapon); });
+  const bob = P.onGround && P._moving ? Math.sin(now * 0.012) * 0.008 : 0;
+  let gy = -0.24 + bob, gz = -0.46 + kick * 0.09, gx = 0.26, rx = kick * 0.14, rz = 0, ry = 0;
+  if (curWeapon === 'cutlass') { gx = 0.3 - swing * 0.35; rz = -swing * 1.0; ry = swing * 0.6; rx = -swing * 0.5; }
   if (reloading) {
-    const rp = 1 - (reloadEnd - now) / w.reload;
-    const dip = Math.sin(clamp(rp, 0, 1) * Math.PI);
+    const rp = 1 - (reloadEnd - now) / (w.reload || 1), dip = Math.sin(clamp(rp, 0, 1) * Math.PI);
     gy -= dip * 0.22; rx -= dip * 0.7; rz = dip * 0.4;
   }
-  gunView.position.set(gx, gy, gz);
-  gunView.rotation.set(rx, 0, rz);
+  gunView.position.set(gx, gy, gz); gunView.rotation.set(rx, ry, rz);
 
-  // ---- 他プレイヤー / エフェクト / 煙幕 ----
-  updateRemotes(dt, now);
-  updateFx(dt);
-  updateSmokes(now);
-
-  // ---- 爆弾 ----
-  if (bomb) {
-    const remain = bomb.explodeLocal - now;
-    const k = clamp(remain / bomb.total, 0, 1);
-    const pulse = (Math.sin(now * 0.02) + 1) / 2;
-    bomb.spark.scale.setScalar(0.6 + pulse * 0.6);
-    bomb.light.intensity = 0.8 + pulse * 1.8;
-    if (now >= bomb.nextBeep && remain > 0) {
-      SFX.beep(k < 0.25);
-      bomb.nextBeep = now + lerp(130, 1000, k);
-    }
-  }
+  updateRemotes(dt);
+  updateBalls(dt);
+  updateArc();
+  updateFxList(fdt);
+  updateDebris(fdt, t);
+  updateTracers(dt);
   updateHud(now);
 }
 
+// =====================================================
+//  HUD
+// =====================================================
+let bannerTimer = null;
+function banner(main, sub, cls, ms) {
+  const b = $('banner');
+  $('bannerMain').textContent = main; $('bannerSub').textContent = sub || '';
+  b.className = 'show ' + (cls || '');
+  clearTimeout(bannerTimer);
+  bannerTimer = setTimeout(() => { b.classList.remove('show'); }, ms || 2500);
+}
+let hudT = 0;
+function updateHud(now) {
+  if (now - hudT < 60) return;
+  hudT = now;
+  const my = shipViews[me.team], en = shipViews[me.team === 'A' ? 'B' : 'A'];
+  if (my && en) {
+    $('hpMeNum').textContent = Math.round(my.hp) + '%'; $('hpMeFill').style.width = clamp(my.hp, 0, 100) + '%';
+    $('hpEnNum').textContent = Math.round(en.hp) + '%'; $('hpEnFill').style.width = clamp(en.hp, 0, 100) + '%';
+    $('holesMe').textContent = my.holes.length ? `浸水中！ 穴 ${my.holes.length}` : '';
+    $('holesEn').textContent = en.holes.length ? `敵船 浸水 ${en.holes.length}` : '';
+  }
+  $('phaseLabel').textContent = netPhase === 'live' ? '交戦中' : netPhase === 'sinking' ? '大破！' : netPhase === 'result' ? '決着' : '';
+  $('hpNum').textContent = Math.max(0, Math.round(me.hp)); $('hpFill').style.width = clamp(me.hp, 0, 100) + '%';
+  $('woodRow').textContent = `木材 ${me.wood}/${MAX_WOOD}　${me.credits.toLocaleString()} G`;
+  const w = WEAP[curWeapon];
+  $('wName').textContent = w.name;
+  $('wAmmo').textContent = w.melee ? '∞' : (reloading ? '…' : ammo[curWeapon] + ' / ' + w.mag);
+  $('wSlots').innerHTML = `<b>1</b> ピストル　<b>2</b> ブランダー　<b>3</b> カットラス`;
+  // 照準
+  const ch = $('crosshair'); ch.className = me.mount && me.mount.type === 'cannon' ? 'cannon hudhide' : 'hudhide';
+  ch.style.display = me.alive && !(me.mount && me.mount.type === 'helm') ? '' : 'none';
+  // プロンプト
+  const h = interactHint(), pr = $('prompt');
+  if (holdRepair) {
+    pr.textContent = '';
+    $('progWrap').classList.remove('hidden');
+    $('progLabel').textContent = '修理中…';
+    $('progFill').style.width = clamp((now - holdRepair.start) / REPAIR_MS, 0, 1) * 100 + '%';
+  } else {
+    $('progWrap').classList.add('hidden');
+    if (me.mount && me.mount.type === 'cannon' && P.ship) {
+      const cn = shipViews[P.ship].cn[me.mount.idx], cd = cn ? cn[2] : 0;
+      pr.textContent = cd > 0 ? `装填中… ${(cd / 1000).toFixed(1)}s　[F] 降りる` : '[クリック] 発射！　[F] 降りる';
+      pr.className = cd > 0 ? 'dim' : '';
+    } else if (h) { pr.textContent = h.label; pr.className = h.ok ? '' : 'dim'; }
+    else { pr.textContent = ''; pr.className = ''; }
+  }
+  // 舵HUD
+  const hh = $('helmHud');
+  if (me.mount && me.mount.type === 'helm') {
+    hh.classList.remove('hidden');
+    $('sailFill').style.height = P.throttle * 100 + '%';
+    $('wheelDot').style.left = (41 + P.wheel * 38) + 'px';
+  } else hh.classList.add('hidden');
+  // 死亡表示
+  const di = $('deadInfo');
+  if (!me.alive && !cin.active) {
+    di.classList.remove('hidden');
+    di.textContent = netPhase === 'live' ? `撃沈された… 復活まで ${Math.max(0, Math.ceil((me.respawn - (now - lastStAt)) / 1000))}秒` : '戦闘終了を待っています…';
+  } else di.classList.add('hidden');
+  drawMinimap();
+}
+let lastStAt = performance.now();
+socket.on('st', () => { lastStAt = performance.now(); });
+const mm = $('minimap').getContext('2d');
+function drawMinimap() {
+  const W = 150, R = 150 / 2 - 4, sc = R / 150;
+  mm.clearRect(0, 0, W, W);
+  mm.save(); mm.translate(W / 2, W / 2);
+  mm.strokeStyle = 'rgba(255,255,255,.25)'; mm.beginPath(); mm.arc(0, 0, R, 0, 7); mm.stroke();
+  ['A', 'B'].forEach((k) => {
+    const v = shipViews[k]; if (!v.init || v.sunk) return;
+    mm.save(); mm.translate(v.x * sc, v.z * sc); mm.rotate(-v.h);
+    mm.fillStyle = k === me.team ? '#ff6b72' : '#6aa8ff';
+    mm.beginPath(); mm.moveTo(0, -8); mm.lineTo(4.5, 6); mm.lineTo(-4.5, 6); mm.closePath(); mm.fill();
+    mm.restore();
+  });
+  mm.fillStyle = '#ffec99';
+  Object.keys(ballMeshes).forEach((id) => { const b = ballMeshes[id].mesh.position; mm.fillRect(b.x * sc - 1, b.z * sc - 1, 3, 3); });
+  if (me.alive) {
+    let wx = P.x, wz = P.z;
+    if (P.ship) { const v = shipViews[P.ship], c = Math.cos(v.h), s = Math.sin(v.h); wx = v.x + P.x * c + P.z * s; wz = v.z - P.x * s + P.z * c; }
+    mm.fillStyle = '#fff'; mm.beginPath(); mm.arc(wx * sc, wz * sc, 2.5, 0, 7); mm.fill();
+  }
+  mm.restore();
+}
+
+// =====================================================
+//  メインループ
+// =====================================================
+let lastTime = performance.now();
 function frame(nowMs) {
   requestAnimationFrame(frame);
   const dt = Math.min(0.05, (nowMs - lastTime) / 1000);
@@ -2248,7 +1696,6 @@ function frame(nowMs) {
   }
 }
 requestAnimationFrame(frame);
-
 })();
 </script>
 </body>
