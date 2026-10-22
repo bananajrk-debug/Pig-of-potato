@@ -1,4 +1,4 @@
-\'use strict';
+'use strict';
 // =====================================================
 //  POLY PIRATES  -  海戦版 サーバー
 //  Node.js + Express + Socket.io
