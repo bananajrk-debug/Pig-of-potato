@@ -1,1 +1,378 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>生活ゲーム - 借金返済編</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: #1a1a1a;
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
 
+        /* 画面共通設定 */
+        .screen {
+            display: none;
+            width: 800px;
+            height: 600px;
+            background-color: #2b2b2b;
+            border: 4px solid #444;
+            border-radius: 12px;
+            position: relative;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* --- タイトル画面 --- */
+        #title-screen {
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #111, #333);
+            text-align: center;
+        }
+        #title-screen h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            color: #f39c12;
+            text-shadow: 2px 2px 4px #000;
+        }
+        #title-screen p {
+            color: #aaa;
+            margin-bottom: 40px;
+        }
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 240px;
+        }
+        .btn {
+            padding: 15px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background-color: #27ae60;
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #2ec4b6;
+        }
+        .btn-secondary {
+            background-color: #2980b9;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background-color: #3498db;
+        }
+        .btn:disabled {
+            background-color: #555;
+            color: #888;
+            cursor: not-allowed;
+        }
+
+        /* --- ゲーム画面 --- */
+        #game-screen {
+            position: relative;
+            background-color: #3a3a3a;
+            overflow: hidden;
+        }
+
+        /* UIヘッダー */
+        .status-bar {
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+        }
+        .status-item {
+            font-size: 1rem;
+            font-weight: bold;
+        }
+        .status-value {
+            color: #f1c40f;
+        }
+        .debt-value {
+            color: #e74c3c;
+        }
+
+        /* マップ・道路・ダンボール */
+        .map-area {
+            flex: 1;
+            position: relative;
+            background: #555; /* 道路風の背景 */
+        }
+        /* 道路ライン */
+        .road-line {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 4px;
+            border-top: 4px dashed #888;
+        }
+        /* 初期スタート地点: ダンボール */
+        .cardboard-bed {
+            position: absolute;
+            left: 50px;
+            bottom: 50px;
+            width: 90px;
+            height: 60px;
+            background-color: #c0392b;
+            border: 3px solid #d35400;
+            background: #d35400;
+            border-radius: 4px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 0.8rem;
+            color: #f39c12;
+            font-weight: bold;
+            box-shadow: 2px 4px 10px rgba(0,0,0,0.4);
+        }
+
+        /* 収集対象: ゴミ */
+        .trash {
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            background-color: #7f8c8d;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 12px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            transition: transform 0.1s;
+        }
+        .trash:hover {
+            transform: scale(1.2);
+        }
+
+        /* アクションエリア */
+        .action-panel {
+            background-color: rgba(0, 0, 0, 0.85);
+            padding: 15px;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            z-index: 10;
+        }
+        .action-btn {
+            padding: 10px 20px;
+            font-size: 0.9rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 1. タイトル画面 -->
+    <div id="title-screen" class="screen active">
+        <h1>どん底スタート生活</h1>
+        <p>ゴミを拾い、借金を返し、自分の家を手に入れろ！</p>
+        <div class="btn-group">
+            <button class="btn btn-primary" onclick="startNewGame()">生活を始める</button>
+            <button id="continue-btn" class="btn btn-secondary" onclick="continueGame()">生活を続ける</button>
+        </div>
+    </div>
+
+    <!-- 2. ゲーム画面 -->
+    <div id="game-screen" class="screen">
+        <!-- 上部ステータス表示 -->
+        <div class="status-bar">
+            <div class="status-item">所持金: <span id="money-display" class="status-value">0</span> G</div>
+            <div class="status-item">集めたゴミ: <span id="trash-display" class="status-value">0</span> 個</div>
+            <div class="status-item">残りの借金: <span id="debt-display" class="debt-value">1,000,000</span> G</div>
+        </div>
+
+        <!-- マップエリア -->
+        <div class="map-area" id="map-area">
+            <div class="road-line"></div>
+            <!-- スタート地点のダンボールハウス -->
+            <div class="cardboard-bed">My ダンボール</div>
+            <!-- ここに動的にゴミが発生します -->
+        </div>
+
+        <!-- 下部操作パネル -->
+        <div class="action-panel">
+            <button class="action-btn btn-primary" onclick="sellTrash()">ゴミを換金する (+100G/個)</button>
+            <button class="action-btn btn-secondary" onclick="payDebt()">借金を1,000G返済する</button>
+            <button class="action-btn" style="background:#e67e22; color:white;" onclick="saveAndExit()">セーブしてタイトルへ</button>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+
+        // ゲームの状態（プレイヤーデータ）
+        let playerData = {
+            money: 0,
+            trashCount: 0,
+            debt: 1000000,
+            hasSavedData: false
+        };
+
+        // 起動時にセーブデータがあるか確認
+        window.onload = () => {
+            checkSaveData();
+        };
+
+        function checkSaveData() {
+            const saved = localStorage.getItem('lifeGame_saveData');
+            const continueBtn = document.getElementById('continue-btn');
+            if (saved) {
+                continueBtn.disabled = false;
+            } else {
+                continueBtn.disabled = true;
+            }
+        }
+
+        // 新規ゲーム開始
+        function startNewGame() {
+            if (localStorage.getItem('lifeGame_saveData')) {
+                if (!confirm("以前のセーブデータが上書きされます。よろしいですか？")) {
+                    return;
+                }
+            }
+            playerData = {
+                money: 0,
+                trashCount: 0,
+                debt: 1000000,
+                hasSavedData: true
+            };
+            saveData();
+            switchToGame();
+        }
+
+        // つづきから開始
+        function continueGame() {
+            const saved = localStorage.getItem('lifeGame_saveData');
+            if (saved) {
+                playerData = JSON.parse(saved);
+                switchToGame();
+            }
+        }
+
+        // 画面切り替えとゲーム初期化
+        function switchToGame() {
+            document.getElementById('title-screen').classList.remove('active');
+            document.getElementById('game-screen').classList.add('active');
+            updateUI();
+            spawnTrashLoop();
+        }
+
+        // UI表示の更新
+        function updateUI() {
+            document.getElementById('money-display').textContent = playerData.money.toLocaleString();
+            document.getElementById('trash-display').textContent = playerData.trashCount;
+            document.getElementById('debt-display').textContent = playerData.debt.toLocaleString();
+        }
+
+        // ゴミを自動発生させる処理
+        function spawnTrashLoop() {
+            // 画面上に最大10個までゴミをスポーン
+            setInterval(() => {
+                const map = document.getElementById('map-area');
+                const currentTrashes = map.getElementsByClassName('trash').length;
+                if (currentTrashes < 8) {
+                    spawnTrash();
+                }
+            }, 2000);
+        }
+
+        function spawnTrash() {
+            const map = document.getElementById('map-area');
+            const trash = document.createElement('div');
+            trash.className = 'trash';
+            trash.textContent = '🗑️';
+
+            // ランダムな位置（ダンボールの場所を少し避ける）
+            const x = Math.floor(Math.random() * 680) + 100;
+            const y = Math.floor(Math.random() * 380) + 20;
+
+            trash.style.left = x + 'px';
+            trash.style.top = y + 'px';
+
+            // ゴミをクリックで回収
+            trash.onclick = () => {
+                playerData.trashCount += 1;
+                updateUI();
+                trash.remove();
+            };
+
+            map.appendChild(trash);
+        }
+
+        // ゴミの換金
+        function sellTrash() {
+            if (playerData.trashCount > 0) {
+                playerData.money += playerData.trashCount * 100;
+                playerData.trashCount = 0;
+                updateUI();
+            } else {
+                alert("換金するゴミがありません！道路のゴミを拾ってください。");
+            }
+        }
+
+        // 借金返済
+        function payDebt() {
+            const payAmount = 1000;
+            if (playerData.money >= payAmount) {
+                if (playerData.debt > 0) {
+                    playerData.money -= payAmount;
+                    playerData.debt = Math.max(0, playerData.debt - payAmount);
+                    updateUI();
+
+                    if (playerData.debt === 0) {
+                        alert("🎉 借金をすべて完済しました！家を購入する準備が整いました！");
+                    }
+                } else {
+                    alert("すでに借金は完済しています！");
+                }
+            } else {
+                alert("返済用の資金（1,000G）が足りません。");
+            }
+        }
+
+        // データをブラウザにセーブ
+        function saveData() {
+            localStorage.setItem('lifeGame_saveData', JSON.stringify(playerData));
+            checkSaveData();
+        }
+
+        // セーブしてタイトルに戻る
+        function saveAndExit() {
+            saveData();
+            alert("データをセーブしました。");
+            location.reload(); // タイトルに戻る
+        }
+    </script>
+</body>
+</html>
