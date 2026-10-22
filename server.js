@@ -3,6 +3,7 @@
 //  POLY PIRATES  -  海戦版 サーバー
 //  Node.js + Express + Socket.io
 //  ・舵 / 大砲 / 修理 / 敗北時の大爆発  ・セーブデータ永続化  ・フレンド  ・CPU(Bot)
+//  ・広大なマップ / クラーケン / 宝のエリア制圧 / ガチャ(メダル) / ショップ
 // =====================================================
 const express = require('express');
 const http = require('http');
@@ -27,9 +28,9 @@ app.get('/healthz', (req, res) => res.json({ ok: true }));
 const TICK_MS = 33;
 const SNAP_EVERY = 2;               // 2tickごとにスナップショット送信 (約15Hz)
 const DECK = 2.0;                   // 甲板の高さ（船ローカル）
-const MAX_HULL = 100;               // 船体耐久
-const SEA_RADIUS = 140;             // 海域の半径
-const SHIP_MAX_SPEED = 6.5;
+const MAX_HULL = 300;               // 船体耐久（長期戦向けに強化）
+const SEA_RADIUS = 300;             // 海域の半径（広大化）
+const SHIP_MAX_SPEED = 9;
 const SHIP_TURN = 0.5;              // rad/s
 const BALL_SPEED = 58;
 const GRAV = 16;
@@ -38,20 +39,62 @@ const CANNON_DMG = 16;              // 船体への基本ダメージ
 const BALL_DIRECT_DMG = 55;         // 砲弾の直撃ダメージ（人）
 const BALL_SPLASH_DMG = 45;
 const BALL_SPLASH_R = 3.4;
-const LEAK_PER_SEC = 0.3;           // 穴1つあたりの浸水ダメージ/秒
+const LEAK_PER_SEC = 0.55;           // 穴1つあたりの浸水ダメージ/秒
 const REPAIR_MS = 1800;
-const REPAIR_HP = 4;
+const REPAIR_HP = 10;
 const MAX_HOLES = 8;
 const MAX_WOOD = 5;
 const RESPAWN_MS = 5000;
 const SINK_BLAST_MS = 4400;         // 大破 → 大爆発までの連鎖爆発の時間
 const SINK_TOTAL_MS = 9500;         // 大爆発シネマ全体
-const RESULT_MS = 6500;             // 結果表示 → 自動再戦
+const RESULT_MS = 25000;             // 結果表示 → 自動再戦
 const CREW_PER_SHIP = 4;            // 1隻あたりの乗員（足りない分はCPUが補充）
 const MAX_HUMANS_PER_SHIP = 8;
 const WIN_CREDITS = 500;
 const LOSE_CREDITS = 150;
 const CREDIT_CAP = 999999;
+const PLAYER_HP = 200;              // 人の体力（強化）
+const MEDAL_CAP = 9999;
+
+// ---- 島（index.html と同じ値）----
+const ISLANDS = [
+  { x: 0, z: 0, r: 24 }, { x: -125, z: -135, r: 20 }, { x: 135, z: 125, r: 20 },
+  { x: -35, z: 165, r: 18 }, { x: 45, z: -175, r: 18 }, { x: -195, z: 75, r: 18 }, { x: 200, z: -65, r: 18 }
+];
+const ISLAND_MARGIN = 10;           // 船の中心が島の中心からこの距離+島の半径まで近づける
+const TREASURE_ZONE_ADD = 22;       // 島の半径 + これ = 制圧エリア半径
+const TREASURE_GOAL = 40;           // 秒：エリアに居続けて勝利
+const TREASURE_MOVE_MS = 150000;    // 宝が別の島へ移るまで
+
+// ---- クラーケン ----
+const KRAKEN_HP = 700;
+const KRAKEN_CHECK_MS = 15000;      // 出現判定の間隔
+const KRAKEN_CHANCE = 0.05;         // 判定ごとの出現確率（低確率：平均5分に1回ほど）
+const KRAKEN_LIFE_MS = 55000;
+const KRAKEN_SPEED = 6;
+const KRAKEN_HIT_R = 7.5;
+const KRAKEN_ATK_MS = 2800;
+
+// ---- ショップ（体型）・ガチャ ----
+const BODIES = {
+  normal: { cost: 0 }, fat: { cost: 1500 }, tall: { cost: 1800 },
+  small: { cost: 1200 }, muscle: { cost: 2500 }, skeleton: { cost: 3500 }
+};
+const GACHA_COST = 3;               // メダル3枚で1回
+const GACHA_ITEMS = [
+  { t: 'helm', id: 'bronze', r: 'N' }, { t: 'wskin', id: 'rust', r: 'N' }, { t: 'sskin', id: 'driftwood', r: 'N' },
+  { t: 'helm', id: 'silver', r: 'R' }, { t: 'helm', id: 'coral', r: 'R' }, { t: 'wskin', id: 'ocean', r: 'R' },
+  { t: 'wskin', id: 'silver', r: 'R' }, { t: 'sskin', id: 'ghost', r: 'R' }, { t: 'sskin', id: 'sakura', r: 'R' },
+  { t: 'helm', id: 'golden', r: 'SR' }, { t: 'wskin', id: 'ember', r: 'SR' }, { t: 'wskin', id: 'gold', r: 'SR' },
+  { t: 'sskin', id: 'black', r: 'SR' }, { t: 'sskin', id: 'gold', r: 'SR' },
+  { t: 'helm', id: 'skull', r: 'UR' }, { t: 'wskin', id: 'void', r: 'UR' }, { t: 'sskin', id: 'abyss', r: 'UR' }
+];
+const GACHA_RATE = { N: 0.55, R: 0.30, SR: 0.12, UR: 0.03 };
+const DUP_REFUND = { N: 100, R: 250, SR: 600, UR: 1500 };
+const OWN_KEY = { helm: 'helms', wskin: 'wskins', sskin: 'sskins' };
+const EQ_KEY = { helm: 'helm', wskin: 'wskin', sskin: 'sskin' };
+const ITEM_DEFAULT = { helm: 'oak', wskin: 'default', sskin: 'default' };
+const hasItem = (t, id) => !!ITEM_DEFAULT[t] && (id === ITEM_DEFAULT[t] || GACHA_ITEMS.some((i) => i.t === t && i.id === id));
 
 // ---- 船の形状 (z, 半幅) 船尾→船首 ----
 const HULL = [[12.8, 3.6], [11, 4.2], [6, 4.5], [-3, 4.5], [-8, 3.8], [-11.5, 2.2], [-14.5, 0.2]];
@@ -133,6 +176,8 @@ function migrate(p) {
     id: crypto.randomBytes(6).toString('hex'), code: null, name: '海賊',
     credits: 500, wins: 0, losses: 0, kills: 0, deaths: 0, hits: 0, plays: 0,
     skin: 'classic', skins: ['classic'], friends: [], requests: [],
+    medals: 0, helms: ['oak'], helm: 'oak', wskins: ['default'], wskin: 'default',
+    sskins: ['default'], sskin: 'default', bodies: ['normal'], body: 'normal',
     createdAt: Date.now(), updatedAt: Date.now()
   };
   Object.keys(d).forEach((k) => { if (p[k] === undefined) p[k] = d[k]; });
@@ -141,6 +186,16 @@ function migrate(p) {
   p.skins = Array.isArray(p.skins) ? p.skins.filter((s) => SKINS[s]) : ['classic'];
   if (!p.skins.includes('classic')) p.skins.push('classic');
   if (!SKINS[p.skin] || !p.skins.includes(p.skin)) p.skin = 'classic';
+  p.medals = numIn(p.medals, 0, MEDAL_CAP, 0);
+  ['helm', 'wskin', 'sskin'].forEach((t) => {
+    const ok = OWN_KEY[t], ek = EQ_KEY[t];
+    p[ok] = Array.isArray(p[ok]) ? p[ok].filter((id) => hasItem(t, id)) : [];
+    if (!p[ok].includes(ITEM_DEFAULT[t])) p[ok].push(ITEM_DEFAULT[t]);
+    if (!hasItem(t, p[ek]) || !p[ok].includes(p[ek])) p[ek] = ITEM_DEFAULT[t];
+  });
+  p.bodies = Array.isArray(p.bodies) ? p.bodies.filter((b) => BODIES[b]) : [];
+  if (!p.bodies.includes('normal')) p.bodies.push('normal');
+  if (!BODIES[p.body] || !p.bodies.includes(p.body)) p.body = 'normal';
   p.friends = Array.isArray(p.friends) ? p.friends.filter((c) => typeof c === 'string').slice(0, 100) : [];
   p.requests = Array.isArray(p.requests)
     ? p.requests.filter((r) => r && typeof r.code === 'string').map((r) => ({ code: r.code, name: cleanName(r.name), at: r.at || Date.now() })).slice(0, 30)
@@ -203,6 +258,10 @@ function createProfile(token, backup) {
       p.friends = backup.friends.filter((c) => typeof c === 'string' && /^[A-Z0-9]{4,8}$/.test(c)).slice(0, 100);
     }
     if (typeof backup.code === 'string' && /^[A-Z0-9]{6}$/.test(backup.code) && !byCode[backup.code]) p.code = backup.code;
+    p.medals = numIn(backup.medals, 0, MEDAL_CAP, 0);
+    ['helms', 'wskins', 'sskins', 'bodies'].forEach((k) => { if (Array.isArray(backup[k])) p[k] = backup[k]; });
+    ['helm', 'wskin', 'sskin', 'body'].forEach((k) => { if (typeof backup[k] === 'string') p[k] = backup[k]; });
+    migrate(p);
   }
   if (!p.code || byCode[p.code]) p.code = makeCode();
   db.profiles[token] = p;
@@ -214,7 +273,9 @@ function publicProfile(p) {
   return {
     id: p.id, code: p.code, name: p.name, credits: p.credits, wins: p.wins, losses: p.losses,
     kills: p.kills, deaths: p.deaths, hits: p.hits, plays: p.plays,
-    skin: p.skin, skins: p.skins, friends: p.friends
+    skin: p.skin, skins: p.skins, friends: p.friends,
+    medals: p.medals, helms: p.helms, helm: p.helm, wskins: p.wskins, wskin: p.wskin,
+    sskins: p.sskins, sskin: p.sskin, bodies: p.bodies, body: p.body
   };
 }
 loadDb();
@@ -243,6 +304,9 @@ const onlineByCode = {}; // friendCode -> player
 const match = { phase: 'idle', phaseAt: 0, winner: null, loser: null, blasted: false };
 let balls = [];
 let ballSeq = 1;
+let treasure = null;                // 宝 { i,x,z,r,cx,cz,pA,pB,at }
+let kraken = null;
+let krakenCheckAt = 0;
 let botSeq = 1;
 
 function makeShip(team) {
@@ -254,8 +318,8 @@ function makeShip(team) {
 }
 const ships = { A: makeShip('A'), B: makeShip('B') };
 function resetShips() {
-  Object.assign(ships.A, makeShip('A'), { x: -42, z: 12, h: -Math.PI / 2 });
-  Object.assign(ships.B, makeShip('B'), { x: 42, z: -12, h: Math.PI / 2 });
+  Object.assign(ships.A, makeShip('A'), { x: -110, z: 25, h: -Math.PI / 2 });
+  Object.assign(ships.B, makeShip('B'), { x: 110, z: -25, h: Math.PI / 2 });
 }
 resetShips();
 
@@ -263,8 +327,8 @@ function basePlayer(id) {
   return {
     id, isBot: false, socket: null, profile: null, name: '海賊', team: null,
     ship: null, x: 0, y: DECK, z: 0, yaw: 0, pitch: 0,
-    hp: 100, alive: false, wood: 0, weapon: 'pistol', mount: null, repair: null,
-    lastShot: 0, lastMelee: 0, respawnAt: 0, inMatch: false, skin: 'classic', mk: 0, md: 0
+    hp: PLAYER_HP, alive: false, wood: 0, weapon: 'pistol', mount: null, repair: null,
+    lastShot: 0, lastMelee: 0, respawnAt: 0, inMatch: false, skin: 'classic', body: 'normal', ws: 'default', joinedAt: 0, mk: 0, md: 0
   };
 }
 const crew = () => Object.values(players).filter((p) => p.inMatch);
@@ -305,7 +369,7 @@ function emitFx(o) { io.to('match').emit('fx', o); }
 function notice(p, text) { if (p && !p.isBot && p.socket) p.socket.emit('notice', text); }
 function stateOf(p) {
   return {
-    hp: Math.round(p.hp), wood: p.wood, alive: p.alive, team: p.team,
+    hp: Math.round(p.hp), mhp: PLAYER_HP, medals: p.profile ? p.profile.medals : 0, wood: p.wood, alive: p.alive, team: p.team,
     credits: p.profile ? p.profile.credits : 0,
     mount: p.mount ? { type: p.mount.type, idx: p.mount.idx } : null,
     respawn: p.alive ? 0 : Math.max(0, p.respawnAt - Date.now()),
@@ -341,11 +405,12 @@ function spawnBot(team) {
   b.team = team;
   b.inMatch = true;
   b.skin = pick(Object.keys(SKINS));
+  b.body = pick(Object.keys(BODIES));
   b.duty = 'gun';
   b.aiT = rand(0.5, 2);
   b.noAimT = 0;
   b.repT = 0;
-  b.hp = 100;
+  b.hp = PLAYER_HP;
   b.alive = true;
   placeOnDeck(b);
   players[b.id] = b;
@@ -388,9 +453,11 @@ function startBattle() {
   resetShips();
   balls = [];
   clearBots();
+  kraken = null; krakenCheckAt = Date.now() + 25000;
+  spawnTreasure(-1);
   match.winner = null; match.loser = null; match.blasted = false;
   crew().forEach((p) => {
-    p.alive = true; p.hp = 100; p.wood = 0; p.mount = null; p.repair = null; p.mk = 0; p.md = 0;
+    p.alive = true; p.hp = PLAYER_HP; p.wood = 0; p.mount = null; p.repair = null; p.mk = 0; p.md = 0;
     placeOnDeck(p);
   });
   fillBots();
@@ -404,6 +471,7 @@ function startBattle() {
 function goIdle() {
   clearBots();
   balls = [];
+  treasure = null; kraken = null;
   match.phase = 'idle';
   match.phaseAt = Date.now();
 }
@@ -417,6 +485,126 @@ function startSink(loser) {
   crew().forEach((p) => { if (p.mount && p.mount.type === 'helm') releaseMount(p); p.repair = null; });
   io.to('match').emit('sinkStart', { team: loser });
 }
+// =====================================================
+//  宝のエリア制圧 / クラーケン
+// =====================================================
+function spawnTreasure(avoid) {
+  let i;
+  do { i = Math.floor(Math.random() * ISLANDS.length); } while (i === avoid && ISLANDS.length > 1);
+  const isl = ISLANDS[i];
+  treasure = { i, x: isl.x, z: isl.z, r: isl.r + TREASURE_ZONE_ADD, cx: isl.x + isl.r * 0.4, cz: isl.z, pA: 0, pB: 0, at: Date.now() };
+  if (avoid >= 0) io.to('match').emit('treasure', { i });
+}
+function treasurePayload() {
+  if (!treasure) return 0;
+  const t = treasure;
+  return { i: t.i, x: t.x, z: t.z, r: t.r, cx: r2(t.cx), cz: r2(t.cz), a: r2(t.pA / TREASURE_GOAL), b: r2(t.pB / TREASURE_GOAL) };
+}
+function updateTreasure(dt, now) {
+  const t = treasure;
+  if (!t) return;
+  const inZ = (s) => !s.sunk && Math.hypot(s.x - t.x, s.z - t.z) < t.r;
+  const a = inZ(ships.A), b = inZ(ships.B);
+  if (a && !b) { t.pA += dt; t.pB = Math.max(0, t.pB - dt * 0.5); }
+  else if (b && !a) { t.pB += dt; t.pA = Math.max(0, t.pA - dt * 0.5); }
+  else if (!a && !b) { t.pA = Math.max(0, t.pA - dt * 0.4); t.pB = Math.max(0, t.pB - dt * 0.4); }
+  // 両船が入っている間は奪い合い（進捗は動かない）
+  if (t.pA >= TREASURE_GOAL) { treasureWin('A'); return; }
+  if (t.pB >= TREASURE_GOAL) { treasureWin('B'); return; }
+  if (now - t.at > TREASURE_MOVE_MS) {
+    io.to('match').emit('notice', '宝が別の島へ移動した！');
+    spawnTreasure(t.i);
+  }
+}
+function treasureWin(winner) {
+  match.winner = winner; match.loser = other(winner); match.blasted = false;
+  balls = []; kraken = null;
+  ['A', 'B'].forEach((k) => { ships[k].throttle = 0; });
+  crew().forEach((p) => { if (p.mount && p.mount.type === 'helm') releaseMount(p); p.repair = null; });
+  setPhase('result');
+  io.to('match').emit('treasureWin', { winner });
+  awardResult('treasure');
+}
+function shipIslands() {
+  [ships.A, ships.B].forEach((s) => {
+    if (s.sunk) return;
+    ISLANDS.forEach((isl) => {
+      const dx = s.x - isl.x, dz = s.z - isl.z, d = Math.hypot(dx, dz) || 0.01, min = isl.r + ISLAND_MARGIN;
+      if (d < min) { s.x = isl.x + (dx / d) * min; s.z = isl.z + (dz / d) * min; s.speed *= 0.97; }
+    });
+  });
+}
+function captainOf(team) {
+  return humans().filter((p) => p.team === team && p.profile).sort((a, b) => a.joinedAt - b.joinedAt)[0] || null;
+}
+function skinOfShip(k) { const c = captainOf(k); return c ? c.profile.sskin : 'default'; }
+function helmOfShip(k) {
+  const sh = ships[k], op = sh.helm ? players[sh.helm] : null;
+  const who = op && !op.isBot && op.profile ? op : captainOf(k);
+  return who ? who.profile.helm : 'oak';
+}
+function krakenPayload() {
+  if (!kraken) return 0;
+  return { x: r2(kraken.x), z: r2(kraken.z), h: r2(kraken.h), hp: Math.max(0, Math.round((kraken.hp / KRAKEN_HP) * 100)) };
+}
+function spawnKraken() {
+  const cands = ['A', 'B'].filter((k) => !ships[k].sunk);
+  if (!cands.length) return;
+  const team = pick(cands), s = ships[team];
+  const a = rand(0, Math.PI * 2);
+  let x = s.x + Math.cos(a) * 50, z = s.z + Math.sin(a) * 50;
+  const r = Math.hypot(x, z);
+  if (r > SEA_RADIUS - 5) { x *= (SEA_RADIUS - 5) / r; z *= (SEA_RADIUS - 5) / r; }
+  const now = Date.now();
+  kraken = { x, z, h: 0, hp: KRAKEN_HP, target: team, born: now, atkAt: now + 5000, retarget: now + 9000, last: null };
+  io.to('match').emit('krakenSpawn', { x: r2(x), z: r2(z), team });
+}
+function hitKraken(b) {
+  const k = kraken;
+  if (!k) return;
+  k.hp -= 35; k.last = b.owner;
+  emitFx({ t: 'kHit', x: r2(b.x), y: r2(b.y), z: r2(b.z) });
+  if (k.hp <= 0) {
+    const o = players[k.last];
+    if (o && !o.isBot) { addCredits(o, 300); notice(o, 'クラーケンを撃退！ +300G'); sendState(o); }
+    io.to('match').emit('krakenDead', { x: r2(k.x), z: r2(k.z) });
+    kraken = null; krakenCheckAt = Date.now() + 40000;
+  }
+}
+function updateKraken(dt, now) {
+  if (!kraken) {
+    if (now >= krakenCheckAt) {
+      krakenCheckAt = now + KRAKEN_CHECK_MS;
+      if (Math.random() < KRAKEN_CHANCE) spawnKraken();
+    }
+    return;
+  }
+  const k = kraken;
+  if (now - k.born > KRAKEN_LIFE_MS) {
+    io.to('match').emit('krakenGone', {});
+    kraken = null; krakenCheckAt = now + 40000;
+    return;
+  }
+  if (now >= k.retarget) {
+    k.retarget = now + 8000;
+    const c = ['A', 'B'].filter((t) => !ships[t].sunk)
+      .sort((p, q) => Math.hypot(ships[p].x - k.x, ships[p].z - k.z) - Math.hypot(ships[q].x - k.x, ships[q].z - k.z));
+    if (c.length) k.target = c[0];
+  }
+  const sh = ships[k.target];
+  if (sh.sunk) return;
+  const dx = sh.x - k.x, dz = sh.z - k.z, d = Math.hypot(dx, dz) || 0.01;
+  k.h = Math.atan2(dx, dz);
+  if (d > 16) { const st = Math.min(d - 16, KRAKEN_SPEED * dt); k.x += (dx / d) * st; k.z += (dz / d) * st; }
+  if (d <= 20 && now >= k.atkAt) {
+    k.atkAt = now + KRAKEN_ATK_MS;
+    sh.hp -= 9;
+    addHole(sh, rand(-3, 3), rand(-9, 9));
+    emitFx({ t: 'kAtk', x: r2(sh.x), z: r2(sh.z), s: sh.team });
+    crew().forEach((q) => { if (q.alive && q.ship === sh.team) applyDamage(q, 25, null, 'kraken', false); });
+  }
+}
+
 function blast() {
   const s = ships[match.loser];
   s.sunk = true;
@@ -430,16 +618,16 @@ function blast() {
   });
   emitFx({ t: 'blast', s: match.loser, x: r2(s.x), z: r2(s.z) });
 }
-function awardResult() {
+function awardResult(reason) {
   humans().forEach((p) => {
     const win = p.team === match.winner;
     const pr = p.profile;
     if (!pr) return;
     pr.plays++;
-    if (win) pr.wins++; else pr.losses++;
+    if (win) { pr.wins++; pr.medals = Math.min(MEDAL_CAP, (pr.medals || 0) + 1); } else pr.losses++;
     const reward = win ? WIN_CREDITS : LOSE_CREDITS;
     addCredits(p, reward);
-    p.socket.emit('result', { winner: match.winner, win, reward });
+    p.socket.emit('result', { winner: match.winner, win, reward, medal: win ? 1 : 0, reason: reason || 'sink', next: RESULT_MS });
     p.socket.emit('profile', { profile: publicProfile(pr) });
     sendState(p);
   });
@@ -484,7 +672,7 @@ function applyDamage(victim, dmg, attacker, weapon, head) {
     sendState(attacker);
   }
   io.to('match').emit('feed', {
-    k: attacker ? attacker.name : '', kt: attacker ? attacker.team : null,
+    k: attacker ? attacker.name : (weapon === 'kraken' ? 'クラーケン' : ''), kt: attacker ? attacker.team : null,
     v: victim.name, vt: victim.team, w: weapon
   });
   sendState(victim);
@@ -492,7 +680,7 @@ function applyDamage(victim, dmg, attacker, weapon, head) {
 function respawn(p) {
   const sh = ships[p.team];
   if (!sh || sh.sunk) return;
-  p.alive = true; p.hp = 100; p.wood = 0; p.mount = null; p.repair = null;
+  p.alive = true; p.hp = PLAYER_HP; p.wood = 0; p.mount = null; p.repair = null;
   placeOnDeck(p);
   if (!p.isBot && p.socket) {
     p.socket.emit('respawn', { ship: p.ship, x: p.x, y: p.y, z: p.z, h: sh.h });
@@ -566,6 +754,11 @@ function updateBalls(dt) {
         }
       }
       if (dead) break;
+      if (kraken && b.y < 10 && Math.hypot(b.x - kraken.x, b.z - kraken.z) < KRAKEN_HIT_R) { hitKraken(b); dead = true; break; }
+      if (b.y < 6 && ISLANDS.some((isl) => Math.hypot(b.x - isl.x, b.z - isl.z) < isl.r * 0.9)) {
+        emitFx({ t: 'boom', x: r2(b.x), y: r2(b.y), z: r2(b.z) });
+        dead = true; break;
+      }
       // 船体
       for (const k of ['A', 'B']) {
         const sh = ships[k];
@@ -742,17 +935,27 @@ function botHelm(b, sh, en, dt) {
     return;
   }
   if (sh.helm !== b.id) { b.mount = null; return; }
+  if (treasure) {
+    // 宝の島へ向かい、エリア内では島の周りを旋回しながら大砲で敵を迎え撃つ
+    const tdx = treasure.x - sh.x, tdz = treasure.z - sh.z, td = Math.hypot(tdx, tdz);
+    const bearing = Math.atan2(-tdx, -tdz);
+    const outer = td > treasure.r - 6;
+    const diffT = wrap((outer ? bearing : bearing + Math.PI / 2) - sh.h);
+    sh.wheel += clamp(clamp(-diffT * 2.2, -1, 1) - sh.wheel, -1.5 * dt, 1.5 * dt);
+    sh.throttle = outer ? (td > 80 ? 1 : 0.55) : 0.45;
+    return;
+  }
   const dx = en.x - sh.x, dz = en.z - sh.z, dist = Math.hypot(dx, dz);
   const by = Math.atan2(-dx, -dz);
   const off = Math.PI / 2 + 0.5 * clamp((30 - dist) / 20, 0, 1) - 0.7 * clamp((dist - 50) / 50, 0, 1);
   const c1 = by + off, c2 = by - off;
   let tgt = Math.abs(wrap(c1 - sh.h)) < Math.abs(wrap(c2 - sh.h)) ? c1 : c2;
   const r = Math.hypot(sh.x, sh.z);
-  if (r > 100) tgt = Math.atan2(sh.x, sh.z);
+  if (r > 250) tgt = Math.atan2(sh.x, sh.z);
   const diff = wrap(tgt - sh.h);
   const want = clamp(-diff * 2.2, -1, 1);
   sh.wheel += clamp(want - sh.wheel, -1.5 * dt, 1.5 * dt);
-  sh.throttle = r > 100 ? 0.6 : dist > 75 ? 0.85 : dist < 28 ? 0.5 : 0.6;
+  sh.throttle = r > 250 ? 0.6 : dist > 110 ? 0.85 : dist < 28 ? 0.5 : 0.6;
 }
 function botRepair(b, sh, en, dt) {
   if (!sh.holes.length) { botGun(b, sh, en, dt); return; }
@@ -820,6 +1023,7 @@ function simulate(dt, now) {
   updateShip(A, dt);
   updateShip(B, dt);
   shipCollide();
+  shipIslands();
   [A, B].forEach((s) => s.cannons.forEach((c) => { if (c.cd > 0) c.cd = Math.max(0, c.cd - dt * 1000); }));
 
   if (live) {
@@ -829,6 +1033,8 @@ function simulate(dt, now) {
     dutyTimer -= dt;
     if (dutyTimer <= 0) { dutyTimer = 1; assignDuties('A'); assignDuties('B'); }
     crew().forEach((p) => { if (p.isBot) botThink(p, dt); });
+    updateTreasure(dt, now);
+    updateKraken(dt, now);
     // 人間の修理
     humans().forEach((p) => {
       if (!p.repair) return;
@@ -848,7 +1054,7 @@ function simulate(dt, now) {
   });
 
   // 敗北判定
-  if (live && (A.hp <= 0 || B.hp <= 0)) {
+  if (match.phase === 'live' && (A.hp <= 0 || B.hp <= 0)) {
     A.hp = Math.max(0, A.hp); B.hp = Math.max(0, B.hp);
     startSink(A.hp <= B.hp ? 'A' : 'B');
   }
@@ -856,7 +1062,7 @@ function simulate(dt, now) {
   if (match.phase === 'sinking') {
     const t = now - match.phaseAt;
     if (!match.blasted && t >= SINK_BLAST_MS) { match.blasted = true; blast(); }
-    if (t >= SINK_TOTAL_MS) { setPhase('result'); awardResult(); }
+    if (t >= SINK_TOTAL_MS) { setPhase('result'); awardResult('sink'); }
   } else if (match.phase === 'result') {
     if (now - match.phaseAt >= RESULT_MS) {
       if (humans().length > 0) startBattle(); else goIdle();
@@ -870,7 +1076,7 @@ function broadcastSnap(now) {
     const s = ships[k];
     sh[k] = {
       x: r2(s.x), z: r2(s.z), h: r2(s.h), sp: r2(s.speed), th: r2(s.throttle), wh: r2(s.wheel),
-      hp: Math.max(0, Math.round(s.hp * 10) / 10), sk: s.sunk ? 1 : 0,
+      hp: Math.max(0, Math.round((s.hp / MAX_HULL) * 1000) / 10), sk: s.sunk ? 1 : 0, ss: skinOfShip(k), hs: helmOfShip(k),
       hl: s.holes.map((h) => [h.id, r2(h.x), r2(h.z)]),
       hm: s.helm || 0,
       cn: s.cannons.map((c) => [r2(c.yaw), r2(c.pitch), Math.round(c.cd), c.op || 0])
@@ -879,11 +1085,11 @@ function broadcastSnap(now) {
   const pl = crew().map((p) => ({
     id: p.id, n: p.name, t: p.team, s: p.ship || 0,
     x: r2(p.x), y: r2(p.y), z: r2(p.z), yw: r2(p.yaw), pt: r2(p.pitch),
-    a: p.alive ? 1 : 0, hp: Math.round(p.hp), w: p.weapon, sk: p.skin, b: p.isBot ? 1 : 0,
+    a: p.alive ? 1 : 0, hp: Math.round(p.hp), w: p.weapon, sk: p.skin, bd: p.body, ws: p.ws, b: p.isBot ? 1 : 0,
     m: p.mount ? p.mount.type[0] : 0
   }));
   io.to('match').emit('snap', {
-    ph: match.phase, pt: now - match.phaseAt, sh, pl,
+    ph: match.phase, pt: now - match.phaseAt, sh, pl, tr: treasurePayload(), kr: krakenPayload(),
     bl: balls.map((b) => [b.id, r2(b.x), r2(b.y), r2(b.z), r2(b.vx), r2(b.vy), r2(b.vz)])
   });
 }
@@ -891,7 +1097,7 @@ function broadcastOnline() {
   const hs = allHumans();
   io.emit('online', {
     total: hs.length, inMatch: humans().length, phase: match.phase,
-    hpA: Math.round(ships.A.hp), hpB: Math.round(ships.B.hp)
+    hpA: Math.round((ships.A.hp / MAX_HULL) * 100), hpB: Math.round((ships.B.hp / MAX_HULL) * 100)
   });
 }
 
@@ -920,7 +1126,7 @@ function friendsPayload(profile) {
     const q = byCode[code];
     if (!q) return null;
     const op = onlineByCode[code];
-    return { code, name: q.name, online: !!op, inMatch: !!(op && op.inMatch), skin: q.skin, wins: q.wins };
+    return { code, name: q.name, online: !!op, inMatch: !!(op && op.inMatch), skin: q.skin, body: q.body, wskin: q.wskin, wins: q.wins };
   }).filter(Boolean);
   const requests = profile.requests.map((r) => ({ code: r.code, name: (byCode[r.code] || {}).name || r.name }));
   return { friends, requests };
@@ -1003,6 +1209,7 @@ io.on('connection', (socket) => {
   p.socket = socket;
   players[socket.id] = p;
   let lastFriendReq = 0;
+  let lastGacha = 0;
 
   const ready = () => p.profile && p.inMatch;
   const playing = () => p.profile && p.inMatch && p.alive && match.phase === 'live';
@@ -1027,6 +1234,8 @@ io.on('connection', (socket) => {
     p.profile = profile;
     p.name = profile.name;
     p.skin = profile.skin;
+    p.body = profile.body;
+    p.ws = profile.wskin;
     onlineByCode[profile.code] = p;
     socket.emit('profile', { token, profile: publicProfile(profile) });
     socket.emit('friends', friendsPayload(profile));
@@ -1056,6 +1265,7 @@ io.on('connection', (socket) => {
     touch(pr);
     socket.emit('profile', { profile: publicProfile(pr) });
     socket.emit('notice', 'スキンを購入しました！');
+    notifyFriendsOf(pr);
   });
   socket.on('equipSkin', (id) => {
     const pr = p.profile;
@@ -1063,6 +1273,66 @@ io.on('connection', (socket) => {
     pr.skin = id;
     p.skin = id;
     touch(pr);
+    socket.emit('profile', { profile: publicProfile(pr) });
+    notifyFriendsOf(pr);
+  });
+
+  // ---- ショップ：体型（キャラクター）----
+  socket.on('buyBody', (id) => {
+    const pr = p.profile;
+    if (!pr || !BODIES[id] || pr.bodies.includes(id)) return;
+    if (pr.credits < BODIES[id].cost) { socket.emit('notice', 'クレジットが足りません'); return; }
+    pr.credits -= BODIES[id].cost;
+    pr.bodies.push(id);
+    pr.body = id; p.body = id;
+    touch(pr);
+    socket.emit('profile', { profile: publicProfile(pr) });
+    socket.emit('notice', 'キャラクターを購入しました！');
+    notifyFriendsOf(pr);
+  });
+  socket.on('equipBody', (id) => {
+    const pr = p.profile;
+    if (!pr || !BODIES[id] || !pr.bodies.includes(id)) return;
+    pr.body = id; p.body = id;
+    touch(pr);
+    socket.emit('profile', { profile: publicProfile(pr) });
+    notifyFriendsOf(pr);
+  });
+
+  // ---- ガチャ景品の装備（舵 / 武器スキン / 船スキン）----
+  socket.on('equipItem', (d) => {
+    const pr = p.profile;
+    if (!pr || !d || !OWN_KEY[d.type]) return;
+    if (!pr[OWN_KEY[d.type]].includes(d.id)) return;
+    pr[EQ_KEY[d.type]] = d.id;
+    if (d.type === 'wskin') p.ws = d.id;
+    touch(pr);
+    socket.emit('profile', { profile: publicProfile(pr) });
+    notifyFriendsOf(pr);
+  });
+
+  // ---- ガチャ（メダル3枚で1回）----
+  socket.on('gacha', () => {
+    const pr = p.profile;
+    if (!pr) return;
+    if (Date.now() - lastGacha < 600) { socket.emit('gachaResult', { error: true }); return; }
+    lastGacha = Date.now();
+    if (pr.medals < GACHA_COST) {
+      socket.emit('notice', `ガチャメダルが足りません（${GACHA_COST}枚必要）`);
+      socket.emit('gachaResult', { error: true });
+      return;
+    }
+    pr.medals -= GACHA_COST;
+    let x = Math.random(), rar = 'UR', acc = 0;
+    for (const r of ['N', 'R', 'SR', 'UR']) { acc += GACHA_RATE[r]; if (x < acc) { rar = r; break; } }
+    const item = pick(GACHA_ITEMS.filter((i) => i.r === rar));
+    const own = pr[OWN_KEY[item.t]];
+    const dup = own.includes(item.id);
+    let refund = 0;
+    if (dup) { refund = DUP_REFUND[item.r]; pr.credits = clamp(pr.credits + refund, 0, CREDIT_CAP); }
+    else own.push(item.id);
+    touch(pr);
+    socket.emit('gachaResult', { item: { t: item.t, id: item.id, r: item.r }, dup, refund });
     socket.emit('profile', { profile: publicProfile(pr) });
   });
 
@@ -1122,6 +1392,8 @@ io.on('connection', (socket) => {
     d = d || {};
     p.name = p.profile.name;
     p.skin = p.profile.skin;
+    p.body = p.profile.body;
+    p.ws = p.profile.wskin;
     // チーム決定：フレンドの船に合流 / 人数の少ない船
     let team = null;
     if (d.friendCode) {
@@ -1134,7 +1406,8 @@ io.on('connection', (socket) => {
     if (cnt[team] >= MAX_HUMANS_PER_SHIP) team = other(team);
     p.team = team;
     p.inMatch = true;
-    p.hp = 100; p.alive = true; p.wood = 0; p.mount = null; p.repair = null; p.mk = 0; p.md = 0;
+    p.joinedAt = Date.now();
+    p.hp = PLAYER_HP; p.alive = true; p.wood = 0; p.mount = null; p.repair = null; p.mk = 0; p.md = 0;
     p.weapon = 'pistol';
     socket.join('match');
     if (match.phase === 'idle') {
