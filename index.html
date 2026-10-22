@@ -123,7 +123,6 @@
             position: relative;
             background: #555; /* 道路風の背景 */
         }
-        /* 道路ライン */
         .road-line {
             position: absolute;
             top: 50%;
@@ -132,15 +131,12 @@
             height: 4px;
             border-top: 4px dashed #888;
         }
-        /* 初期スタート地点: ダンボール */
         .cardboard-bed {
             position: absolute;
-            left: 50px;
-            bottom: 50px;
+            left: 30px;
+            bottom: 30px;
             width: 90px;
             height: 60px;
-            background-color: #c0392b;
-            border: 3px solid #d35400;
             background: #d35400;
             border-radius: 4px;
             display: flex;
@@ -152,23 +148,46 @@
             box-shadow: 2px 4px 10px rgba(0,0,0,0.4);
         }
 
-        /* 収集対象: ゴミ */
-        .trash {
+        /* プレイヤーキャラ */
+        #player {
             position: absolute;
-            width: 24px;
-            height: 24px;
-            background-color: #7f8c8d;
+            width: 32px;
+            height: 32px;
+            background-color: #3498db;
+            border: 2px solid #fff;
             border-radius: 50%;
-            cursor: pointer;
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 12px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-            transition: transform 0.1s;
+            font-size: 16px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+            z-index: 5;
         }
-        .trash:hover {
-            transform: scale(1.2);
+
+        /* ゴミ */
+        .trash {
+            position: absolute;
+            width: 28px;
+            height: 28px;
+            background-color: #7f8c8d;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 14px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+
+        /* 操作案内 */
+        .controls-hint {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.6);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            color: #ccc;
         }
 
         /* アクションエリア */
@@ -214,9 +233,11 @@
         <!-- マップエリア -->
         <div class="map-area" id="map-area">
             <div class="road-line"></div>
-            <!-- スタート地点のダンボールハウス -->
             <div class="cardboard-bed">My ダンボール</div>
-            <!-- ここに動的にゴミが発生します -->
+            <div class="controls-hint">操作: [十字キー] または [WASD] で移動</div>
+            
+            <!-- プレイヤーキャラ -->
+            <div id="player">🚶</div>
         </div>
 
         <!-- 下部操作パネル -->
@@ -231,27 +252,40 @@
     <script>
         const socket = io();
 
-        // ゲームの状態（プレイヤーデータ）
+        // プレイヤーデータ
         let playerData = {
+            x: 70,          // 初期位置X (ダンボールの近く)
+            y: 350,         // 初期位置Y
             money: 0,
             trashCount: 0,
             debt: 1000000,
             hasSavedData: false
         };
 
-        // 起動時にセーブデータがあるか確認
+        // キー入力状態の管理
+        const keys = {};
+        const speed = 4; // 移動速度
+
+        // 初期化
         window.onload = () => {
             checkSaveData();
+            setupControls();
         };
 
         function checkSaveData() {
             const saved = localStorage.getItem('lifeGame_saveData');
             const continueBtn = document.getElementById('continue-btn');
-            if (saved) {
-                continueBtn.disabled = false;
-            } else {
-                continueBtn.disabled = true;
-            }
+            continueBtn.disabled = !saved;
+        }
+
+        // キー入力イベントの設定
+        function setupControls() {
+            window.addEventListener('keydown', (e) => {
+                keys[e.key] = true;
+            });
+            window.addEventListener('keyup', (e) => {
+                keys[e.key] = false;
+            });
         }
 
         // 新規ゲーム開始
@@ -262,6 +296,8 @@
                 }
             }
             playerData = {
+                x: 70,
+                y: 350,
                 money: 0,
                 trashCount: 0,
                 debt: 1000000,
@@ -280,12 +316,72 @@
             }
         }
 
-        // 画面切り替えとゲーム初期化
+        // 画面切り替えとゲームループ開始
         function switchToGame() {
             document.getElementById('title-screen').classList.remove('active');
             document.getElementById('game-screen').classList.add('active');
             updateUI();
             spawnTrashLoop();
+            requestAnimationFrame(gameLoop); // 移動処理ループの開始
+        }
+
+        // ゲームループ（キャラクターの移動 & 当たり判定）
+        function gameLoop() {
+            let moved = false;
+
+            // 移動処理
+            if (keys['ArrowUp'] || keys['w'] || keys['W']) {
+                playerData.y = Math.max(10, playerData.y - speed);
+                moved = true;
+            }
+            if (keys['ArrowDown'] || keys['s'] || keys['S']) {
+                playerData.y = Math.min(410, playerData.y + speed);
+                moved = true;
+            }
+            if (keys['ArrowLeft'] || keys['a'] || keys['A']) {
+                playerData.x = Math.max(10, playerData.x - speed);
+                moved = true;
+            }
+            if (keys['ArrowRight'] || keys['d'] || keys['D']) {
+                playerData.x = Math.min(750, playerData.x + speed);
+                moved = true;
+            }
+
+            // プレイヤー位置の描画更新
+            const playerEl = document.getElementById('player');
+            playerEl.style.left = playerData.x + 'px';
+            playerEl.style.top = playerData.y + 'px';
+
+            // ゴミとの当たり判定をチェック
+            checkTrashCollision();
+
+            // ゲーム画面が表示されている間リフレッシュし続ける
+            if (document.getElementById('game-screen').classList.contains('active')) {
+                requestAnimationFrame(gameLoop);
+            }
+        }
+
+        // ゴミとの接触判定（触れると拾える）
+        function checkTrashCollision() {
+            const trashes = document.getElementsByClassName('trash');
+            const playerSize = 32;
+
+            for (let trash of Array.from(trashes)) {
+                const tx = parseInt(trash.style.left);
+                const ty = parseInt(trash.style.top);
+
+                // 簡易的な円・矩形の距離チェック
+                const dx = (playerData.x + playerSize / 2) - (tx + 14);
+                const dy = (playerData.y + playerSize / 2) - (ty + 14);
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                // 25px以内に近づいたら回収
+                if (distance < 25) {
+                    playerData.trashCount += 1;
+                    updateUI();
+                    trash.remove();
+                }
+            }
         }
 
         // UI表示の更新
@@ -297,7 +393,6 @@
 
         // ゴミを自動発生させる処理
         function spawnTrashLoop() {
-            // 画面上に最大10個までゴミをスポーン
             setInterval(() => {
                 const map = document.getElementById('map-area');
                 const currentTrashes = map.getElementsByClassName('trash').length;
@@ -313,19 +408,12 @@
             trash.className = 'trash';
             trash.textContent = '🗑️';
 
-            // ランダムな位置（ダンボールの場所を少し避ける）
-            const x = Math.floor(Math.random() * 680) + 100;
+            // マップ内にランダム配置
+            const x = Math.floor(Math.random() * 680) + 50;
             const y = Math.floor(Math.random() * 380) + 20;
 
             trash.style.left = x + 'px';
             trash.style.top = y + 'px';
-
-            // ゴミをクリックで回収
-            trash.onclick = () => {
-                playerData.trashCount += 1;
-                updateUI();
-                trash.remove();
-            };
 
             map.appendChild(trash);
         }
@@ -337,7 +425,7 @@
                 playerData.trashCount = 0;
                 updateUI();
             } else {
-                alert("換金するゴミがありません！道路のゴミを拾ってください。");
+                alert("換金するゴミを持っていません！歩き回ってゴミを拾いましょう。");
             }
         }
 
@@ -361,17 +449,16 @@
             }
         }
 
-        // データをブラウザにセーブ
+        // セーブ処理
         function saveData() {
             localStorage.setItem('lifeGame_saveData', JSON.stringify(playerData));
             checkSaveData();
         }
 
-        // セーブしてタイトルに戻る
         function saveAndExit() {
             saveData();
-            alert("データをセーブしました。");
-            location.reload(); // タイトルに戻る
+            alert("位置情報とデータをセーブしました。");
+            location.reload();
         }
     </script>
 </body>
