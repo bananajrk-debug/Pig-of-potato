@@ -148,6 +148,63 @@
   body.cinema #hud .hudhide{display:none!important}
   #toasts{position:fixed;left:50%;top:84px;transform:translateX(-50%);z-index:40;display:flex;flex-direction:column;gap:6px;align-items:center;pointer-events:none}
   .toast{padding:8px 20px;background:rgba(10,26,42,.92);border:2px solid var(--gold);font-weight:700;font-size:15px;animation:kfin .2s}
+
+  /* ---------- v5 追加 ---------- */
+  #toasts{top:230px}
+  .menu-btn{display:block;width:100%;margin:0 0 10px;padding:12px;font-family:var(--serif);font-weight:900;font-size:18px;letter-spacing:.1em;color:var(--ink);background:linear-gradient(180deg,#ffe08a,#f2b632);border:0;border-radius:4px;cursor:pointer;box-shadow:0 3px 0 #8a5a0c}
+  .menu-btn:hover{filter:brightness(1.08)}
+  .eq-row{display:flex;justify-content:space-between;gap:8px;font-size:13px;padding:5px 2px;border-bottom:1px solid rgba(255,255,255,.1)}
+  .eq-row span:last-child{color:var(--gold2);text-align:right}
+  #lbMedal{color:#8fe3ff;font-weight:800}
+  .modal{background:rgba(5,12,20,.72);display:flex;align-items:center;justify-content:center;z-index:20}
+  .modal-box{position:relative;width:min(780px,94vw);max-height:88vh;display:flex;flex-direction:column;background:rgba(14,32,50,.97);border:3px solid var(--gold);border-radius:6px;padding:18px 22px;pointer-events:auto}
+  .modal-box h2{font-family:var(--serif);font-size:28px;color:var(--parch);letter-spacing:.12em;margin-bottom:6px}
+  .modal-x{position:absolute;right:14px;top:12px}
+  .tabs{display:flex;gap:6px;margin:8px 0 10px;flex-wrap:wrap}
+  .tab{padding:7px 16px;font-weight:800;font-size:14px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.06);color:#fff;cursor:pointer;border-radius:3px}
+  .tab.on{background:var(--gold);color:var(--ink);border-color:var(--gold)}
+  .scroll{overflow:auto;flex:1;min-height:120px;padding-right:4px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .item{display:flex;align-items:center;gap:10px;padding:8px 10px;background:rgba(255,255,255,.07);border:2px solid transparent;border-radius:3px;cursor:pointer}
+  .item.sel{border-color:var(--gold);background:rgba(242,182,50,.18)}
+  .item.lock{opacity:.4}
+  .item .chip{width:30px;height:30px;border-radius:50%;border:3px solid #fff;flex:none}
+  .item b{display:block;font-family:var(--serif);font-size:15px}
+  .item small{color:#bcd;font-size:12px}
+  .item .tag{margin-left:auto;font-size:12px;font-weight:800;color:var(--gold2);white-space:nowrap}
+  .r-N{color:#c9d1d9}.r-R{color:#6fb5ff}.r-SR{color:#d98cff}.r-UR{color:#ffd24a;text-shadow:0 0 8px #ff9a1f}
+  .rar{display:inline-block;padding:0 6px;margin-right:6px;font-size:11px;font-weight:900;border:1px solid currentColor;border-radius:3px}
+  #gachaInfo{font-size:13px;color:#cde;line-height:1.7}
+  #gachaStage{height:170px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;margin:6px 0 8px;background:radial-gradient(circle,rgba(242,182,50,.2),transparent 70%)}
+  .capsule{width:80px;height:98px;border-radius:50% 50% 46% 46%;background:linear-gradient(180deg,#ff5a5a 50%,#f4f4f4 50%);border:4px solid #fff;box-shadow:0 8px 20px rgba(0,0,0,.5)}
+  .capsule.shake{animation:cshake .18s infinite}
+  @keyframes cshake{0%{transform:rotate(-12deg) translateX(-4px)}50%{transform:rotate(12deg) translateX(4px)}100%{transform:rotate(-12deg) translateX(-4px)}}
+  .reveal{text-align:center;animation:pop .5s;line-height:1.5}
+  .reveal .nm{font-family:var(--serif);font-weight:900;font-size:28px}
+  @keyframes pop{from{transform:scale(.2);opacity:0}to{transform:scale(1);opacity:1}}
+  #centerMsg{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%) scale(1.3);text-align:center;opacity:0;pointer-events:none;transition:opacity .3s,transform .3s}
+  #centerMsg.show{opacity:1;transform:translateY(-50%) scale(1)}
+  #centerMain{font-family:var(--serif);font-weight:900;font-size:clamp(46px,9.5vw,130px);letter-spacing:.1em;color:#fff;-webkit-text-stroke:3px rgba(0,0,0,.55);text-shadow:0 6px 0 rgba(0,0,0,.45),0 14px 40px rgba(0,0,0,.9)}
+  #centerSub{margin-top:8px;font-size:26px;font-weight:700;text-shadow:0 2px 8px #000;letter-spacing:.1em}
+  #centerMsg.win #centerMain{color:#9dffb0}#centerMsg.lose #centerMain{color:#ff8a8a}
+  #trHud{position:absolute;top:84px;left:50%;transform:translateX(-50%);width:440px;text-align:center;text-shadow:0 2px 4px #000}
+  #trHud .t{font-family:var(--serif);font-weight:900;font-size:15px;color:var(--gold2);letter-spacing:.12em}
+  .trlab{display:flex;justify-content:space-between;font-size:11px;color:#cde;margin-top:2px}
+  .trbar{display:flex;gap:6px;margin-top:2px}
+  .trbar>div{flex:1;height:11px;background:rgba(0,0,0,.6);border:2px solid #fff;position:relative;overflow:hidden}
+  .trbar i{position:absolute;left:0;top:0;bottom:0;width:0;transition:width .3s}
+  #trZone{font-size:13px;color:#fff;margin-top:3px;font-weight:700}
+  #krHud{position:absolute;top:168px;left:50%;transform:translateX(-50%);width:300px;text-align:center;font-family:var(--serif);font-weight:900;color:#e2b0ff;text-shadow:0 2px 4px #000}
+  #krHud .bar{height:11px;margin-top:3px;background:rgba(0,0,0,.6);border:2px solid #e2b0ff}
+  #krHud i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#8a3ad2,#d98cff)}
+  #resultScreen{display:flex;align-items:center;justify-content:center;background:rgba(5,12,20,.55);z-index:18}
+  .res-box{min-width:min(520px,92vw);padding:30px 40px;text-align:center;background:rgba(14,32,50,.95);border:3px solid var(--gold);border-radius:6px;pointer-events:auto}
+  #resTitle{font-family:var(--serif);font-weight:900;font-size:64px;letter-spacing:.15em;line-height:1}
+  #resTitle.win{color:#9dffb0;text-shadow:0 4px 0 #1b6b2a}#resTitle.lose{color:#ff9a9a;text-shadow:0 4px 0 #7a1414}
+  #resReason{margin:10px 0 18px;font-size:18px;color:#e8dcb0}
+  .res-rows{display:flex;flex-direction:column;gap:6px;margin-bottom:22px;font-size:18px}
+  .res-rows b{color:var(--gold2);margin-left:8px}
+  #resCount{margin-top:14px;font-size:14px;color:#bcd}
 </style>
 </head>
 <body>
@@ -172,7 +229,7 @@
   <div class="lb-top">
     <div class="lb-logo">POLY PIRATES</div>
     <div class="lb-right">
-      <span id="lbName">-</span><span id="lbCredits">0 G</span><span id="lbRecord"></span><span id="lbOnline"></span>
+      <span id="lbName">-</span><span id="lbCredits">0 G</span><span id="lbMedal">🪙 メダル 0</span><span id="lbRecord"></span><span id="lbOnline"></span>
     </div>
   </div>
   <div class="panel left pa">
@@ -184,16 +241,39 @@
     <div id="friendList"></div>
   </div>
   <div class="panel right pa">
-    <h3>衣装（スキン）</h3>
-    <div id="skinList"></div>
-    <div class="empty">戦闘で稼いだクレジットで衣装を購入できます。</div>
+    <h3>メニュー</h3>
+    <button id="shopBtn" class="menu-btn">🛒 ショップ</button>
+    <button id="gachaBtn" class="menu-btn">🎰 ガチャ</button>
+    <div class="sec">現在の装備</div>
+    <div id="equipSummary"></div>
+    <div class="empty" style="margin-top:10px">勝利するとガチャメダルを1枚獲得。3枚で1回ガチャが回せます。ショップではクレジットでキャラクターの見た目を変更できます。</div>
   </div>
   <div class="lb-center">
     <div id="lbStatus"></div>
     <button id="joinBtn" class="big-btn">出航する</button>
-    <div id="lbHint">WASD移動 / マウス視点 / 左クリック攻撃 / F 舵・大砲・修理(長押し) / R リロード / 1-3 武器 / C 飛び込み</div>
+    <div id="lbHint">WASD移動 / マウス視点 / 左クリック攻撃 / F 舵・大砲・修理(長押し) / R リロード / 1-3 武器 / C 飛び込み ／ 宝の島のエリアに船で居続けて勝利！</div>
   </div>
 </div>
+
+<!-- ショップ -->
+<div id="shopModal" class="screen modal hidden"><div class="modal-box">
+  <button id="shopClose" class="mini modal-x">閉じる</button>
+  <h2>ショップ</h2>
+  <div class="sec" id="shopCredits"></div>
+  <div class="tabs"><button class="tab on" data-tab="body">キャラクター（体型）</button><button class="tab" data-tab="coat">外套（カラー）</button></div>
+  <div class="scroll"><div id="shopList" class="grid2"></div></div>
+</div></div>
+
+<!-- ガチャ -->
+<div id="gachaModal" class="screen modal hidden"><div class="modal-box">
+  <button id="gachaClose" class="mini modal-x">閉じる</button>
+  <h2>ガチャ</h2>
+  <div id="gachaInfo"></div>
+  <div id="gachaStage"><div class="capsule hidden" id="capsule"></div><div id="gachaMsg"></div></div>
+  <div style="text-align:center;margin-bottom:8px"><button id="gachaRoll" class="big-btn" style="font-size:20px;padding:10px 40px">メダル3枚で回す</button></div>
+  <div class="tabs"><button class="tab on" data-tab="helm">舵（ハンドル）</button><button class="tab" data-tab="wskin">武器スキン</button><button class="tab" data-tab="sskin">船スキン</button></div>
+  <div class="scroll"><div id="invList" class="grid2"></div></div>
+</div></div>
 
 <!-- HUD -->
 <div id="hud" class="screen hidden">
@@ -209,6 +289,9 @@
   <div id="prompt" class="hudhide"></div>
   <div id="progWrap" class="hudhide hidden"><div id="progLabel"></div><div id="progBar"><div id="progFill"></div></div></div>
   <div id="banner"><div id="bannerMain"></div><div id="bannerSub"></div></div>
+  <div id="centerMsg"><div id="centerMain"></div><div id="centerSub"></div></div>
+  <div id="trHud" class="hudhide hidden"><div class="t">💎 宝のエリア制圧　<span id="trDist"></span></div><div class="trlab"><span>自船</span><span>敵船</span></div><div class="trbar"><div><i id="trMe"></i></div><div><i id="trEn"></i></div></div><div id="trZone"></div></div>
+  <div id="krHud" class="hudhide hidden"><div>🐙 クラーケン</div><div class="bar"><i id="krFill"></i></div></div>
   <div id="dmgFlash"></div>
   <div id="bl" class="hudhide"><div id="hpNum">100</div><div id="hpBar"><div id="hpFill"></div></div><div id="woodRow"></div></div>
   <div id="br" class="hudhide"><div id="wName"></div><div id="wAmmo"></div><div id="wSlots"></div></div>
@@ -221,6 +304,15 @@
   <p>画面をクリックして操作を再開できます。<br>W/A/S/D 移動　マウス 視点　左クリック 攻撃／大砲発射　F 舵・大砲・木箱・修理(長押し)<br>R リロード　1/2/3 武器　Space ジャンプ　C 船から飛び込む（海から船に戻るには船体の近くで F）</p>
   <button id="resumeBtn" class="big-btn">再開</button>
   <button id="toLobbyBtn" class="sub-btn">ロビーへ戻る</button>
+</div>
+<div id="resultScreen" class="screen hidden">
+  <div class="res-box">
+    <div id="resTitle">VICTORY</div>
+    <div id="resReason"></div>
+    <div class="res-rows"><div>報酬<b id="resReward"></b></div><div>ガチャメダル<b id="resMedal"></b></div></div>
+    <button id="resLobbyBtn" class="big-btn">ロビーに戻る</button>
+    <div id="resCount"></div>
+  </div>
 </div>
 <div id="flash"></div>
 <div id="bars"><i class="t"></i><i class="b"></i></div>
@@ -264,6 +356,48 @@ const SKINS = {
   bone: { name: '幽霊船の白外套', cost: 900, color: 0xdad4c0 },
   shadow: { name: '黒髭の闇外套', cost: 1200, color: 0x23232b },
   gold: { name: '黄金の呪い', cost: 2000, color: 0xd9a625 }
+};
+// ---- 島（server.js と同じ値）----
+const ISLANDS = [
+  { x: 0, z: 0, r: 24 }, { x: -125, z: -135, r: 20 }, { x: 135, z: 125, r: 20 },
+  { x: -35, z: 165, r: 18 }, { x: 45, z: -175, r: 18 }, { x: -195, z: 75, r: 18 }, { x: 200, z: -65, r: 18 }
+];
+const ISLAND_TOP = 2.0, MAP_R = 320;
+// ---- ショップ：体型 ----
+const BODIES = {
+  normal: { name: '標準の海賊', cost: 0, sx: 1, sy: 1, color: 0xe0b48a },
+  fat: { name: 'デブ海賊', cost: 1500, sx: 1.4, sy: 0.96, belly: 1, color: 0xe8a08a },
+  tall: { name: 'のっぽ海賊', cost: 1800, sx: 0.92, sy: 1.18, color: 0xd9b07c },
+  small: { name: 'ちび海賊', cost: 1200, sx: 1.05, sy: 0.8, color: 0xf0c49a },
+  muscle: { name: 'マッチョ海賊', cost: 2500, sx: 1.22, sy: 1.06, arm: 1.55, color: 0xc98f62 },
+  skeleton: { name: 'ガイコツ海賊', cost: 3500, sx: 0.95, sy: 1.04, skel: 1, color: 0xeeeadb }
+};
+// ---- ガチャ景品 ----
+const HELMS = {
+  oak: { name: 'オーク材の舵', r: 'N', ring: 0x6b4423, hub: 0xd9a625 },
+  bronze: { name: '青銅の舵', r: 'N', ring: 0xa86a32, hub: 0xe0a060 },
+  silver: { name: '銀の舵', r: 'R', ring: 0xc9d2db, hub: 0xffffff },
+  coral: { name: '珊瑚の舵', r: 'R', ring: 0xff7a8a, hub: 0xffd0c0 },
+  golden: { name: '黄金の舵', r: 'SR', ring: 0xe0b030, hub: 0xfff0a0, em: 0x4a3300 },
+  skull: { name: '髑髏の呪い舵', r: 'UR', ring: 0x1a1a22, hub: 0x66ffcc, em: 0x0a4a3a }
+};
+const WSKINS = {
+  default: { name: '標準の武器', r: 'N', metal: 0x3b3b44, wood: 0x7a4a22, brass: 0xd9a625, steel: 0xcfd6dd },
+  rust: { name: '錆びた鉄', r: 'N', metal: 0x7a5a48, wood: 0x5a3a1e, brass: 0xa07a30, steel: 0x9a8a7a },
+  ocean: { name: '海神の青', r: 'R', metal: 0x2a6ac8, wood: 0x1d3a6a, brass: 0x7ad0ff, steel: 0xa8d8ff, em: 0x061a3a },
+  silver: { name: '白銀の武器', r: 'R', metal: 0xd0d6de, wood: 0x8a8a92, brass: 0xffffff, steel: 0xffffff },
+  ember: { name: '業火の紅', r: 'SR', metal: 0xc83a1a, wood: 0x3a1408, brass: 0xffb030, steel: 0xff9a60, em: 0x5a1000 },
+  gold: { name: '黄金の武器', r: 'SR', metal: 0xe0b030, wood: 0x6a4a10, brass: 0xfff0a0, steel: 0xffe080, em: 0x3a2a00 },
+  void: { name: '虚空の紫電', r: 'UR', metal: 0x4a1a8a, wood: 0x1a0a30, brass: 0xd98cff, steel: 0xb070ff, em: 0x2a0a5a }
+};
+const SSKINS = {
+  default: { name: '標準の船', r: 'N', hull: 0x6b4423, sail: 0xffffff },
+  driftwood: { name: '流木の船', r: 'N', hull: 0x8a7a62, sail: 0xf0e8d0 },
+  ghost: { name: '幽霊船', r: 'R', hull: 0xb8c4c4, sail: 0xcfeaea, em: 0x0a2a2a },
+  sakura: { name: '桜花の船', r: 'R', hull: 0xd88aa4, sail: 0xffd6e4 },
+  black: { name: '黒鉄の船', r: 'SR', hull: 0x22222a, sail: 0x8a8a96 },
+  gold: { name: '黄金の船', r: 'SR', hull: 0xc09a22, sail: 0xffe9a0, em: 0x3a2a00 },
+  abyss: { name: '深淵の船', r: 'UR', hull: 0x2a1050, sail: 0xb48cff, em: 0x240a4a }
 };
 function waveH(x, z, t) {
   return Math.sin(x * 0.07 + t * 0.9) * 0.28 + Math.sin(z * 0.09 + t * 1.1) * 0.22 + Math.sin((x + z) * 0.05 + t * 0.6) * 0.3;
@@ -325,7 +459,8 @@ const SFX = {
   hammer() { noiseBurst({ dur: 0.12, vol: 0.5, type: 'bandpass', f0: 1200, f1: 400, q: 4 }); thump({ f0: 300, f1: 120, dur: 0.1, vol: 0.3 }); },
   swing() { noiseBurst({ dur: 0.15, vol: 0.25, type: 'highpass', f0: 1500, f1: 4000 }); },
   hit() { thump({ f0: 900, f1: 500, dur: 0.06, vol: 0.25 }); },
-  step() { noiseBurst({ dur: 0.07, vol: 0.12, f0: 500, f1: 150 }); }
+  step() { noiseBurst({ dur: 0.07, vol: 0.12, f0: 500, f1: 150 }); },
+  roar() { thump({ f0: 90, f1: 22, dur: 1.8, vol: 1 }); noiseBurst({ dur: 1.6, vol: 0.5, f0: 600, f1: 60 }); }
 };
 
 // =====================================================
@@ -355,7 +490,7 @@ const canvas = $('view');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 900);
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1600);
 camera.rotation.order = 'YXZ';
 const lobbyCam = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 900);
 const gameScene = new THREE.Scene();
@@ -418,7 +553,7 @@ function sailTex(team) {
 
 // ---- 海 ----
 function makeSea(scene) {
-  const geo = new THREE.PlaneGeometry(760, 760, 76, 76);
+  const geo = new THREE.PlaneGeometry(1500, 1500, 100, 100);
   geo.rotateX(-Math.PI / 2);
   const m = new THREE.Mesh(geo, new THREE.MeshPhongMaterial({ color: 0x1b78b5, flatShading: true, shininess: 70, specular: 0x446688 }));
   scene.add(m);
@@ -432,11 +567,11 @@ function makeSea(scene) {
     }
   };
 }
-function addLightsSky(scene) {
+function addLightsSky(scene, rimMin, rimMax, fogFar) {
   scene.add(new THREE.HemisphereLight(0xcfe8ff, 0x2a4a6a, 0.8));
   const sun = new THREE.DirectionalLight(0xfff0d0, 0.95); sun.position.set(-60, 90, 40); scene.add(sun);
   scene.background = new THREE.Color(0x8fc7e8);
-  scene.fog = new THREE.Fog(0x8fc7e8, 90, 430);
+  scene.fog = new THREE.Fog(0x8fc7e8, 90, fogFar);
   const cm = new THREE.MeshLambertMaterial({ color: 0xffffff });
   for (let i = 0; i < 14; i++) {
     const g = new THREE.Group();
@@ -444,14 +579,14 @@ function addLightsSky(scene) {
       const s = new THREE.Mesh(new THREE.IcosahedronGeometry(rand(6, 11), 0), cm);
       s.position.set(rand(-10, 10), rand(-2, 2), rand(-5, 5)); s.scale.y = 0.55; g.add(s);
     }
-    const a = rand(0, 6.28), r = rand(120, 330);
+    const a = rand(0, 6.28), r = rand(120, 330) * (rimMax / 225);
     g.position.set(Math.cos(a) * r, rand(55, 95), Math.sin(a) * r);
     scene.add(g);
   }
   // 海域の縁の島々
   const rock = mat(0x6d6a60), sand = mat(0xe6d29a), leaf = mat(0x2f8a3a), trunk = mat(0x6b4423);
   for (let i = 0; i < 9; i++) {
-    const a = (i / 9) * Math.PI * 2 + rand(-0.15, 0.15), r = rand(185, 225);
+    const a = (i / 9) * Math.PI * 2 + rand(-0.15, 0.15), r = rand(rimMin, rimMax);
     const g = new THREE.Group();
     const base = new THREE.Mesh(new THREE.CylinderGeometry(rand(14, 22), rand(20, 28), 4, 9), sand); base.position.y = -0.5; g.add(base);
     const cone = new THREE.Mesh(new THREE.ConeGeometry(rand(7, 12), rand(14, 26), 7), rock); cone.position.set(rand(-4, 4), 8, rand(-4, 4)); g.add(cone);
@@ -463,8 +598,75 @@ function addLightsSky(scene) {
     scene.add(g);
   }
 }
-const gameSea = makeSea(gameScene); addLightsSky(gameScene);
-const lobbySea = makeSea(lobbyScene); addLightsSky(lobbyScene);
+const gameSea = makeSea(gameScene); addLightsSky(gameScene, 345, 420, 640);
+const lobbySea = makeSea(lobbyScene); addLightsSky(lobbyScene, 185, 225, 430);
+
+// ---- 広大なマップの島々（宝の舞台）----
+(function addGameIslands(scene) {
+  const sand = mat(0xe6d29a), grass = mat(0x4a9a48), rock = mat(0x6d6a60), leaf = mat(0x2f8a3a), trunk = mat(0x6b4423);
+  ISLANDS.forEach((isl, idx) => {
+    const g = new THREE.Group();
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(isl.r * 0.88, isl.r * 1.05, 4.2, 14), sand); base.position.y = -0.1; g.add(base);
+    const top = new THREE.Mesh(new THREE.CylinderGeometry(isl.r * 0.6, isl.r * 0.8, 1, 12), grass); top.position.y = 1.5; g.add(top);
+    const cone = new THREE.Mesh(new THREE.ConeGeometry(isl.r * 0.3, 7 + (idx % 3) * 3, 7), rock); cone.position.set(-isl.r * 0.25, 5.5, isl.r * 0.15); g.add(cone);
+    for (let k = 0; k < 5; k++) {
+      const a = k * 1.3 + idx + 1.2, rr = isl.r * (0.35 + 0.12 * (k % 3));
+      const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.45, 6, 5), trunk); tr.position.set(Math.cos(a) * rr, 4.5, Math.sin(a) * rr);
+      const lf = new THREE.Mesh(new THREE.IcosahedronGeometry(2.6, 0), leaf); lf.position.y = 3.6; tr.add(lf); g.add(tr);
+    }
+    g.position.set(isl.x, 0, isl.z); scene.add(g);
+  });
+})(gameScene);
+
+// ---- 宝（チェスト・光の柱・制圧エリア）----
+const treasureView = (function () {
+  const g = new THREE.Group(); g.visible = false;
+  const chest = new THREE.Group();
+  const bodyM = mat(0x7a4a22), goldM = mat(0xf2b632, 60);
+  const box = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.1, 1.2), bodyM); box.position.y = 0.55; chest.add(box);
+  const lid = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 1.8, 10), bodyM); lid.rotation.z = Math.PI / 2; lid.position.y = 1.1; chest.add(lid);
+  [-0.6, 0.6].forEach((x) => { const b = new THREE.Mesh(new THREE.BoxGeometry(0.16, 1.2, 1.3), goldM); b.position.set(x, 0.6, 0); chest.add(b); });
+  const lock = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.35, 0.1), goldM); lock.position.set(0, 0.95, 0.62); chest.add(lock);
+  const glow = new THREE.PointLight(0xffd070, 1.4, 30); glow.position.y = 2.5; chest.add(glow);
+  g.add(chest);
+  const beamM = new THREE.MeshBasicMaterial({ color: 0xffe08a, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
+  const beam = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 2.2, 150, 14, 1, true), beamM); beam.position.y = 75; g.add(beam);
+  const ringM = new THREE.MeshBasicMaterial({ color: 0xffd24a, transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false, fog: false });
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.965, 1, 80), ringM); ring.rotation.x = -Math.PI / 2; g.add(ring);
+  const discM = new THREE.MeshBasicMaterial({ color: 0xffd24a, transparent: true, opacity: 0.1, side: THREE.DoubleSide, depthWrite: false, fog: false });
+  const disc = new THREE.Mesh(new THREE.CircleGeometry(1, 64), discM); disc.rotation.x = -Math.PI / 2; g.add(disc);
+  gameScene.add(g);
+  return { g, chest, beam, beamM, ring, ringM, disc, discM, i: -1 };
+})();
+
+// ---- クラーケン ----
+const krakenView = (function () {
+  const g = new THREE.Group(); g.visible = false; g.rotation.order = 'YXZ';
+  const skin = mat(0x6a2c8a, 12), skin2 = mat(0x8a44b0, 12);
+  const white = new THREE.MeshBasicMaterial({ color: 0xfff4c0 }), black = new THREE.MeshBasicMaterial({ color: 0x100010 });
+  const head = new THREE.Mesh(new THREE.SphereGeometry(5, 12, 10), skin); head.scale.set(1, 1.1, 1.15); head.position.y = 2.5; g.add(head);
+  const crest = new THREE.Mesh(new THREE.ConeGeometry(2.8, 6, 8), skin2); crest.position.set(0, 8, -1.5); crest.rotation.x = -0.4; g.add(crest);
+  [-1.9, 1.9].forEach((x) => {
+    const e = new THREE.Mesh(new THREE.SphereGeometry(0.95, 8, 6), white); e.position.set(x, 4, 4.4); g.add(e);
+    const p = new THREE.Mesh(new THREE.SphereGeometry(0.45, 6, 6), black); p.position.set(x, 4, 5.2); g.add(p);
+  });
+  const tents = [];
+  for (let i = 0; i < 8; i++) {
+    const root = new THREE.Group(); root.rotation.order = 'YXZ';
+    const a = (i / 8) * Math.PI * 2;
+    root.position.set(Math.sin(a) * 3.6, 0.5, Math.cos(a) * 3.6); root.rotation.y = a;
+    let parent = root; const segs = [];
+    for (let k = 0; k < 6; k++) {
+      const len = 3.4, r0 = 0.95 - k * 0.12, r1 = Math.max(0.12, r0 - 0.12);
+      const geo = new THREE.CylinderGeometry(r1, r0, len, 7); geo.translate(0, len / 2, 0);
+      const seg = new THREE.Group(); seg.add(new THREE.Mesh(geo, k % 2 ? skin : skin2));
+      seg.position.y = k === 0 ? 0 : len; parent.add(seg); segs.push(seg); parent = seg;
+    }
+    g.add(root); tents.push({ root, segs });
+  }
+  gameScene.add(g);
+  return { g, tents, x: 0, z: 0, h: 0, atk: 0, rise: 0, init: false };
+})();
 
 // =====================================================
 //  船モデル
@@ -486,6 +688,7 @@ function buildShip(team) {
   const wood = mat(0x6b4423), dark = mat(0x3e2713), metal = mat(0x2b2b30, 30), gold = mat(0xd9a625, 40);
   const deckM = new THREE.MeshPhongMaterial({ map: plankTex(), shininess: 4 });
   const trimM = mat(TEAM_COL[team]);
+  const hullWood = mat(0x6b4423), wRing = mat(0x6b4423), wHub = mat(0xd9a625, 40);
 
   const shape = new THREE.Shape();
   shape.moveTo(HULL[0][1], HULL[0][0]);
@@ -494,7 +697,7 @@ function buildShip(team) {
   shape.lineTo(HULL[0][1], HULL[0][0]);
   const hg = new THREE.ExtrudeGeometry(shape, { depth: 3.4, bevelEnabled: false });
   hg.rotateX(Math.PI / 2);
-  const hull = new THREE.Mesh(hg, [deckM, wood]); hull.position.y = DECK; root.add(hull);
+  const hull = new THREE.Mesh(hg, [deckM, hullWood]); hull.position.y = DECK; root.add(hull);
   const sg = new THREE.ExtrudeGeometry(shape, { depth: 0.32, bevelEnabled: false });
   sg.rotateX(Math.PI / 2);
   const stripe = new THREE.Mesh(sg, trimM); stripe.position.y = DECK - 0.35; stripe.scale.set(1.012, 1, 1.004); root.add(stripe);
@@ -538,10 +741,10 @@ function buildShip(team) {
 
   // 舵（ホイール）
   const wheelG = new THREE.Group(); wheelG.position.set(HELM_POS.x, DECK + 1.1, HELM_POS.z); root.add(wheelG);
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.07, 6, 14), wood);
-  const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.2, 8), gold); hub.rotation.x = Math.PI / 2;
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.07, 6, 14), wRing);
+  const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.2, 8), wHub); hub.rotation.x = Math.PI / 2;
   const wheel = new THREE.Group(); wheel.add(ring); wheel.add(hub);
-  for (let k = 0; k < 4; k++) { const sp = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.3, 0.06), wood); sp.rotation.z = k * Math.PI / 4; wheel.add(sp); }
+  for (let k = 0; k < 4; k++) { const sp = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.3, 0.06), wRing); sp.rotation.z = k * Math.PI / 4; wheel.add(sp); }
   wheelG.add(wheel);
   const ped = new THREE.Mesh(new THREE.BoxGeometry(0.34, 1.1, 0.34), dark); ped.position.set(HELM_POS.x, DECK + 0.55, HELM_POS.z); root.add(ped);
 
@@ -575,7 +778,16 @@ function buildShip(team) {
   });
 
   const holeGroup = new THREE.Group(); root.add(holeGroup);
-  return { root, wheel, cannons, sails, flag, holeGroup, holes: new Map() };
+  return { root, wheel, cannons, sails, flag, holeGroup, holes: new Map(), mats: { hull: hullWood, sail: sMat, wRing, wHub } };
+}
+function applyShipSkin(obj, team, id) {
+  const sk = SSKINS[id] || SSKINS.default;
+  obj.mats.hull.color.set(sk.hull); obj.mats.hull.emissive.set(sk.em || 0x000000);
+  obj.mats.sail.color.set(sk.sail); obj.mats.sail.emissive.set(sk.em ? (sk.em & 0x7f7f7f) >> 1 : 0x000000);
+}
+function applyHelmSkin(obj, id) {
+  const h = HELMS[id] || HELMS.oak;
+  obj.mats.wRing.color.set(h.ring); obj.mats.wRing.emissive.set(h.em || 0x000000); obj.mats.wHub.color.set(h.hub);
 }
 function holeMesh() {
   const g = new THREE.Group();
@@ -587,10 +799,10 @@ function holeMesh() {
 // =====================================================
 //  海賊モデル
 // =====================================================
-function buildPirate(skinId, team) {
+function buildPirate(skinId, team, bodyId, wskinId) {
   const g = new THREE.Group();
-  const sk = SKINS[skinId] || SKINS.classic;
-  const coat = mat(sk.color), pants = mat(0x2a2320), tone = mat(0xe0b48a), teamM = mat(TEAM_COL[team] || 0xffffff), hatM = mat(0x1a1a1f);
+  const sk = SKINS[skinId] || SKINS.classic, bd = BODIES[bodyId] || BODIES.normal, ws = WSKINS[wskinId] || WSKINS.default;
+  const coat = mat(sk.color), pants = mat(0x2a2320), tone = mat(bd.color), teamM = mat(TEAM_COL[team] || 0xffffff), hatM = mat(0x1a1a1f);
   function limb(w, h, d, m, x, y) {
     const p = new THREE.Group(); p.position.set(x, y, 0);
     const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); b.position.y = -h / 2; p.add(b); g.add(p); return p;
@@ -603,6 +815,18 @@ function buildPirate(skinId, team) {
   const band = new THREE.Mesh(new THREE.CylinderGeometry(0.205, 0.37, 0.05, 3), teamM); band.position.y = 1.88; band.rotation.y = Math.PI; g.add(band);
   const patch = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.08, 0.04), hatM); patch.position.set(0.09, 1.74, -0.21); g.add(patch);
   const armL = limb(0.2, 0.65, 0.22, coat, -0.46, 1.55), armR = limb(0.2, 0.65, 0.22, coat, 0.46, 1.55);
+  if (bd.belly) { const belly = new THREE.Mesh(new THREE.SphereGeometry(0.42, 10, 8), coat); belly.scale.set(1.05, 0.95, 0.95); belly.position.set(0, 1.02, -0.2); g.add(belly); }
+  if (bd.skel) {
+    [-0.08, 0.08].forEach((x) => { const e = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.09, 0.04), hatM); e.position.set(x, 1.74, -0.2); g.add(e); });
+    const jaw = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.05, 0.04), hatM); jaw.position.set(0, 1.6, -0.2); g.add(jaw);
+  }
+  if (bd.arm) { armL.scale.set(bd.arm, 1, bd.arm); armR.scale.set(bd.arm, 1, bd.arm); }
+  // 右手の武器（武器スキン反映）
+  const gm = mat(ws.metal, 30), gw = mat(ws.wood);
+  if (ws.em) gm.emissive.set(ws.em);
+  const barrel = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.36, 0.07), gm); barrel.position.set(0, -0.82, 0); armR.add(barrel);
+  const grip = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.12, 0.08), gw); grip.position.set(0, -0.62, 0.05); armR.add(grip);
+  g.scale.set(bd.sx, bd.sy, bd.sx);
   return { group: g, legL, legR, armL, armR };
 }
 function makeTag(text, team) {
@@ -662,12 +886,12 @@ function explosionAt(x, y, z, s) {
   boomLight.position.set(x, y + 1, z); boomLight.intensity = Math.max(boomLight.intensity, 7 * Math.min(s, 3));
   addShake(0.55 * s, x, y, z);
 }
-function splashFx(x, z) {
+function splashFx(x, z, silent) {
   for (let i = 0; i < 9; i++) spawnFx({ tex: TEX.splash, x: x + rand(-0.4, 0.4), y: 0.3, z: z + rand(-0.4, 0.4), size: rand(1.4, 2.6), grow: 1.2, life: rand(0.7, 1.1), vx: rand(-1.5, 1.5), vy: rand(5, 10), vz: rand(-1.5, 1.5), g: 14, op: 0.9 });
   const r = new THREE.Mesh(new THREE.RingGeometry(0.5, 0.8, 18), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false }));
   r.rotation.x = -Math.PI / 2; r.position.set(x, 0.35, z); gameScene.add(r);
   debris.push({ ring: r, age: 0, life: 1.1, big: 1 });
-  SFX.splash(vd(x, z));
+  if (!silent) SFX.splash(vd(x, z));
 }
 function spawnDebris(x, y, z, size, vx, vy, vz, life, burn) {
   const m = new THREE.Mesh(debrisGeo, debrisMats[(Math.random() * debrisMats.length) | 0]);
@@ -691,7 +915,7 @@ function updateDebris(dt, t) {
       d.vy -= GRAV * dt;
       m.position.x += d.vx * dt; m.position.y += d.vy * dt; m.position.z += d.vz * dt;
       m.rotation.x += d.sx * dt; m.rotation.y += d.sy * dt; m.rotation.z += d.sz * dt;
-      if (m.position.y < 0.1 && d.vy < 0) { d.float = true; if (Math.random() < 0.4) splashFx(m.position.x, m.position.z); }
+      if (m.position.y < 0.1 && d.vy < 0) { d.float = true; if (Math.random() < 0.4) splashFx(m.position.x, m.position.z, true); }
     } else {
       d.floatT += dt;
       const wy = waveH(m.position.x, m.position.z, t) + 0.1 - Math.max(0, d.floatT - 5) * 0.25;
@@ -722,10 +946,11 @@ function updateTracers(dt) {
 // =====================================================
 //  ゲーム状態
 // =====================================================
-const me = { alive: false, hp: 100, wood: 0, team: 'A', credits: 0, mount: null, respawn: 0, kills: 0, deaths: 0 };
+const me = { alive: false, hp: 200, mhp: 200, wood: 0, team: 'A', credits: 0, mount: null, respawn: 0, kills: 0, deaths: 0 };
 const P = { ship: null, x: 0, y: DECK, z: 0, vx: 0, vy: 0, vz: 0, yaw: 0, pitch: 0, onGround: true, wheel: 0, throttle: 0 };
 const shipViews = {}, remotes = {}, pdata = {}, ballMeshes = {};
 let netPhase = 'idle';
+let netTr = null, netKr = null, resultShown = false;
 let lastSnapAt = 0;
 const cin = { active: false, team: null, t0: 0, blasted: false, focus: new THREE.Vector3(), ang: 0, nextBoom: 0 };
 const keys = {};
@@ -751,9 +976,10 @@ initShipViews();
 
 // ---- 一人称ビューモデル ----
 const gunView = new THREE.Group(); camera.add(gunView);
-const vmWeapons = {};
+const vmWeapons = {}, vmMats = {};
 (function () {
   const dark = mat(0x2a2320), metal = mat(0x3b3b44, 30), wood = mat(0x7a4a22), brass = mat(0xd9a625, 40), steel = mat(0xcfd6dd, 60), coat = mat(0x9c3b2e);
+  Object.assign(vmMats, { metal, wood, brass, steel });
   const sleeve = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.5), coat); sleeve.position.set(0, -0.04, 0.12);
   const pistol = new THREE.Group();
   pistol.add(new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.06, 0.36), metal)).position.set(0, 0.03, -0.1);
@@ -787,20 +1013,41 @@ arcLine.frustumCulled = false; arcLine.visible = false; gameScene.add(arcLine);
 const lobbyShips = [];
 (function () {
   const a = buildShip('A'), b = buildShip('B');
-  a.root.position.set(0, 0, 0); a.root.rotation.y = 0.5;
+  a.root.position.set(-4, 0, 0); a.root.rotation.y = 0.35;
   b.root.position.set(-62, 0, -70); b.root.rotation.y = -0.7;
   lobbyScene.add(a.root); lobbyScene.add(b.root); lobbyShips.push(a, b);
+  // 桟橋：自分とフレンドのキャラクターが並んで立つ場所
+  const pt = plankTex().clone(); pt.needsUpdate = true; pt.repeat.set(3, 1);
+  const pier = new THREE.Group();
+  const deck = new THREE.Mesh(new THREE.BoxGeometry(13, 0.4, 3.4), new THREE.MeshPhongMaterial({ map: pt, flatShading: true, shininess: 4 }));
+  deck.position.y = 0.9; pier.add(deck);
+  const postM = mat(0x3e2713);
+  for (let i = -3; i <= 3; i++) [-1.5, 1.5].forEach((z) => { const p = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.26, 3.2, 6), postM); p.position.set(i * 2.1, 0, z); pier.add(p); });
+  pier.position.set(0, 0, 18); lobbyScene.add(pier);
 })();
-let lobbyPirate = null, previewSkin = 'classic';
-function rebuildLobbyPirate() {
-  if (lobbyPirate) lobbyShips[0].root.remove(lobbyPirate.group);
-  lobbyPirate = buildPirate(previewSkin, 'A');
-  lobbyPirate.group.position.set(1.2, DECK, 5.5);
-  lobbyPirate.group.rotation.y = Math.PI * 0.85;
-  lobbyShips[0].root.add(lobbyPirate.group);
+let previewSkin = 'classic', previewBody = 'normal';
+const lobbyCrew = [];
+const CREW_SLOTS = [0, 1.5, -1.5, 3.0, -3.0];
+function rebuildLobbyCrew() {
+  lobbyCrew.forEach((c) => lobbyScene.remove(c.root)); lobbyCrew.length = 0;
+  if (!profile) return;
+  const list = [{ n: profile.name, skin: previewSkin, body: previewBody, ws: profile.wskin, me: true }];
+  friendsData.friends.filter((f) => f.online && !f.inMatch).slice(0, 4)
+    .forEach((f) => list.push({ n: f.name, skin: f.skin || 'classic', body: f.body || 'normal', ws: f.wskin || 'default' }));
+  list.forEach((d, i) => {
+    const root = new THREE.Group();
+    const m = buildPirate(d.skin, d.me ? 'A' : 'B', d.body, d.ws);
+    m.group.rotation.y = Math.PI + clamp(-CREW_SLOTS[i] * 0.05, -0.2, 0.2);   // カメラ(+z)の方を向く
+    root.add(m.group); root.add(makeTag(d.n, d.me ? 'A' : 'B'));
+    root.position.set(CREW_SLOTS[i], 1.1, 18);
+    lobbyCrew.push({ root, m, born: performance.now(), ph: i * 1.7 });
+    lobbyScene.add(root);
+  });
 }
-rebuildLobbyPirate();
 const _v = new THREE.Vector3(), _v2 = new THREE.Vector3(), _dir = new THREE.Vector3();
+// ロビーのカメラは固定（動かさない）
+lobbyCam.position.set(0, 3.2, 26.5);
+lobbyCam.lookAt(0, 2.2, 18);
 function updateLobby(dt, t) {
   lobbySea.update(t);
   lobbyShips.forEach((s, i) => {
@@ -810,13 +1057,13 @@ function updateLobby(dt, t) {
     s.sails.forEach((sl, k) => { sl.rotation.y = Math.sin(t * 0.7 + k) * 0.04; });
     if (s.flag) s.flag.rotation.y = Math.sin(t * 3) * 0.35;
   });
-  lobbyPirate.group.rotation.y = Math.PI * 0.85 + Math.sin(t * 0.5) * 0.35;
-  lobbyPirate.armR.rotation.x = Math.sin(t * 1.2) * 0.1;
-  lobbyShips[0].root.updateMatrixWorld(true);
-  const pw = lobbyShips[0].root.localToWorld(_v.set(1.2, DECK + 1.25, 5.5)).clone();
-  const ang = 0.55 + Math.sin(t * 0.25) * 0.35;
-  lobbyCam.position.set(pw.x + Math.sin(ang) * 4.2 + 0.4, pw.y + 0.35, pw.z + Math.cos(ang) * 4.2 + 0.4);
-  lobbyCam.lookAt(pw);
+  const now = performance.now();
+  lobbyCrew.forEach((c) => {
+    const k = clamp((now - c.born) / 450, 0, 1), e = 1 - Math.pow(1 - k, 3);
+    c.root.scale.setScalar(0.2 + 0.8 * e);
+    c.m.armR.rotation.x = Math.sin(t * 1.2 + c.ph) * 0.1 - 0.12;
+    c.m.armL.rotation.x = Math.sin(t * 1.1 + c.ph + 1) * 0.08;
+  });
 }
 
 // =====================================================
@@ -829,14 +1076,32 @@ function showScreen(name) {
   $('hud').classList.toggle('hidden', name !== 'game');
   if (name !== 'game') { $('pause').classList.add('hidden'); document.body.classList.remove('cinema'); }
 }
+function applyWeaponSkin(id) {
+  const sk = WSKINS[id] || WSKINS.default;
+  vmMats.metal.color.set(sk.metal); vmMats.wood.color.set(sk.wood); vmMats.brass.color.set(sk.brass); vmMats.steel.color.set(sk.steel);
+  Object.values(vmMats).forEach((m) => m.emissive.set(sk.em || 0x000000));
+}
+function applyCosmetics() {
+  if (!profile) return;
+  applyWeaponSkin(profile.wskin);
+  applyShipSkin(lobbyShips[0], 'A', profile.sskin);
+  applyHelmSkin(lobbyShips[0], profile.helm);
+}
+let shopTab = 'body', shopOpen = false, gachaTab = 'helm', gachaBusy = false;
+const CATS = { helm: HELMS, wskin: WSKINS, sskin: SSKINS };
+const OWNK = { helm: 'helms', wskin: 'wskins', sskin: 'sskins' };
+const hex6 = (c) => '#' + c.toString(16).padStart(6, '0');
 function updateLobbyUi() {
   if (!profile) return;
   $('lbName').textContent = profile.name;
   $('lbCredits').textContent = profile.credits.toLocaleString() + ' G';
+  $('lbMedal').textContent = '🪙 メダル ' + (profile.medals || 0);
   $('lbRecord').textContent = `${profile.wins}勝 ${profile.losses}敗 / ${profile.kills}キル`;
   $('myCode').textContent = profile.code;
   me.credits = profile.credits;
-  renderSkins();
+  applyCosmetics(); renderEquipSummary(); renderShop();
+  if (!gachaBusy) renderGacha();
+  rebuildLobbyCrew();
 }
 function updateOnlineUi() {
   $('lbOnline').textContent = `オンライン ${online.total}人`;
@@ -845,23 +1110,85 @@ function updateOnlineUi() {
     ? `海戦進行中：${online.inMatch}人が参加中（赤 ${online.hpA}% / 青 ${online.hpB}%）  ― いつでも途中参加できます`
     : '海は静まり返っている…出航すると、CPUの海賊が仲間と敵になって戦ってくれます';
 }
-function renderSkins() {
+function renderEquipSummary() {
+  const rows = [
+    ['体型', (BODIES[profile.body] || BODIES.normal).name], ['外套', (SKINS[profile.skin] || SKINS.classic).name],
+    ['舵', (HELMS[profile.helm] || HELMS.oak).name], ['武器', (WSKINS[profile.wskin] || WSKINS.default).name],
+    ['船', (SSKINS[profile.sskin] || SSKINS.default).name]
+  ];
+  $('equipSummary').innerHTML = rows.map((r) => `<div class="eq-row"><span>${r[0]}</span><span>${r[1]}</span></div>`).join('');
+}
+function renderShop() {
   if (!profile) return;
-  const box = $('skinList'); box.innerHTML = '';
-  Object.keys(SKINS).forEach((id) => {
-    const s = SKINS[id], owned = profile.skins.includes(id);
-    const el = document.createElement('div');
-    el.className = 'skin pa' + (previewSkin === id ? ' sel' : '');
-    el.innerHTML = `<div class="chip" style="background:#${s.color.toString(16).padStart(6, '0')}"></div><div><b>${s.name}</b><small>${owned ? '所持済み' : s.cost.toLocaleString() + ' G'}</small></div>`;
+  $('shopCredits').textContent = `所持金 ${profile.credits.toLocaleString()} G`;
+  document.querySelectorAll('#shopModal .tab').forEach((t) => t.classList.toggle('on', t.dataset.tab === shopTab));
+  const box = $('shopList'); box.innerHTML = '';
+  const isBody = shopTab === 'body';
+  const cat = isBody ? BODIES : SKINS, owned = isBody ? profile.bodies : profile.skins;
+  const eq = isBody ? profile.body : profile.skin, prev = isBody ? previewBody : previewSkin;
+  Object.keys(cat).forEach((id) => {
+    const sk = cat[id], has = owned.includes(id);
+    const el = document.createElement('div'); el.className = 'item' + (prev === id ? ' sel' : '');
+    el.innerHTML = `<div class="chip" style="background:${hex6(sk.color)}"></div><div><b>${sk.name}</b><small>${has ? '所持済み' : sk.cost.toLocaleString() + ' G'}</small></div>`;
     const tag = document.createElement('span'); tag.className = 'tag';
-    if (profile.skin === id) tag.textContent = '装備中';
-    else if (owned) { const b = document.createElement('button'); b.className = 'mini ok'; b.textContent = '装備'; b.onclick = (e) => { e.stopPropagation(); socket.emit('equipSkin', id); }; tag.appendChild(b); }
-    else { const b = document.createElement('button'); b.className = 'mini'; b.textContent = '購入'; b.onclick = (e) => { e.stopPropagation(); socket.emit('buySkin', id); }; tag.appendChild(b); }
+    if (eq === id) tag.textContent = '装備中';
+    else {
+      const b = document.createElement('button'); b.className = 'mini' + (has ? ' ok' : ''); b.textContent = has ? '装備' : '購入';
+      b.onclick = (e) => { e.stopPropagation(); socket.emit(isBody ? (has ? 'equipBody' : 'buyBody') : (has ? 'equipSkin' : 'buySkin'), id); };
+      tag.appendChild(b);
+    }
     el.appendChild(tag);
-    el.onclick = () => { previewSkin = id; rebuildLobbyPirate(); renderSkins(); };
+    el.onclick = () => { if (isBody) previewBody = id; else previewSkin = id; rebuildLobbyCrew(); renderShop(); };
     box.appendChild(el);
   });
 }
+function renderGacha() {
+  if (!profile) return;
+  const med = profile.medals || 0;
+  $('gachaInfo').innerHTML = `ガチャメダル <b style="color:#8fe3ff;font-size:18px">${med}</b> 枚　（1試合勝つごとに1枚／3枚で1回）<br>排出率　<span class="r-N">N 55%</span>　<span class="r-R">R 30%</span>　<span class="r-SR">SR 12%</span>　<span class="r-UR">UR 3%</span>　※ダブりはGに交換されます`;
+  $('gachaRoll').disabled = gachaBusy || med < 3;
+  document.querySelectorAll('#gachaModal .tab').forEach((t) => t.classList.toggle('on', t.dataset.tab === gachaTab));
+  const box = $('invList'); box.innerHTML = '';
+  const cat = CATS[gachaTab], owned = profile[OWNK[gachaTab]], eq = profile[gachaTab];
+  Object.keys(cat).forEach((id) => {
+    const sk = cat[id], has = owned.includes(id);
+    const el = document.createElement('div'); el.className = 'item' + (has ? '' : ' lock') + (eq === id ? ' sel' : '');
+    const col = gachaTab === 'helm' ? sk.ring : gachaTab === 'wskin' ? sk.metal : sk.hull;
+    el.innerHTML = `<div class="chip" style="background:${hex6(col)}"></div><div><b><span class="rar r-${sk.r}">${sk.r}</span>${has ? sk.name : '？？？'}</b><small>${has ? '所持済み' : '未入手'}</small></div>`;
+    const tag = document.createElement('span'); tag.className = 'tag';
+    if (eq === id) tag.textContent = '装備中';
+    else if (has) {
+      const b = document.createElement('button'); b.className = 'mini ok'; b.textContent = '装備';
+      b.onclick = (e) => { e.stopPropagation(); socket.emit('equipItem', { type: gachaTab, id }); }; tag.appendChild(b);
+    }
+    el.appendChild(tag); box.appendChild(el);
+  });
+}
+$('shopBtn').onclick = () => { shopOpen = true; $('shopModal').classList.remove('hidden'); renderShop(); };
+$('shopClose').onclick = () => {
+  shopOpen = false; $('shopModal').classList.add('hidden');
+  if (profile) { previewSkin = profile.skin; previewBody = profile.body || 'normal'; rebuildLobbyCrew(); }
+};
+$('gachaBtn').onclick = () => { $('gachaModal').classList.remove('hidden'); renderGacha(); };
+$('gachaClose').onclick = () => { if (!gachaBusy) $('gachaModal').classList.add('hidden'); };
+document.querySelectorAll('#shopModal .tab').forEach((t) => { t.onclick = () => { shopTab = t.dataset.tab; renderShop(); }; });
+document.querySelectorAll('#gachaModal .tab').forEach((t) => { t.onclick = () => { gachaTab = t.dataset.tab; renderGacha(); }; });
+$('gachaRoll').onclick = () => {
+  if (gachaBusy || !profile || (profile.medals || 0) < 3) return;
+  ac(); gachaBusy = true; $('gachaRoll').disabled = true; $('gachaMsg').innerHTML = '';
+  $('capsule').classList.remove('hidden'); $('capsule').classList.add('shake');
+  SFX.hammer(); socket.emit('gacha');
+};
+socket.on('gachaResult', (d) => {
+  if (d.error) { gachaBusy = false; $('capsule').classList.remove('shake'); $('capsule').classList.add('hidden'); renderGacha(); return; }
+  const sk = (CATS[d.item.t] || {})[d.item.id] || { name: d.item.id, r: d.item.r };
+  setTimeout(() => {
+    $('capsule').classList.remove('shake'); $('capsule').classList.add('hidden');
+    const typeName = { helm: '舵', wskin: '武器スキン', sskin: '船スキン' }[d.item.t];
+    $('gachaMsg').innerHTML = `<div class="reveal"><div class="r-${sk.r}" style="font-weight:900">${sk.r}　${typeName}</div><div class="nm r-${sk.r}">${sk.name}</div><div>${d.dup ? `ダブり！ ${d.refund} G に交換しました` : 'NEW！ 新しく手に入れた！'}</div></div>`;
+    gachaBusy = false; SFX.hammer(); SFX.hit(); renderGacha();
+  }, 1300);
+});
 function renderFriends() {
   const rb = $('reqBox'); rb.innerHTML = '';
   if (friendsData.requests.length) {
@@ -924,15 +1251,20 @@ socket.on('profile', (d) => {
   if (d.token) { token = d.token; try { localStorage.setItem('pp_token', token); } catch (e) {} }
   profile = d.profile;
   try { localStorage.setItem('pp_backup', JSON.stringify(profile)); } catch (e) {}
-  if (!previewSkin || !profile.skins.includes(previewSkin)) previewSkin = profile.skin;
+  if (!shopOpen) { previewSkin = profile.skin; previewBody = profile.body || 'normal'; }
   if (appState === 'boot') {
     $('nameInput').value = profile.name === '海賊' ? '' : profile.name;
-    previewSkin = profile.skin; rebuildLobbyPirate();
+    previewSkin = profile.skin; previewBody = profile.body || 'normal';
     $('loading').classList.add('hidden'); showScreen('title');
   }
   updateLobbyUi();
 });
-socket.on('friends', (d) => { friendsData = d; renderFriends(); });
+socket.on('friends', (d) => {
+  const prev = new Set(friendsData.friends.filter((f) => f.online && !f.inMatch).map((f) => f.code));
+  friendsData = d;
+  if (appState === 'lobby') d.friends.forEach((f) => { if (f.online && !f.inMatch && !prev.has(f.code)) toast(`${f.name} がロビーに参加しました`); });
+  renderFriends(); rebuildLobbyCrew();
+});
 socket.on('notice', (t) => toast(t));
 socket.on('online', (d) => { online = d; updateOnlineUi(); });
 
@@ -949,7 +1281,7 @@ function enterGame(d) {
   showScreen('game');
   $('meShipName').textContent = TEAM_NAME[me.team] + '（自船）';
   $('enShipName').textContent = TEAM_NAME[me.team === 'A' ? 'B' : 'A'];
-  banner('出航！', '敵船を沈めろ ― 先に大破した方の負け', '', 3500);
+  banner('出航！', '島の宝のエリアを制圧するか、敵船を沈めろ！', '', 4000);
   requestLock();
 }
 function leaveGame(silent) {
@@ -957,7 +1289,8 @@ function leaveGame(silent) {
   if (document.pointerLockElement) document.exitPointerLock();
   clearRemotes();
   resetVisuals();
-  cin.active = false;
+  cin.active = false; netTr = null; netKr = null;
+  hideResult();
   me.alive = false; me.mount = null; holdRepair = null;
   showScreen('lobby');
   updateOnlineUi();
@@ -984,10 +1317,11 @@ function resetVisuals() {
 socket.on('snap', (s) => {
   if (appState !== 'game') return;
   netPhase = s.ph; lastSnapAt = performance.now();
+  netTr = s.tr || null; netKr = s.kr || null;
   ['A', 'B'].forEach((k) => {
     const v = shipViews[k], d = s.sh[k];
     v.tx = d.x; v.tz = d.z; v.th = d.h; v.speed = d.sp; v.throttle = d.th; v.wheel = d.wh;
-    v.hp = d.hp; v.holes = d.hl; v.helm = d.hm; v.cn = d.cn; v.sunk = !!d.sk;
+    v.hp = d.hp; v.holes = d.hl; v.helm = d.hm; v.cn = d.cn; v.sunk = !!d.sk; v.ss = d.ss; v.hs = d.hs;
     if (!v.init) { v.x = d.x; v.z = d.z; v.h = d.h; v.init = true; }
     if (v.sunk && v.obj.root.visible && !cin.active) v.obj.root.visible = false;
   });
@@ -1013,11 +1347,11 @@ socket.on('snap', (s) => {
 });
 function ensureRemote(d) {
   let r = remotes[d.id];
-  if (r && r.skin !== d.sk) { if (r.m.group.parent) r.m.group.parent.remove(r.m.group); delete remotes[d.id]; r = null; }
+  if (r && (r.skin !== d.sk || r.bd !== d.bd || r.ws !== d.ws)) { if (r.m.group.parent) r.m.group.parent.remove(r.m.group); delete remotes[d.id]; r = null; }
   if (!r) {
-    const m = buildPirate(d.sk, d.t);
+    const m = buildPirate(d.sk, d.t, d.bd, d.ws);
     const tag = makeTag(d.n, d.t); m.group.add(tag);
-    r = { m, x: d.x, y: d.y, z: d.z, parentKey: null, skin: d.sk, phase: rand(0, 6), spd: 0 };
+    r = { m, x: d.x, y: d.y, z: d.z, parentKey: null, skin: d.sk, bd: d.bd, ws: d.ws, phase: rand(0, 6), spd: 0 };
     remotes[d.id] = r;
   }
   return r;
@@ -1054,7 +1388,7 @@ function updateRemotes(dt) {
 function applyState(st) {
   if (!st) return;
   const prevMount = me.mount;
-  me.hp = st.hp; me.wood = st.wood; me.alive = st.alive; me.team = st.team || me.team;
+  me.hp = st.hp; me.mhp = st.mhp || 200; me.wood = st.wood; me.alive = st.alive; me.team = st.team || me.team;
   me.credits = st.credits; me.respawn = st.respawn; me.kills = st.kills; me.deaths = st.deaths;
   me.mount = st.mount;
   if (me.mount && (!prevMount || prevMount.type !== me.mount.type || prevMount.idx !== me.mount.idx)) enterMount();
@@ -1085,19 +1419,41 @@ socket.on('phase', (d) => { netPhase = d.phase; });
 socket.on('battleStart', () => {
   resetVisuals(); cin.active = false;
   Object.keys(shipViews).forEach((k) => { shipViews[k].init = false; });
-  if (appState === 'game') { banner('再戦開始！', '新たな海戦が始まる', '', 3000); if (!isLocked() && !$('pause').classList.contains('hidden') === false) {} }
+  hideResult();
+  if (appState === 'game') {
+    banner('再戦開始！', '宝のエリアを制圧するか、敵船を沈めろ', '', 3500);
+    $('pause').classList.toggle('hidden', isLocked());
+    requestLock();
+  }
 });
 socket.on('sinkStart', (d) => {
   if (appState !== 'game') return;
   cin.active = true; cin.team = d.team; cin.t0 = performance.now(); cin.blasted = false; cin.nextBoom = cin.t0 + 500; cin.ang = rand(0, 6.28);
   holdRepair = null; mouseDown = false;
   document.body.classList.add('cinema');
-  banner(TEAM_NAME[d.team] + 'が大破！', 'もう船は持たない…', d.team === me.team ? 'lose' : 'win', 4200);
+  const lost = d.team === me.team;
+  showCenter(lost ? '船が破壊された…' : '相手の船を破壊！', lost ? 'lose' : 'win', lost ? 'もう船は持たない…' : '敵船が炎に包まれる！', 5200);
   $('pause').classList.add('hidden');
 });
 socket.on('result', (d) => {
-  banner(d.win ? 'VICTORY' : 'DEFEAT', (d.win ? '敵船を撃沈した！' : '船を失った…') + `  報酬 +${d.reward} G`, d.win ? 'win' : 'lose', 6000);
+  const startAt = performance.now() + (d.reason === 'treasure' ? 3200 : 800);
+  setTimeout(() => showResult(d, startAt), d.reason === 'treasure' ? 3200 : 800);
 });
+socket.on('treasureWin', (d) => {
+  if (appState !== 'game') return;
+  const won = d.winner === me.team;
+  showCenter(won ? '宝を制圧した！' : '宝を奪われた…', won ? 'win' : 'lose', won ? '勝利！' : '敗北…', 5500);
+  mouseDown = false; holdRepair = null;
+});
+socket.on('treasure', () => { if (appState === 'game') banner('宝が移動した！', '新しい島に宝が現れた。制圧エリアへ向かえ！', '', 4000); });
+socket.on('krakenSpawn', () => { if (appState !== 'game') return; banner('クラーケン出現！', '海から巨大な触手が…！ 大砲で撃退せよ', 'lose', 4200); SFX.roar(); });
+socket.on('krakenDead', (d) => {
+  if (appState !== 'game') return;
+  banner('クラーケン撃退！', '海に静けさが戻った', 'win', 3500);
+  explosionAt(d.x, 4, d.z, 3.5); SFX.boom(vd(d.x, d.z));
+  for (let i = 0; i < 20; i++) spawnDebris(d.x, 4, d.z, rand(0.4, 1.4), rand(-8, 8), rand(6, 18), rand(-8, 8), 8, false);
+});
+socket.on('krakenGone', () => { if (appState === 'game') toast('クラーケンは海の底へ去っていった…'); });
 socket.on('dmg', (d) => {
   const f = $('dmgFlash'); f.classList.add('on'); void f.offsetWidth; f.classList.remove('on');
   shake = Math.max(shake, 0.25); SFX.hit();
@@ -1108,7 +1464,7 @@ socket.on('hitm', (d) => {
 });
 socket.on('feed', (d) => {
   const el = document.createElement('div'); el.className = 'kf';
-  const wn = { pistol: 'ピストル', blunder: 'ブランダーバス', cutlass: 'カットラス', cannon: '大砲' }[d.w] || '';
+  const wn = { pistol: 'ピストル', blunder: 'ブランダーバス', cutlass: 'カットラス', cannon: '大砲', kraken: '触手' }[d.w] || '';
   const c = (t) => (t === 'A' ? '#ff8d92' : '#8dbbff');
   el.innerHTML = d.k
     ? `<span style="color:${c(d.kt)}"></span><em>[${wn}]</em><span style="color:${c(d.vt)}"></span>`
@@ -1152,6 +1508,17 @@ socket.on('fx', (f) => {
       if (sv) { sv.obj.root.updateMatrixWorld(); }
       break;
     }
+    case 'kAtk': {
+      krakenView.atk = 1;
+      const mine = f.s === me.team;
+      addShake(mine ? 2.6 : 1.4, f.x, 3, f.z);
+      SFX.roar(); SFX.wood(vd(f.x, f.z));
+      for (let i = 0; i < 8; i++) spawnDebris(f.x + rand(-3, 3), 3, f.z + rand(-8, 8), rand(0.3, 0.8), rand(-5, 5), rand(4, 10), rand(-5, 5), 4, false);
+      if (netKr) { splashFx(netKr.x + rand(-4, 4), netKr.z + rand(-4, 4), true); splashFx(netKr.x + rand(-4, 4), netKr.z + rand(-4, 4), true); }
+      if (mine) { const fl = $('dmgFlash'); fl.classList.add('on'); void fl.offsetWidth; fl.classList.remove('on'); toast('クラーケンの触手が船を襲う！'); }
+      break;
+    }
+    case 'kHit': explosionAt(f.x, f.y, f.z, 1.2); SFX.boom(vd(f.x, f.z)); break;
     case 'blast': bigBlast(f.s); break;
     case 'swing': SFX.swing(); break;
     default: break;
@@ -1194,10 +1561,10 @@ function requestLock() { try { canvas.requestPointerLock(); } catch (e) {} }
 document.addEventListener('pointerlockchange', () => {
   if (appState !== 'game') return;
   const locked = isLocked();
-  $('pause').classList.toggle('hidden', locked || cin.active);
+  $('pause').classList.toggle('hidden', locked || cin.active || resultShown);
   if (!locked) { mouseDown = false; if (holdRepair) stopRepair(); }
 });
-canvas.addEventListener('click', () => { if (appState === 'game' && !isLocked() && !cin.active) requestLock(); });
+canvas.addEventListener('click', () => { if (appState === 'game' && !isLocked() && !cin.active && !resultShown) requestLock(); });
 window.addEventListener('mousemove', (e) => {
   if (!isLocked() || appState !== 'game' || cin.active) return;
   P.yaw -= e.movementX * 0.0022;
@@ -1409,7 +1776,7 @@ function stepLocal(dt, t, active) {
         P.y = wy; P.vy = 0; P.vx = P.vz = 0;
       } else if (P.y > wy + 0.3) splashedFlag = false;
       if (P.y <= wy + 0.05 && P.vy === 0) splashedFlag = false;
-      const r = Math.hypot(P.x, P.z); if (r > 168) { P.x *= 168 / r; P.z *= 168 / r; }
+      const r = Math.hypot(P.x, P.z); if (r > MAP_R) { P.x *= MAP_R / r; P.z *= MAP_R / r; }
     }
     P._moving = moving;
   }
@@ -1426,6 +1793,8 @@ function updateShipViews(dt, t) {
     v.x = lerp(v.x, v.tx, kk); v.z = lerp(v.z, v.tz, kk); v.h += wrapA(v.th - v.h) * kk;
     const root = v.obj.root;
     if (!root.visible) return;
+    if (v.ss && v.appSS !== v.ss) { applyShipSkin(v.obj, k, v.ss); v.appSS = v.ss; }
+    if (v.hs && v.appHS !== v.hs) { applyHelmSkin(v.obj, v.hs); v.appHS = v.hs; }
     root.position.set(v.x, waveH(v.x, v.z, t) * 0.7 + Math.sin(t * 1.3 + v.ph) * 0.05, v.z);
     root.rotation.set(Math.sin(t * 0.8 + v.ph) * 0.012 - v.speed * 0.003, v.h, Math.sin(t * 0.6 + v.ph * 1.7) * 0.025 + v.wheel * v.speed * 0.004);
     v.obj.wheel.rotation.z = -v.wheel * 2.4;
@@ -1582,6 +1951,8 @@ function updateGame(dt, t, now) {
   gunView.position.set(gx, gy, gz); gunView.rotation.set(rx, ry, rz);
 
   updateRemotes(dt);
+  updateTreasureView(t, dt);
+  updateKrakenView(t, dt);
   updateBalls(dt);
   updateArc();
   updateFxList(fdt);
@@ -1601,7 +1972,71 @@ function banner(main, sub, cls, ms) {
   clearTimeout(bannerTimer);
   bannerTimer = setTimeout(() => { b.classList.remove('show'); }, ms || 2500);
 }
+let centerTimer = null;
+function showCenter(main, cls, sub, ms) {
+  const c = $('centerMsg');
+  $('centerMain').textContent = main; $('centerSub').textContent = sub || '';
+  c.className = 'show ' + (cls || '');
+  clearTimeout(centerTimer);
+  centerTimer = setTimeout(() => { c.classList.remove('show'); }, ms || 4000);
+}
+let resultEnd = 0;
+function showResult(d, startAt) {
+  if (appState !== 'game') return;
+  resultShown = true; resultEnd = startAt + (d.next || 25000);
+  $('pause').classList.add('hidden');
+  if (document.pointerLockElement) document.exitPointerLock();
+  mouseDown = false;
+  $('resTitle').textContent = d.win ? 'VICTORY' : 'DEFEAT';
+  $('resTitle').className = d.win ? 'win' : 'lose';
+  $('resReason').textContent = d.reason === 'treasure' ? (d.win ? '宝のエリアを制圧した！' : '宝を奪われた…') : (d.win ? '敵船を撃沈した！' : '船を失った…');
+  $('resReward').textContent = '+' + d.reward + ' G';
+  $('resMedal').textContent = d.medal ? '+1 枚獲得！' : '（勝利で1枚獲得）';
+  $('resultScreen').classList.remove('hidden');
+}
+function hideResult() { resultShown = false; $('resultScreen').classList.add('hidden'); }
+$('resLobbyBtn').onclick = () => { hideResult(); leaveGame(); };
 let hudT = 0;
+function zoneControl() {
+  if (!netTr) return 'none';
+  const inZ = (k) => { const v = shipViews[k]; return v.init && !v.sunk && Math.hypot(v.x - netTr.x, v.z - netTr.z) < netTr.r; };
+  const a = inZ('A'), b = inZ('B');
+  return a && b ? 'both' : a ? 'A' : b ? 'B' : 'none';
+}
+function updateTreasureView(t) {
+  const v = treasureView, tr = netTr;
+  if (!tr) { v.g.visible = false; v.i = -1; return; }
+  v.g.visible = true;
+  if (v.i !== tr.i) {
+    v.i = tr.i;
+    v.chest.position.set(tr.cx, ISLAND_TOP, tr.cz);
+    v.beam.position.set(tr.cx, ISLAND_TOP + 75, tr.cz);
+    v.ring.position.set(tr.x, 0.5, tr.z); v.ring.scale.set(tr.r, tr.r, 1);
+    v.disc.position.set(tr.x, 0.45, tr.z); v.disc.scale.set(tr.r, tr.r, 1);
+  }
+  v.chest.rotation.y = t * 0.6; v.chest.position.y = ISLAND_TOP + Math.sin(t * 2) * 0.12;
+  v.beamM.opacity = 0.18 + Math.sin(t * 3) * 0.06;
+  const c = zoneControl();
+  const col = c === 'A' ? 0xff5a62 : c === 'B' ? 0x5a9aff : c === 'both' ? 0xffffff : 0xffd24a;
+  v.ringM.color.set(col); v.discM.color.set(col);
+  v.discM.opacity = c === 'none' ? 0.1 : 0.2;
+}
+function updateKrakenView(t, dt) {
+  const v = krakenView, k = netKr;
+  if (!k || appState !== 'game') { v.g.visible = false; v.init = false; return; }
+  v.g.visible = true;
+  if (!v.init) { v.x = k.x; v.z = k.z; v.h = k.h; v.rise = 0; v.init = true; }
+  const kk = 1 - Math.exp(-dt * 6);
+  v.x = lerp(v.x, k.x, kk); v.z = lerp(v.z, k.z, kk); v.h += wrapA(k.h - v.h) * kk;
+  v.rise = Math.min(1, v.rise + dt * 0.4);
+  v.g.position.set(v.x, waveH(v.x, v.z, t) - 6 + v.rise * 5.5, v.z);
+  v.g.rotation.y = v.h;
+  v.atk = Math.max(0, v.atk - dt * 1.2);
+  v.tents.forEach((tt, i) => {
+    tt.root.rotation.x = 1.0 + Math.sin(t * 1.4 + i * 1.3) * 0.22 - v.atk * 0.8;
+    tt.segs.forEach((sg, j) => { sg.rotation.x = 0.26 + Math.sin(t * 2.1 + i + j * 0.8) * 0.16; });
+  });
+}
 function updateHud(now) {
   if (now - hudT < 60) return;
   hudT = now;
@@ -1613,7 +2048,7 @@ function updateHud(now) {
     $('holesEn').textContent = en.holes.length ? `敵船 浸水 ${en.holes.length}` : '';
   }
   $('phaseLabel').textContent = netPhase === 'live' ? '交戦中' : netPhase === 'sinking' ? '大破！' : netPhase === 'result' ? '決着' : '';
-  $('hpNum').textContent = Math.max(0, Math.round(me.hp)); $('hpFill').style.width = clamp(me.hp, 0, 100) + '%';
+  $('hpNum').textContent = Math.max(0, Math.round(me.hp)); $('hpFill').style.width = clamp(me.hp / (me.mhp || 200) * 100, 0, 100) + '%';
   $('woodRow').textContent = `木材 ${me.wood}/${MAX_WOOD}　${me.credits.toLocaleString()} G`;
   const w = WEAP[curWeapon];
   $('wName').textContent = w.name;
@@ -1651,16 +2086,38 @@ function updateHud(now) {
     di.classList.remove('hidden');
     di.textContent = netPhase === 'live' ? `撃沈された… 復活まで ${Math.max(0, Math.ceil((me.respawn - (now - lastStAt)) / 1000))}秒` : '戦闘終了を待っています…';
   } else di.classList.add('hidden');
+  // 宝のエリア制圧HUD
+  const th = $('trHud');
+  if (netTr) {
+    th.classList.remove('hidden');
+    const mine = me.team === 'A' ? netTr.a : netTr.b, theirs = me.team === 'A' ? netTr.b : netTr.a;
+    $('trMe').style.width = clamp(mine, 0, 1) * 100 + '%'; $('trEn').style.width = clamp(theirs, 0, 1) * 100 + '%';
+    $('trMe').style.background = me.team === 'A' ? '#d23a40' : '#3a86ff'; $('trEn').style.background = me.team === 'A' ? '#3a86ff' : '#d23a40';
+    const c = zoneControl();
+    $('trZone').textContent = c === 'none' ? '宝のエリアへ船を向けろ！（40秒間居続けた船の勝ち）' : c === 'both' ? '奪い合い中！ 敵船を追い払え' : c === me.team ? '制圧中…！ このまま守り抜け' : '敵に制圧されている！ 追い払え';
+    const mv = shipViews[me.team];
+    $('trDist').textContent = mv && mv.init ? `宝まで ${Math.round(Math.hypot(mv.x - netTr.x, mv.z - netTr.z))}m` : '';
+  } else th.classList.add('hidden');
+  const kh = $('krHud');
+  if (netKr) { kh.classList.remove('hidden'); $('krFill').style.width = clamp(netKr.hp, 0, 100) + '%'; } else kh.classList.add('hidden');
+  if (resultShown) $('resCount').textContent = `${Math.max(0, Math.ceil((resultEnd - now) / 1000))}秒後に次の海戦が始まります`;
   drawMinimap();
 }
 let lastStAt = performance.now();
 socket.on('st', () => { lastStAt = performance.now(); });
 const mm = $('minimap').getContext('2d');
 function drawMinimap() {
-  const W = 150, R = 150 / 2 - 4, sc = R / 150;
+  const W = 150, R = 150 / 2 - 4, sc = R / MAP_R;
   mm.clearRect(0, 0, W, W);
   mm.save(); mm.translate(W / 2, W / 2);
   mm.strokeStyle = 'rgba(255,255,255,.25)'; mm.beginPath(); mm.arc(0, 0, R, 0, 7); mm.stroke();
+  mm.fillStyle = 'rgba(230,210,154,.8)';
+  ISLANDS.forEach((i) => { mm.beginPath(); mm.arc(i.x * sc, i.z * sc, Math.max(2.5, i.r * sc), 0, 7); mm.fill(); });
+  if (netTr) {
+    mm.strokeStyle = '#ffd24a'; mm.lineWidth = 1.5; mm.beginPath(); mm.arc(netTr.x * sc, netTr.z * sc, netTr.r * sc, 0, 7); mm.stroke();
+    mm.fillStyle = '#ffd24a'; mm.save(); mm.translate(netTr.cx * sc, netTr.cz * sc); mm.rotate(Math.PI / 4); mm.fillRect(-2.5, -2.5, 5, 5); mm.restore(); mm.lineWidth = 1;
+  }
+  if (netKr) { mm.fillStyle = '#d98cff'; mm.beginPath(); mm.arc(netKr.x * sc, netKr.z * sc, 4, 0, 7); mm.fill(); }
   ['A', 'B'].forEach((k) => {
     const v = shipViews[k]; if (!v.init || v.sunk) return;
     mm.save(); mm.translate(v.x * sc, v.z * sc); mm.rotate(-v.h);
