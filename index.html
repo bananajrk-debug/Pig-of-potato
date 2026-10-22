@@ -1,2159 +1,445 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>POLY PIRATES - 海賊海戦FPS</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>POLY PIRATES — Open World</title>
 <style>
-  :root{
-    --navy:#0a1a2a; --deep:#10283d; --parch:#f1e3bd; --gold:#f2b632; --gold2:#ffd873;
-    --crimson:#d23a40; --blue:#3a86ff; --teal:#2a9d8f; --ink:#1a1209;
-    --serif:'Yu Mincho','Hiragino Mincho ProN','Noto Serif JP','MS PMincho',serif;
-    --sans:'Hiragino Kaku Gothic ProN','Yu Gothic','Meiryo','Noto Sans JP',sans-serif;
-  }
-  *{box-sizing:border-box;margin:0;padding:0;-webkit-user-select:none;user-select:none}
-  html,body{width:100%;height:100%;overflow:hidden;background:var(--navy);font-family:var(--sans);color:#fff}
-  canvas#view{position:fixed;inset:0;width:100%;height:100%;display:block;outline:none}
-  .screen{position:fixed;inset:0;z-index:10;pointer-events:none}
-  .screen button,.screen input,.screen .pa{pointer-events:auto}
-  .hidden{display:none!important}
-
-  .big-btn{font-family:var(--serif);font-weight:900;font-size:28px;letter-spacing:.14em;padding:16px 56px;border:0;cursor:pointer;
-    color:var(--ink);background:linear-gradient(180deg,#ffe08a,#f2b632 55%,#d9981c);border-radius:6px;
-    box-shadow:0 5px 0 #8a5a0c,0 12px 24px rgba(0,0,0,.45);transform:skewX(-6deg);transition:transform .08s, box-shadow .08s, filter .15s}
-  .big-btn:hover:not(:disabled){filter:brightness(1.08);transform:skewX(-6deg) translateY(-2px)}
-  .big-btn:active:not(:disabled){transform:skewX(-6deg) translateY(4px);box-shadow:0 1px 0 #8a5a0c,0 4px 10px rgba(0,0,0,.4)}
-  .big-btn:disabled{filter:grayscale(.8) brightness(.7);cursor:wait}
-  .sub-btn{font-family:var(--sans);font-weight:700;font-size:15px;padding:10px 22px;border:1px solid rgba(255,255,255,.35);
-    background:rgba(10,26,42,.75);color:#fff;cursor:pointer;border-radius:4px}
-  .sub-btn:hover{background:rgba(242,182,50,.25);border-color:var(--gold)}
-  .mini{font-family:var(--sans);font-weight:700;font-size:12px;padding:5px 10px;border:1px solid rgba(255,255,255,.35);background:rgba(10,26,42,.85);color:#fff;cursor:pointer;border-radius:3px}
-  .mini:hover{background:rgba(242,182,50,.3);border-color:var(--gold)}
-  .mini.ok{border-color:#6fe08a;color:#9dffb0}.mini.ng{border-color:#e06a6a;color:#ffb0b0}
-
-  /* ---------- タイトル ---------- */
-  #title{display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at center,rgba(10,26,42,.15),rgba(10,26,42,.78))}
-  .title-box{text-align:center;padding:30px 50px;pointer-events:auto}
-  .title-sub{font-family:var(--serif);letter-spacing:.5em;color:var(--gold2);font-size:15px;margin-bottom:6px;text-shadow:0 2px 6px #000}
-  #title h1{font-family:var(--serif);font-weight:900;font-size:clamp(60px,11vw,140px);line-height:.92;letter-spacing:.04em;
-    color:var(--parch);text-shadow:0 4px 0 #6b3d10,0 8px 0 #3a210a,0 18px 40px rgba(0,0,0,.7);transform:rotate(-2deg)}
-  .title-tag{margin:18px 0 26px;font-family:var(--serif);font-size:20px;color:#fff;text-shadow:0 2px 6px #000;letter-spacing:.15em}
-  #nameInput{display:block;margin:0 auto 20px;width:300px;padding:12px 16px;font-size:20px;text-align:center;font-family:var(--serif);font-weight:700;
-    color:var(--ink);background:var(--parch);border:3px solid #6b3d10;border-radius:4px;outline:none;-webkit-user-select:text;user-select:text}
-  #nameInput:focus{border-color:var(--gold)}
-  .title-hint{margin-top:26px;font-size:13px;color:#d8d2bd;text-shadow:0 1px 4px #000;line-height:1.9}
-
-  /* ---------- ロビー ---------- */
-  .lb-top{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:16px 30px;
-    background:linear-gradient(180deg,rgba(10,26,42,.88),transparent)}
-  .lb-logo{font-family:var(--serif);font-size:30px;font-weight:900;letter-spacing:.12em;color:var(--parch);text-shadow:0 3px 0 #6b3d10}
-  .lb-right{display:flex;gap:20px;align-items:center;font-size:15px}
-  #lbName{font-family:var(--serif);font-weight:900;font-size:20px;color:var(--gold2)}
-  #lbCredits{color:var(--gold);font-weight:800}
-  #lbOnline,#lbRecord{color:#bcd;font-size:14px}
-  .panel{position:absolute;top:84px;bottom:110px;width:310px;padding:14px 16px;overflow:auto;
-    background:rgba(10,26,42,.82);border:2px solid rgba(255,255,255,.16);border-radius:4px}
-  .panel.left{left:26px}.panel.right{right:26px}
-  .panel h3{font-family:var(--serif);font-size:22px;color:var(--parch);margin-bottom:10px;border-bottom:2px solid var(--gold);padding-bottom:4px}
-  .mycode{font-size:13px;color:#cde;margin-bottom:10px}
-  .mycode b{display:inline-block;margin:0 8px;padding:2px 10px;background:var(--parch);color:var(--ink);font-family:var(--serif);font-size:20px;letter-spacing:.2em;-webkit-user-select:text;user-select:text}
-  .addrow{display:flex;gap:6px;margin-bottom:12px}
-  .addrow input{flex:1;min-width:0;padding:7px 9px;font-size:15px;letter-spacing:.15em;text-transform:uppercase;background:#f1e3bd;color:var(--ink);border:2px solid #6b3d10;border-radius:3px;outline:none;-webkit-user-select:text;user-select:text}
-  .sec{font-size:12px;color:var(--gold2);margin:10px 0 4px;letter-spacing:.1em}
-  .frow{display:flex;align-items:center;gap:7px;padding:7px 8px;margin-bottom:5px;background:rgba(255,255,255,.07);border-radius:3px;font-size:14px}
-  .frow .dot{width:9px;height:9px;border-radius:50%;background:#666;flex:none}
-  .frow .dot.on{background:#5ee07a;box-shadow:0 0 6px #5ee07a}
-  .frow .dot.bt{background:#ffb347;box-shadow:0 0 6px #ffb347}
-  .frow .nm{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .frow small{color:#9ab}
-  .empty{font-size:13px;color:#8aa;padding:6px 2px}
-  .skin{display:flex;align-items:center;gap:11px;padding:9px 10px;margin-bottom:8px;cursor:pointer;background:rgba(255,255,255,.07);border:2px solid transparent;border-radius:3px}
-  .skin:hover{border-color:rgba(242,182,50,.6)}
-  .skin.sel{border-color:var(--gold);background:rgba(242,182,50,.18)}
-  .skin .chip{width:34px;height:34px;border-radius:50%;border:3px solid #fff;flex:none;box-shadow:inset 0 -5px 0 rgba(0,0,0,.28)}
-  .skin b{display:block;font-family:var(--serif);font-size:16px}
-  .skin small{color:#bcd;font-size:12px}
-  .skin .tag{margin-left:auto;font-size:12px;font-weight:800;color:var(--gold2);white-space:nowrap}
-  .lb-center{position:absolute;left:0;right:0;bottom:26px;text-align:center}
-  #lbStatus{font-size:14px;color:#e8dcb0;margin-bottom:12px;text-shadow:0 1px 4px #000;line-height:1.6}
-  #lbHint{margin-top:12px;font-size:12px;color:#d9cfae;text-shadow:0 1px 3px #000}
-  #loading{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;
-    background:rgba(5,12,20,.9);font-family:var(--serif);font-size:34px;font-weight:900;letter-spacing:.2em;color:var(--gold2)}
-  #loading small{font-size:15px;letter-spacing:.1em;color:#cde;font-family:var(--sans);font-weight:400}
-
-  /* ---------- HUD ---------- */
-  #shipBars{position:absolute;top:10px;left:50%;transform:translateX(-50%);display:flex;align-items:flex-start;gap:12px;text-shadow:0 2px 4px #000}
-  .sb{width:260px;padding:6px 10px 7px;background:rgba(10,26,42,.82);border-bottom:4px solid #fff}
-  .sb.me{border-bottom-color:var(--crimson)}.sb.en{border-bottom-color:var(--blue)}
-  .sb .row{display:flex;justify-content:space-between;font-size:13px;font-weight:700}
-  .sb .bar{height:12px;margin-top:4px;background:rgba(0,0,0,.6);border:2px solid #fff}
-  .sb .bar i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#f2b632,#ffe08a);transition:width .2s}
-  .sb small{display:block;margin-top:3px;font-size:12px;color:#ffb0a0}
-  #phaseLabel{align-self:center;font-family:var(--serif);font-weight:900;font-size:16px;color:var(--gold2);letter-spacing:.15em;width:70px;text-align:center}
-  #minimap{position:absolute;left:14px;top:14px;width:150px;height:150px;border-radius:50%;border:3px solid rgba(255,255,255,.7);background:rgba(10,40,70,.6)}
-  #killfeed{position:absolute;top:84px;right:14px;display:flex;flex-direction:column;align-items:flex-end;gap:4px}
-  .kf{padding:5px 12px;background:rgba(10,26,42,.8);border-right:4px solid var(--gold);font-size:14px;font-weight:700;animation:kfin .2s}
-  .kf em{font-style:normal;color:var(--gold2);margin:0 6px}
-  @keyframes kfin{from{transform:translateX(40px);opacity:0}to{transform:none;opacity:1}}
-  #crosshair{position:absolute;left:50%;top:50%;width:0;height:0}
-  #crosshair i{position:absolute;background:#fff;box-shadow:0 0 2px #000}
-  #crosshair i.l,#crosshair i.r{width:9px;height:2px;top:-1px}
-  #crosshair i.t,#crosshair i.b{width:2px;height:9px;left:-1px}
-  #crosshair i.l{left:-17px}#crosshair i.r{left:8px}#crosshair i.t{top:-17px}#crosshair i.b{top:8px}
-  #crosshair.cannon i.l{left:-30px;width:22px}#crosshair.cannon i.r{left:8px;width:22px}
-  #crosshair.cannon i.t{top:-30px;height:22px}#crosshair.cannon i.b{top:8px;height:22px}
-  #hitmarker{position:absolute;left:50%;top:50%;width:30px;height:30px;margin:-15px 0 0 -15px;opacity:0;transition:opacity .25s}
-  #hitmarker::before,#hitmarker::after{content:'';position:absolute;left:14px;top:-2px;width:3px;height:34px;background:#fff;box-shadow:0 0 3px #000}
-  #hitmarker::before{transform:rotate(45deg)}#hitmarker::after{transform:rotate(-45deg)}
-  #hitmarker.on{opacity:1;transition:none}
-  #hitmarker.head::before,#hitmarker.head::after,#hitmarker.kill::before,#hitmarker.kill::after{background:#ff4040}
-  #prompt{position:absolute;left:50%;top:60%;transform:translateX(-50%);font-family:var(--serif);font-weight:900;font-size:22px;color:var(--gold2);text-shadow:0 2px 6px #000;text-align:center;white-space:nowrap}
-  #prompt.dim{color:#9aa}
-  #progWrap{position:absolute;left:50%;top:67%;transform:translateX(-50%);width:320px;text-align:center}
-  #progLabel{font-family:var(--serif);font-weight:900;font-size:17px;margin-bottom:6px;text-shadow:0 2px 4px #000}
-  #progBar{height:15px;background:rgba(0,0,0,.65);border:2px solid #fff;border-radius:3px;overflow:hidden}
-  #progFill{height:100%;width:0;background:linear-gradient(90deg,#f2b632,#ffe08a)}
-  #banner{position:absolute;left:0;right:0;top:18%;text-align:center;opacity:0;transform:scale(1.25);transition:opacity .35s,transform .35s;pointer-events:none}
-  #banner.show{opacity:1;transform:scale(1)}
-  #bannerMain{font-family:var(--serif);font-weight:900;font-size:clamp(40px,7vw,86px);letter-spacing:.12em;color:var(--parch);text-shadow:0 4px 0 #6b3d10,0 10px 30px rgba(0,0,0,.8)}
-  #bannerSub{margin-top:6px;font-size:22px;color:#fff;text-shadow:0 2px 8px #000;letter-spacing:.12em}
-  #banner.win #bannerMain{color:#9dffb0;text-shadow:0 4px 0 #1b6b2a,0 10px 30px rgba(0,0,0,.8)}
-  #banner.lose #bannerMain{color:#ff9a9a;text-shadow:0 4px 0 #7a1414,0 10px 30px rgba(0,0,0,.8)}
-  #dmgFlash{position:absolute;inset:0;background:radial-gradient(circle,transparent 45%,rgba(220,20,20,.75));opacity:0;transition:opacity .5s}
-  #dmgFlash.on{opacity:1;transition:none}
-  #bl{position:absolute;left:26px;bottom:24px;min-width:260px}
-  #hpNum{font-family:var(--serif);font-weight:900;font-size:56px;line-height:1;text-shadow:0 3px 6px #000}
-  #hpBar{width:220px;height:12px;background:rgba(0,0,0,.6);border:2px solid #fff;margin-top:6px}
-  #hpFill{height:100%;width:100%;background:linear-gradient(90deg,#d23a40,#ff8a8a)}
-  #woodRow{margin-top:8px;font-size:17px;font-weight:800;color:#e8c58a;text-shadow:0 2px 4px #000}
-  #br{position:absolute;right:26px;bottom:24px;text-align:right;text-shadow:0 2px 4px #000}
-  #wName{font-family:var(--serif);font-weight:900;font-size:20px;color:var(--gold2)}
-  #wAmmo{font-family:var(--serif);font-weight:900;font-size:50px;line-height:1}
-  #wSlots{margin-top:6px;font-size:13px;color:#cde}
-  #wSlots b{color:var(--gold2)}
-  #helmHud{position:absolute;right:26px;top:46%;width:90px;text-align:center;font-size:13px;font-weight:700;text-shadow:0 2px 4px #000}
-  #sailGauge{height:130px;width:18px;margin:6px auto;background:rgba(0,0,0,.6);border:2px solid #fff;position:relative}
-  #sailFill{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(0deg,#f2b632,#ffe08a);height:0}
-  #wheelGauge{height:14px;width:90px;margin:4px auto;background:rgba(0,0,0,.6);border:2px solid #fff;position:relative}
-  #wheelDot{position:absolute;top:-2px;width:8px;height:14px;background:var(--gold2);left:41px}
-  #deadInfo{position:absolute;left:50%;bottom:130px;transform:translateX(-50%);padding:10px 28px;background:rgba(10,26,42,.82);border:2px solid var(--crimson);font-family:var(--serif);font-weight:900;font-size:22px}
-  #pause{background:rgba(5,12,20,.72);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;z-index:30}
-  #pause h2{font-family:var(--serif);font-size:38px;color:var(--parch);letter-spacing:.15em}
-  #pause p{font-size:14px;color:#cde;line-height:1.9;text-align:center;max-width:560px}
-  #flash{position:fixed;inset:0;z-index:25;background:#fff;opacity:0;pointer-events:none;transition:opacity 1.3s}
-  #flash.on{opacity:.95;transition:none}
-  #bars i{position:fixed;left:0;right:0;height:0;background:#000;z-index:24;transition:height .8s;pointer-events:none}
-  #bars i.t{top:0}#bars i.b{bottom:0}
-  body.cinema #bars i{height:11vh}
-  body.cinema #hud .hudhide{display:none!important}
-  #toasts{position:fixed;left:50%;top:84px;transform:translateX(-50%);z-index:40;display:flex;flex-direction:column;gap:6px;align-items:center;pointer-events:none}
-  .toast{padding:8px 20px;background:rgba(10,26,42,.92);border:2px solid var(--gold);font-weight:700;font-size:15px;animation:kfin .2s}
-
-  /* ---------- v5 追加 ---------- */
-  #toasts{top:230px}
-  .menu-btn{display:block;width:100%;margin:0 0 10px;padding:12px;font-family:var(--serif);font-weight:900;font-size:18px;letter-spacing:.1em;color:var(--ink);background:linear-gradient(180deg,#ffe08a,#f2b632);border:0;border-radius:4px;cursor:pointer;box-shadow:0 3px 0 #8a5a0c}
-  .menu-btn:hover{filter:brightness(1.08)}
-  .eq-row{display:flex;justify-content:space-between;gap:8px;font-size:13px;padding:5px 2px;border-bottom:1px solid rgba(255,255,255,.1)}
-  .eq-row span:last-child{color:var(--gold2);text-align:right}
-  #lbMedal{color:#8fe3ff;font-weight:800}
-  .modal{background:rgba(5,12,20,.72);display:flex;align-items:center;justify-content:center;z-index:20}
-  .modal-box{position:relative;width:min(780px,94vw);max-height:88vh;display:flex;flex-direction:column;background:rgba(14,32,50,.97);border:3px solid var(--gold);border-radius:6px;padding:18px 22px;pointer-events:auto}
-  .modal-box h2{font-family:var(--serif);font-size:28px;color:var(--parch);letter-spacing:.12em;margin-bottom:6px}
-  .modal-x{position:absolute;right:14px;top:12px}
-  .tabs{display:flex;gap:6px;margin:8px 0 10px;flex-wrap:wrap}
-  .tab{padding:7px 16px;font-weight:800;font-size:14px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.06);color:#fff;cursor:pointer;border-radius:3px}
-  .tab.on{background:var(--gold);color:var(--ink);border-color:var(--gold)}
-  .scroll{overflow:auto;flex:1;min-height:120px;padding-right:4px}
-  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-  .item{display:flex;align-items:center;gap:10px;padding:8px 10px;background:rgba(255,255,255,.07);border:2px solid transparent;border-radius:3px;cursor:pointer}
-  .item.sel{border-color:var(--gold);background:rgba(242,182,50,.18)}
-  .item.lock{opacity:.4}
-  .item .chip{width:30px;height:30px;border-radius:50%;border:3px solid #fff;flex:none}
-  .item b{display:block;font-family:var(--serif);font-size:15px}
-  .item small{color:#bcd;font-size:12px}
-  .item .tag{margin-left:auto;font-size:12px;font-weight:800;color:var(--gold2);white-space:nowrap}
-  .r-N{color:#c9d1d9}.r-R{color:#6fb5ff}.r-SR{color:#d98cff}.r-UR{color:#ffd24a;text-shadow:0 0 8px #ff9a1f}
-  .rar{display:inline-block;padding:0 6px;margin-right:6px;font-size:11px;font-weight:900;border:1px solid currentColor;border-radius:3px}
-  #gachaInfo{font-size:13px;color:#cde;line-height:1.7}
-  #gachaStage{height:170px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;margin:6px 0 8px;background:radial-gradient(circle,rgba(242,182,50,.2),transparent 70%)}
-  .capsule{width:80px;height:98px;border-radius:50% 50% 46% 46%;background:linear-gradient(180deg,#ff5a5a 50%,#f4f4f4 50%);border:4px solid #fff;box-shadow:0 8px 20px rgba(0,0,0,.5)}
-  .capsule.shake{animation:cshake .18s infinite}
-  @keyframes cshake{0%{transform:rotate(-12deg) translateX(-4px)}50%{transform:rotate(12deg) translateX(4px)}100%{transform:rotate(-12deg) translateX(-4px)}}
-  .reveal{text-align:center;animation:pop .5s;line-height:1.5}
-  .reveal .nm{font-family:var(--serif);font-weight:900;font-size:28px}
-  @keyframes pop{from{transform:scale(.2);opacity:0}to{transform:scale(1);opacity:1}}
-  #centerMsg{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%) scale(1.3);text-align:center;opacity:0;pointer-events:none;transition:opacity .3s,transform .3s}
-  #centerMsg.show{opacity:1;transform:translateY(-50%) scale(1)}
-  #centerMain{font-family:var(--serif);font-weight:900;font-size:clamp(46px,9.5vw,130px);letter-spacing:.1em;color:#fff;-webkit-text-stroke:3px rgba(0,0,0,.55);text-shadow:0 6px 0 rgba(0,0,0,.45),0 14px 40px rgba(0,0,0,.9)}
-  #centerSub{margin-top:8px;font-size:26px;font-weight:700;text-shadow:0 2px 8px #000;letter-spacing:.1em}
-  #centerMsg.win #centerMain{color:#9dffb0}#centerMsg.lose #centerMain{color:#ff8a8a}
-  #trHud{position:absolute;top:84px;left:50%;transform:translateX(-50%);width:440px;text-align:center;text-shadow:0 2px 4px #000}
-  #trHud .t{font-family:var(--serif);font-weight:900;font-size:15px;color:var(--gold2);letter-spacing:.12em}
-  .trlab{display:flex;justify-content:space-between;font-size:11px;color:#cde;margin-top:2px}
-  .trbar{display:flex;gap:6px;margin-top:2px}
-  .trbar>div{flex:1;height:11px;background:rgba(0,0,0,.6);border:2px solid #fff;position:relative;overflow:hidden}
-  .trbar i{position:absolute;left:0;top:0;bottom:0;width:0;transition:width .3s}
-  #trZone{font-size:13px;color:#fff;margin-top:3px;font-weight:700}
-  #krHud{position:absolute;top:168px;left:50%;transform:translateX(-50%);width:300px;text-align:center;font-family:var(--serif);font-weight:900;color:#e2b0ff;text-shadow:0 2px 4px #000}
-  #krHud .bar{height:11px;margin-top:3px;background:rgba(0,0,0,.6);border:2px solid #e2b0ff}
-  #krHud i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#8a3ad2,#d98cff)}
-  #resultScreen{display:flex;align-items:center;justify-content:center;background:rgba(5,12,20,.55);z-index:18}
-  .res-box{min-width:min(520px,92vw);padding:30px 40px;text-align:center;background:rgba(14,32,50,.95);border:3px solid var(--gold);border-radius:6px;pointer-events:auto}
-  #resTitle{font-family:var(--serif);font-weight:900;font-size:64px;letter-spacing:.15em;line-height:1}
-  #resTitle.win{color:#9dffb0;text-shadow:0 4px 0 #1b6b2a}#resTitle.lose{color:#ff9a9a;text-shadow:0 4px 0 #7a1414}
-  #resReason{margin:10px 0 18px;font-size:18px;color:#e8dcb0}
-  .res-rows{display:flex;flex-direction:column;gap:6px;margin-bottom:22px;font-size:18px}
-  .res-rows b{color:var(--gold2);margin-left:8px}
-  #resCount{margin-top:14px;font-size:14px;color:#bcd}
+:root{--navy:#071923;--panel:rgba(7,23,32,.91);--gold:#ffc85b;--cream:#f7e8c4;--muted:#bfd0d4;--line:rgba(255,255,255,.18);--green:#8ce0a1;--red:#ff8484}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#082635;color:#fff;font-family:system-ui,-apple-system,"Yu Gothic",Meiryo,sans-serif}button,input{font:inherit}button{cursor:pointer}#view{position:fixed;inset:0;width:100%;height:100%;display:block;outline:0}
+.hidden{display:none!important}.screen{position:fixed;inset:0;z-index:20}.shade{background:linear-gradient(120deg,rgba(3,13,22,.78),rgba(3,13,22,.22)),radial-gradient(ellipse at 55% 30%,transparent,rgba(0,0,0,.45));display:flex;align-items:center;justify-content:center}.title-card{width:min(620px,92vw);padding:34px 38px;background:rgba(7,25,35,.89);border:1px solid rgba(255,211,120,.55);box-shadow:0 24px 90px #0008;backdrop-filter:blur(8px);text-align:center}.eyebrow{font-size:12px;letter-spacing:.36em;color:var(--gold);font-weight:800}.title-card h1{font-family:Georgia,"Yu Mincho",serif;font-size:clamp(45px,8vw,78px);line-height:.95;letter-spacing:.04em;margin:13px 0;color:var(--cream);text-shadow:0 5px 0 #4a2911,0 12px 34px #000}.title-card p{line-height:1.7;color:#c8d9dd;font-size:14px}.form-row{display:flex;gap:10px;justify-content:center;margin:18px auto 12px;flex-wrap:wrap}.form-row input,.form-row select{border:1px solid #bb9b58;background:#f4e5bd;color:#251b0c;border-radius:4px;padding:12px 14px;min-width:180px;max-width:100%;font-weight:700}.gold-btn{background:linear-gradient(#ffe39a,#ffc34c);color:#2b1b06;border:0;border-radius:4px;padding:12px 22px;font-weight:900;box-shadow:0 3px 0 #8b5d13}.gold-btn:hover{filter:brightness(1.08);transform:translateY(-1px)}.dark-btn{background:rgba(255,255,255,.08);color:#fff;border:1px solid var(--line);border-radius:4px;padding:9px 13px;font-weight:700}.dark-btn:hover{border-color:var(--gold);background:rgba(255,200,91,.12)}.small-note{font-size:12px!important;color:#8ea8ae!important;margin-top:16px}
+#hud{position:fixed;inset:0;z-index:5;pointer-events:none;text-shadow:0 2px 5px #000}.hud-card{background:var(--panel);border:1px solid var(--line);backdrop-filter:blur(5px);box-shadow:0 5px 22px #0003}.top-left{position:absolute;left:14px;top:14px;padding:10px 13px;min-width:220px;border-left:3px solid var(--gold);font-size:13px}.brand{font-family:Georgia,serif;font-weight:900;letter-spacing:.14em;color:var(--cream);font-size:17px}.subtext{color:#bed0d4;font-size:12px;margin-top:4px}.top-right{position:absolute;right:14px;top:14px;padding:11px 14px;min-width:160px;text-align:right}.gold-number{font-weight:900;color:var(--gold);font-size:21px}.hp-label{font-size:12px;color:#cde}.hp-track{height:8px;background:#090d10;border:1px solid #a7b6b4;margin-top:5px;width:160px}.hp-track span{height:100%;display:block;background:linear-gradient(90deg,#e65445,#ffca5c);width:100%;transition:width .2s}.quest-card{position:absolute;left:50%;top:14px;transform:translateX(-50%);max-width:min(440px,48vw);padding:9px 14px;text-align:center;font-size:13px}.quest-card b{color:var(--gold);display:block;margin-bottom:2px}.right-panel{position:absolute;right:14px;top:110px;width:245px;max-height:calc(100vh - 250px);overflow:auto;pointer-events:auto;padding:12px;border-top:2px solid var(--gold)}.panel-title{font-family:Georgia,"Yu Mincho",serif;font-size:17px;color:var(--cream);letter-spacing:.05em;margin-bottom:8px}.inv-row{display:flex;align-items:center;gap:7px;border-bottom:1px solid rgba(255,255,255,.08);padding:6px 0;font-size:12px}.inv-row .inv-name{flex:1;min-width:0}.count{color:var(--gold);font-weight:900}.inv-row button{padding:4px 7px;font-size:11px}.quick-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}.quick-actions button{padding:7px 4px;font-size:11px}.hintline{font-size:11px;color:#9bb1b6;line-height:1.65;margin-top:9px}.bottom-left{position:absolute;left:14px;bottom:14px;width:186px;padding:8px;background:rgba(7,23,32,.72);border:1px solid var(--line)}#minimap{display:block;width:168px;height:168px}.map-label{font-size:10px;color:#c6d9dd;text-align:center;margin-top:2px}.bottom-center{position:absolute;left:50%;bottom:9%;transform:translateX(-50%);text-align:center;max-width:min(700px,88vw)}#prompt{font-size:19px;font-weight:900;color:var(--gold);letter-spacing:.04em;min-height:26px;text-shadow:0 3px 10px #000}#prompt small{display:block;font-size:12px;font-weight:600;color:#e5e8df;margin-top:3px;letter-spacing:0}.controls{position:absolute;left:220px;bottom:18px;max-width:460px;padding:8px 12px;font-size:11px;line-height:1.7;color:#d1e0e1;opacity:.92}.key{display:inline-block;background:#e9dfc1;color:#1c241f;border-radius:3px;padding:0 5px;font-weight:900;margin:0 2px;text-shadow:none}.toast-wrap{position:fixed;top:70px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:6px;z-index:50;pointer-events:none}.toast{background:rgba(5,20,28,.95);border:1px solid var(--gold);padding:10px 18px;min-width:240px;text-align:center;font-size:13px;box-shadow:0 8px 28px #0007;animation:toastIn .2s ease-out}@keyframes toastIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+#actionPanel{position:fixed;z-index:40;left:50%;top:50%;transform:translate(-50%,-50%);width:min(520px,92vw);max-height:82vh;display:flex;flex-direction:column;pointer-events:auto;background:rgba(7,23,32,.97);border:1px solid var(--gold);box-shadow:0 20px 100px #000b;padding:20px}.modal-head{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:12px}.modal-head h2{font-family:Georgia,"Yu Mincho",serif;color:var(--cream);margin:0;font-size:24px}.modal-body{overflow:auto;line-height:1.65;font-size:13px;color:#cddcde}.option{display:flex;gap:12px;align-items:center;padding:10px 3px;border-bottom:1px solid rgba(255,255,255,.09)}.option .desc{flex:1}.option b{display:block;color:#fff;font-size:14px}.option small{color:#9db5ba;font-size:12px}.modal-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:15px}.modal-actions button{flex:1;min-width:125px}.center-tip{position:absolute;bottom:25%;left:50%;transform:translateX(-50%);font-size:12px;color:#e3dfcf;text-shadow:0 2px 5px black;text-align:center;pointer-events:none}.version{position:fixed;right:12px;bottom:8px;font-size:10px;letter-spacing:.1em;color:#c0d0d2;opacity:.6;z-index:4}
+@media(max-width:760px){.right-panel{top:auto;bottom:12px;right:10px;width:210px;max-height:38vh}.bottom-left{width:126px;bottom:10px;left:10px}.bottom-left #minimap{width:108px;height:108px}.controls{display:none}.quest-card{top:86px;max-width:84vw}.top-right{top:14px}.top-left{min-width:170px;max-width:48vw}.hp-track{width:125px}.title-card{padding:26px 18px}.title-card h1{font-size:48px}.form-row{flex-direction:column}.form-row input,.form-row select{width:100%}.bottom-center{bottom:42%}}
 </style>
 </head>
 <body>
 <canvas id="view"></canvas>
-
-<div id="loading"><div>POLY PIRATES</div><small id="loadMsg">サーバーに接続中…</small></div>
-
-<!-- タイトル -->
-<div id="title" class="screen hidden">
-  <div class="title-box">
-    <div class="title-sub">― 大海賊時代・海戦篇 ―</div>
+<div id="title" class="screen shade">
+  <div class="title-card">
+    <div class="eyebrow">OPEN WORLD · SAIL · EXPLORE · LIVE</div>
     <h1>POLY<br>PIRATES</h1>
-    <div class="title-tag">舵を取れ、砲を撃て、敵船を沈めろ！</div>
-    <input id="nameInput" maxlength="12" placeholder="海賊名を入力" autocomplete="off">
-    <button id="startBtn" class="big-btn">冒険を始める</button>
-    <div class="title-hint">セーブデータは自動で保存されます（アップデートしても消えません）</div>
+    <p>勝敗も制限時間もない、あなただけの航海へ。<br>島を探検し、洞窟に潜り、魚を焼き、宝を売って暮らそう。</p>
+    <div class="form-row"><input id="pirateName" maxlength="16" placeholder="海賊名" value="" autocomplete="nickname"><select id="shipType"><option value="sloop">スループ（小型・1人向け）</option><option value="brig">大型船（2〜3人向け・要300G）</option></select></div>
+    <button id="startBtn" class="gold-btn" style="width:100%;font-size:18px;padding:14px">航海を始める</button>
+    <p id="startHint" class="small-note">WASD：移動・操船 / E：調べる / Q：船を降りる / R：釣り</p>
   </div>
 </div>
-
-<!-- ロビー -->
-<div id="lobby" class="screen hidden">
-  <div class="lb-top">
-    <div class="lb-logo">POLY PIRATES</div>
-    <div class="lb-right">
-      <span id="lbName">-</span><span id="lbCredits">0 G</span><span id="lbMedal">🪙 メダル 0</span><span id="lbRecord"></span><span id="lbOnline"></span>
-    </div>
-  </div>
-  <div class="panel left pa">
-    <h3>フレンド</h3>
-    <div class="mycode">あなたのコード<b id="myCode">------</b><button id="copyCode" class="mini">コピー</button></div>
-    <div class="addrow"><input id="friendInput" maxlength="8" placeholder="フレンドコード" autocomplete="off"><button id="friendAddBtn" class="mini">申請</button></div>
-    <div id="reqBox"></div>
-    <div class="sec">フレンド一覧</div>
-    <div id="friendList"></div>
-  </div>
-  <div class="panel right pa">
-    <h3>メニュー</h3>
-    <button id="shopBtn" class="menu-btn">🛒 ショップ</button>
-    <button id="gachaBtn" class="menu-btn">🎰 ガチャ</button>
-    <div class="sec">現在の装備</div>
-    <div id="equipSummary"></div>
-    <div class="empty" style="margin-top:10px">勝利するとガチャメダルを1枚獲得。3枚で1回ガチャが回せます。ショップではクレジットでキャラクターの見た目を変更できます。</div>
-  </div>
-  <div class="lb-center">
-    <div id="lbStatus"></div>
-    <button id="joinBtn" class="big-btn">出航する</button>
-    <div id="lbHint">WASD移動 / マウス視点 / 左クリック攻撃 / F 舵・大砲・修理(長押し) / R リロード / 1-3 武器 / C 飛び込み ／ 宝の島のエリアに船で居続けて勝利！</div>
-  </div>
+<div id="hud" class="hidden">
+  <div class="top-left hud-card"><div class="brand">POLY PIRATES</div><div id="islandLabel" class="subtext">帆影の港</div><div id="shipLabel" class="subtext">スループ · 停泊中</div></div>
+  <div class="top-right hud-card"><div id="goldLabel" class="gold-number">350 G</div><div class="hp-label">体力 <b id="hpLabel">100 / 100</b></div><div class="hp-track"><span id="hpFill"></span></div></div>
+  <div id="questCard" class="quest-card hud-card hidden"><b>宝の地図</b><span id="questText">目的地を探しています</span></div>
+  <div class="right-panel hud-card"><div class="panel-title">持ち物</div><div id="inventory"></div><div class="quick-actions"><button class="dark-btn" id="fishBtn">🎣 釣りをする</button><button class="dark-btn" id="newShipBtn">⛵ 新しい船</button></div><div class="hintline">船内の台所で魚・じゃがいもを調理。宝箱、遺物、宝石は港の質屋で売却できます。</div></div>
+  <div class="bottom-left"><canvas id="minimap" width="168" height="168"></canvas><div class="map-label">航海図 · Nは上</div></div>
+  <div class="bottom-center"><div id="prompt"></div></div>
+  <div class="controls"><span class="key">WASD</span> 歩く / 船を操る <span class="key">E</span> 調べる <span class="key">Q</span> 船を降りる / 近くの船に乗る<br><span class="key">R</span> 釣り <span class="key">Esc</span> マウス解除 マウス移動でカメラ回転</div>
 </div>
-
-<!-- ショップ -->
-<div id="shopModal" class="screen modal hidden"><div class="modal-box">
-  <button id="shopClose" class="mini modal-x">閉じる</button>
-  <h2>ショップ</h2>
-  <div class="sec" id="shopCredits"></div>
-  <div class="tabs"><button class="tab on" data-tab="body">キャラクター（体型）</button><button class="tab" data-tab="coat">外套（カラー）</button></div>
-  <div class="scroll"><div id="shopList" class="grid2"></div></div>
-</div></div>
-
-<!-- ガチャ -->
-<div id="gachaModal" class="screen modal hidden"><div class="modal-box">
-  <button id="gachaClose" class="mini modal-x">閉じる</button>
-  <h2>ガチャ</h2>
-  <div id="gachaInfo"></div>
-  <div id="gachaStage"><div class="capsule hidden" id="capsule"></div><div id="gachaMsg"></div></div>
-  <div style="text-align:center;margin-bottom:8px"><button id="gachaRoll" class="big-btn" style="font-size:20px;padding:10px 40px">メダル3枚で回す</button></div>
-  <div class="tabs"><button class="tab on" data-tab="helm">舵（ハンドル）</button><button class="tab" data-tab="wskin">武器スキン</button><button class="tab" data-tab="sskin">船スキン</button></div>
-  <div class="scroll"><div id="invList" class="grid2"></div></div>
-</div></div>
-
-<!-- HUD -->
-<div id="hud" class="screen hidden">
-  <div id="shipBars">
-    <div class="sb me hudhide"><div class="row"><span id="meShipName">自船</span><span id="hpMeNum">100</span></div><div class="bar"><i id="hpMeFill"></i></div><small id="holesMe"></small></div>
-    <div id="phaseLabel" class="hudhide"></div>
-    <div class="sb en hudhide"><div class="row"><span id="enShipName">敵船</span><span id="hpEnNum">100</span></div><div class="bar"><i id="hpEnFill"></i></div><small id="holesEn"></small></div>
-  </div>
-  <canvas id="minimap" class="hudhide" width="150" height="150"></canvas>
-  <div id="killfeed" class="hudhide"></div>
-  <div id="crosshair" class="hudhide"><i class="l"></i><i class="r"></i><i class="t"></i><i class="b"></i></div>
-  <div id="hitmarker"></div>
-  <div id="prompt" class="hudhide"></div>
-  <div id="progWrap" class="hudhide hidden"><div id="progLabel"></div><div id="progBar"><div id="progFill"></div></div></div>
-  <div id="banner"><div id="bannerMain"></div><div id="bannerSub"></div></div>
-  <div id="centerMsg"><div id="centerMain"></div><div id="centerSub"></div></div>
-  <div id="trHud" class="hudhide hidden"><div class="t">💎 宝のエリア制圧　<span id="trDist"></span></div><div class="trlab"><span>自船</span><span>敵船</span></div><div class="trbar"><div><i id="trMe"></i></div><div><i id="trEn"></i></div></div><div id="trZone"></div></div>
-  <div id="krHud" class="hudhide hidden"><div>🐙 クラーケン</div><div class="bar"><i id="krFill"></i></div></div>
-  <div id="dmgFlash"></div>
-  <div id="bl" class="hudhide"><div id="hpNum">100</div><div id="hpBar"><div id="hpFill"></div></div><div id="woodRow"></div></div>
-  <div id="br" class="hudhide"><div id="wName"></div><div id="wAmmo"></div><div id="wSlots"></div></div>
-  <div id="helmHud" class="hudhide hidden"><div>帆</div><div id="sailGauge"><div id="sailFill"></div></div><div>舵</div><div id="wheelGauge"><div id="wheelDot"></div></div><div style="margin-top:8px;color:#cde;font-size:12px">W/S 帆<br>A/D 舵</div></div>
-  <div id="deadInfo" class="hudhide hidden"></div>
-</div>
-
-<div id="pause" class="screen hidden pa">
-  <h2>一時停止</h2>
-  <p>画面をクリックして操作を再開できます。<br>W/A/S/D 移動　マウス 視点　左クリック 攻撃／大砲発射　F 舵・大砲・木箱・修理(長押し)<br>R リロード　1/2/3 武器　Space ジャンプ　C 船から飛び込む（海から船に戻るには船体の近くで F）</p>
-  <button id="resumeBtn" class="big-btn">再開</button>
-  <button id="toLobbyBtn" class="sub-btn">ロビーへ戻る</button>
-</div>
-<div id="resultScreen" class="screen hidden">
-  <div class="res-box">
-    <div id="resTitle">VICTORY</div>
-    <div id="resReason"></div>
-    <div class="res-rows"><div>報酬<b id="resReward"></b></div><div>ガチャメダル<b id="resMedal"></b></div></div>
-    <button id="resLobbyBtn" class="big-btn">ロビーに戻る</button>
-    <div id="resCount"></div>
-  </div>
-</div>
-<div id="flash"></div>
-<div id="bars"><i class="t"></i><i class="b"></i></div>
-<div id="toasts"></div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<div id="actionPanel" class="hidden"><div class="modal-head"><h2 id="panelTitle">港</h2><button id="closePanel" class="dark-btn">閉じる ✕</button></div><div id="panelBody" class="modal-body"></div><div id="panelActions" class="modal-actions"></div></div>
+<div id="toasts" class="toast-wrap"></div><div class="version">OPEN WORLD BUILD 6.0</div>
 <script src="/socket.io/socket.io.js"></script>
-<script>
-(function () {
-'use strict';
-// =====================================================
-//  ユーティリティ & 共有定数（サーバーと同じ値）
-// =====================================================
-const $ = (id) => document.getElementById(id);
-const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-const lerp = (a, b, t) => a + (b - a) * t;
-const rand = (a, b) => a + Math.random() * (b - a);
-const wrapA = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
 
-const DECK = 2.0, EYE = 1.6, BALL_SPEED = 58, GRAV = 16, CANNON_RELOAD = 3000, MAX_WOOD = 5, REPAIR_MS = 1800;
-const HULL = [[12.8, 3.6], [11, 4.2], [6, 4.5], [-3, 4.5], [-8, 3.8], [-11.5, 2.2], [-14.5, 0.2]];
-function halfW(z) {
-  if (z > HULL[0][0] || z < HULL[HULL.length - 1][0]) return 0;
-  for (let i = 0; i < HULL.length - 1; i++) {
-    const a = HULL[i], b = HULL[i + 1];
-    if (z <= a[0] && z >= b[0]) { const t = (a[0] - z) / (a[0] - b[0]); return a[1] + (b[1] - a[1]) * t; }
-  }
-  return 0;
-}
-const CANNONS = [];
-[-1, 1].forEach((side) => { [-5, -0.5, 4].forEach((z) => { CANNONS.push({ idx: CANNONS.length, side, z, x: side * 3.3, sx: side * 2.1 }); }); });
-const HELM_POS = { x: 0, z: 9.0 }, HELM_STAND = { x: 0, z: 10.1 };
-const CRATES = [{ x: -2.4, z: 10.8 }, { x: 2.4, z: -9 }];
-const MASTS = [{ x: 0, z: -3, h: 17, s: 1 }, { x: 0, z: -9.5, h: 13, s: 0.8 }, { x: 0, z: 4, h: 11, s: 0.62 }];
-const TEAM_COL = { A: 0xd23a40, B: 0x3a86ff };
-const TEAM_NAME = { A: '赤の海賊船', B: '青の海賊船' };
-const SKINS = {
-  classic: { name: '船乗りの赤外套', cost: 0, color: 0x9c3b2e },
-  navy: { name: '海軍の藍外套', cost: 400, color: 0x2d4b8a },
-  forest: { name: '密林の緑外套', cost: 600, color: 0x2f6b3a },
-  bone: { name: '幽霊船の白外套', cost: 900, color: 0xdad4c0 },
-  shadow: { name: '黒髭の闇外套', cost: 1200, color: 0x23232b },
-  gold: { name: '黄金の呪い', cost: 2000, color: 0xd9a625 }
-};
-// ---- 島（server.js と同じ値）----
-const ISLANDS = [
-  { x: 0, z: 0, r: 24 }, { x: -125, z: -135, r: 20 }, { x: 135, z: 125, r: 20 },
-  { x: -35, z: 165, r: 18 }, { x: 45, z: -175, r: 18 }, { x: -195, z: 75, r: 18 }, { x: 200, z: -65, r: 18 }
-];
-const ISLAND_TOP = 2.0, MAP_R = 320;
-// ---- ショップ：体型 ----
-const BODIES = {
-  normal: { name: '標準の海賊', cost: 0, sx: 1, sy: 1, color: 0xe0b48a },
-  fat: { name: 'デブ海賊', cost: 1500, sx: 1.4, sy: 0.96, belly: 1, color: 0xe8a08a },
-  tall: { name: 'のっぽ海賊', cost: 1800, sx: 0.92, sy: 1.18, color: 0xd9b07c },
-  small: { name: 'ちび海賊', cost: 1200, sx: 1.05, sy: 0.8, color: 0xf0c49a },
-  muscle: { name: 'マッチョ海賊', cost: 2500, sx: 1.22, sy: 1.06, arm: 1.55, color: 0xc98f62 },
-  skeleton: { name: 'ガイコツ海賊', cost: 3500, sx: 0.95, sy: 1.04, skel: 1, color: 0xeeeadb }
-};
-// ---- ガチャ景品 ----
-const HELMS = {
-  oak: { name: 'オーク材の舵', r: 'N', ring: 0x6b4423, hub: 0xd9a625 },
-  bronze: { name: '青銅の舵', r: 'N', ring: 0xa86a32, hub: 0xe0a060 },
-  silver: { name: '銀の舵', r: 'R', ring: 0xc9d2db, hub: 0xffffff },
-  coral: { name: '珊瑚の舵', r: 'R', ring: 0xff7a8a, hub: 0xffd0c0 },
-  golden: { name: '黄金の舵', r: 'SR', ring: 0xe0b030, hub: 0xfff0a0, em: 0x4a3300 },
-  skull: { name: '髑髏の呪い舵', r: 'UR', ring: 0x1a1a22, hub: 0x66ffcc, em: 0x0a4a3a }
-};
-const WSKINS = {
-  default: { name: '標準の武器', r: 'N', metal: 0x3b3b44, wood: 0x7a4a22, brass: 0xd9a625, steel: 0xcfd6dd },
-  rust: { name: '錆びた鉄', r: 'N', metal: 0x7a5a48, wood: 0x5a3a1e, brass: 0xa07a30, steel: 0x9a8a7a },
-  ocean: { name: '海神の青', r: 'R', metal: 0x2a6ac8, wood: 0x1d3a6a, brass: 0x7ad0ff, steel: 0xa8d8ff, em: 0x061a3a },
-  silver: { name: '白銀の武器', r: 'R', metal: 0xd0d6de, wood: 0x8a8a92, brass: 0xffffff, steel: 0xffffff },
-  ember: { name: '業火の紅', r: 'SR', metal: 0xc83a1a, wood: 0x3a1408, brass: 0xffb030, steel: 0xff9a60, em: 0x5a1000 },
-  gold: { name: '黄金の武器', r: 'SR', metal: 0xe0b030, wood: 0x6a4a10, brass: 0xfff0a0, steel: 0xffe080, em: 0x3a2a00 },
-  void: { name: '虚空の紫電', r: 'UR', metal: 0x4a1a8a, wood: 0x1a0a30, brass: 0xd98cff, steel: 0xb070ff, em: 0x2a0a5a }
-};
-const SSKINS = {
-  default: { name: '標準の船', r: 'N', hull: 0x6b4423, sail: 0xffffff },
-  driftwood: { name: '流木の船', r: 'N', hull: 0x8a7a62, sail: 0xf0e8d0 },
-  ghost: { name: '幽霊船', r: 'R', hull: 0xb8c4c4, sail: 0xcfeaea, em: 0x0a2a2a },
-  sakura: { name: '桜花の船', r: 'R', hull: 0xd88aa4, sail: 0xffd6e4 },
-  black: { name: '黒鉄の船', r: 'SR', hull: 0x22222a, sail: 0x8a8a96 },
-  gold: { name: '黄金の船', r: 'SR', hull: 0xc09a22, sail: 0xffe9a0, em: 0x3a2a00 },
-  abyss: { name: '深淵の船', r: 'UR', hull: 0x2a1050, sail: 0xb48cff, em: 0x240a4a }
-};
-function waveH(x, z, t) {
-  return Math.sin(x * 0.07 + t * 0.9) * 0.28 + Math.sin(z * 0.09 + t * 1.1) * 0.22 + Math.sin((x + z) * 0.05 + t * 0.6) * 0.3;
-}
-function cannonDirL(c, yaw, pitch) {
-  const hx = c.side * Math.cos(yaw), hz = -Math.sin(yaw), cp = Math.cos(pitch);
-  return new THREE.Vector3(hx * cp, Math.sin(pitch), hz * cp);
-}
-
-// =====================================================
-//  サウンド（WebAudio 合成）
-// =====================================================
-let AC = null, noiseBuf = null;
-function ac() {
-  if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { AC = null; } }
-  if (AC && AC.state === 'suspended') AC.resume();
-  return AC;
-}
-function getNoise() {
-  const a = ac(); if (!a) return null;
-  if (!noiseBuf) {
-    noiseBuf = a.createBuffer(1, a.sampleRate * 2, a.sampleRate);
-    const d = noiseBuf.getChannelData(0);
-    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-  }
-  return noiseBuf;
-}
-function noiseBurst(o) {
-  const a = ac(), nb = getNoise(); if (!a || !nb) return;
-  const dur = o.dur || 0.3, vol = o.vol == null ? 0.5 : o.vol;
-  const s = a.createBufferSource(); s.buffer = nb;
-  const f = a.createBiquadFilter(); f.type = o.type || 'lowpass'; f.Q.value = o.q || 1;
-  f.frequency.setValueAtTime(o.f0 || 800, a.currentTime);
-  f.frequency.exponentialRampToValueAtTime(Math.max(20, o.f1 || 100), a.currentTime + dur);
-  const g = a.createGain(); g.gain.setValueAtTime(vol, a.currentTime);
-  g.gain.exponentialRampToValueAtTime(0.001, a.currentTime + dur);
-  s.connect(f); f.connect(g); g.connect(a.destination);
-  s.start(0, Math.random(), dur + 0.05);
-}
-function thump(o) {
-  const a = ac(); if (!a) return;
-  const dur = o.dur || 0.4;
-  const os = a.createOscillator(), g = a.createGain();
-  os.type = 'sine';
-  os.frequency.setValueAtTime(o.f0 || 120, a.currentTime);
-  os.frequency.exponentialRampToValueAtTime(o.f1 || 35, a.currentTime + dur);
-  g.gain.setValueAtTime(o.vol == null ? 0.6 : o.vol, a.currentTime);
-  g.gain.exponentialRampToValueAtTime(0.001, a.currentTime + dur);
-  os.connect(g); g.connect(a.destination); os.start(); os.stop(a.currentTime + dur + 0.05);
-}
-const SFX = {
-  cannon(v) { v = v == null ? 1 : v; noiseBurst({ dur: 0.7, vol: 0.9 * v, f0: 1800, f1: 90 }); thump({ vol: 0.9 * v }); },
-  boom(v) { v = v == null ? 1 : v; noiseBurst({ dur: 1.1, vol: v, f0: 1200, f1: 60 }); thump({ f0: 90, f1: 25, dur: 0.9, vol: v }); },
-  big() { noiseBurst({ dur: 2.8, vol: 1, f0: 1500, f1: 40 }); thump({ f0: 70, f1: 18, dur: 2.2, vol: 1 }); },
-  pistol(v) { v = v == null ? 1 : v; noiseBurst({ dur: 0.18, vol: 0.6 * v, type: 'highpass', f0: 3000, f1: 800 }); thump({ f0: 200, f1: 60, dur: 0.12, vol: 0.4 * v }); },
-  blunder(v) { v = v == null ? 1 : v; noiseBurst({ dur: 0.4, vol: 0.9 * v, f0: 2500, f1: 120 }); thump({ f0: 140, f1: 40, dur: 0.3, vol: 0.7 * v }); },
-  splash(v) { v = v == null ? 1 : v; noiseBurst({ dur: 0.5, vol: 0.35 * v, type: 'bandpass', f0: 1500, f1: 500 }); },
-  wood(v) { v = v == null ? 1 : v; noiseBurst({ dur: 0.25, vol: 0.5 * v, type: 'bandpass', f0: 700, f1: 200, q: 3 }); },
-  hammer() { noiseBurst({ dur: 0.12, vol: 0.5, type: 'bandpass', f0: 1200, f1: 400, q: 4 }); thump({ f0: 300, f1: 120, dur: 0.1, vol: 0.3 }); },
-  swing() { noiseBurst({ dur: 0.15, vol: 0.25, type: 'highpass', f0: 1500, f1: 4000 }); },
-  hit() { thump({ f0: 900, f1: 500, dur: 0.06, vol: 0.25 }); },
-  step() { noiseBurst({ dur: 0.07, vol: 0.12, f0: 500, f1: 150 }); },
-  roar() { thump({ f0: 90, f1: 22, dur: 1.8, vol: 1 }); noiseBurst({ dur: 1.6, vol: 0.5, f0: 600, f1: 60 }); }
-};
-
-// =====================================================
-//  ネットワーク & セーブデータ
-// =====================================================
-const socket = io();
-let token = '';
-try { token = localStorage.getItem('pp_token') || ''; } catch (e) {}
-let profile = null;
-let friendsData = { friends: [], requests: [] };
-let myId = null;
-let appState = 'boot';       // boot | title | lobby | game
-let online = { total: 0, inMatch: 0, phase: 'idle', hpA: 100, hpB: 100 };
-
-function loadBackup() { try { return JSON.parse(localStorage.getItem('pp_backup') || 'null'); } catch (e) { return null; } }
-function toast(text) {
-  const el = document.createElement('div');
-  el.className = 'toast'; el.textContent = text;
-  $('toasts').appendChild(el);
-  setTimeout(() => el.remove(), 3200);
-}
-
-// =====================================================
-//  Three.js 基本セットアップ
-// =====================================================
+const $ = id => document.getElementById(id);
+const rand = (min,max) => min + Math.random() * (max-min);
+const socket = io({ transports: ['websocket', 'polling'] });
 const canvas = $('view');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.setSize(window.innerWidth, window.innerHeight);
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1600);
-camera.rotation.order = 'YXZ';
-const lobbyCam = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 900);
-const gameScene = new THREE.Scene();
-const lobbyScene = new THREE.Scene();
-gameScene.add(camera);
-window.addEventListener('resize', () => {
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  camera.aspect = lobbyCam.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix(); lobbyCam.updateProjectionMatrix();
-});
+let renderer, scene, camera, clock;
+let connected = false, joined = false, selfId = null, worldInit = null, latestState = null, self = null;
+let islands = [], shipTypes = {}, shipsData = [], playersData = [], islandMeshes = new Map(), shipMeshes = new Map(), playerMeshes = new Map();
+let questMarker = null, currentPanel = null, camYaw = 0, camPitch = .24, camDistance = 15, pointerLocked = false;
+const keys = { w:false,a:false,s:false,d:false };
+let lastInputSent = 0, lastMini = 0, lastPromptTarget = null;
+const tokenKey = 'polyPiratesOpenWorldToken';
+const shipTypeKey = 'polyPiratesShipType';
+$('shipType').value = localStorage.getItem(shipTypeKey) || 'sloop';
+$('shipType').addEventListener('change',()=>localStorage.setItem(shipTypeKey,$('shipType').value));
+let token = localStorage.getItem(tokenKey);
+if (!token || !/^[a-zA-Z0-9_-]{16,80}$/.test(token)) { token = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().slice(0,8); localStorage.setItem(tokenKey, token); }
 
-function mat(color, shin) { return new THREE.MeshPhongMaterial({ color, flatShading: true, shininess: shin == null ? 8 : shin }); }
-function canvasTex(w, h, fn) {
-  const c = document.createElement('canvas'); c.width = w; c.height = h;
-  fn(c.getContext('2d'), w, h);
-  const t = new THREE.CanvasTexture(c); return t;
+function toast(message, duration=3600) {
+  const el = document.createElement('div'); el.className='toast'; el.textContent=String(message); $('toasts').appendChild(el);
+  setTimeout(()=>el.remove(), duration);
 }
-function radialTex(stops) {
-  return canvasTex(64, 64, (g) => {
-    const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
-    stops.forEach((s) => gr.addColorStop(s[0], s[1]));
-    g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
-  });
+function mat(color, roughness=.85, metalness=0) { return new THREE.MeshStandardMaterial({color, roughness, metalness}); }
+function box(w,h,d,material) { return new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material); }
+function cylinder(rt,rb,h,material,segments=8) { return new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,segments),material); }
+function makeLabel(text, background='#122e38', color='#ffe09a') {
+  const c=document.createElement('canvas'); c.width=512; c.height=128; const x=c.getContext('2d');
+  x.fillStyle=background; x.fillRect(0,0,c.width,c.height); x.strokeStyle='#e5b95e'; x.lineWidth=7; x.strokeRect(4,4,c.width-8,c.height-8);
+  x.font='bold 42px sans-serif'; x.textAlign='center'; x.textBaseline='middle'; x.fillStyle=color; x.fillText(text,256,64,470);
+  const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace;
+  const m=new THREE.Sprite(new THREE.SpriteMaterial({map:t,transparent:true,depthTest:false})); m.scale.set(15,3.75,1); return m;
 }
-const TEX = {
-  fire: radialTex([[0, 'rgba(255,250,200,1)'], [0.3, 'rgba(255,170,40,0.9)'], [0.7, 'rgba(220,60,10,0.4)'], [1, 'rgba(120,20,0,0)']]),
-  smoke: radialTex([[0, 'rgba(80,80,80,0.9)'], [0.6, 'rgba(60,60,60,0.45)'], [1, 'rgba(40,40,40,0)']]),
-  splash: radialTex([[0, 'rgba(255,255,255,0.95)'], [0.6, 'rgba(220,240,255,0.5)'], [1, 'rgba(200,230,255,0)']]),
-  spark: radialTex([[0, 'rgba(255,255,255,1)'], [0.4, 'rgba(255,220,120,0.8)'], [1, 'rgba(255,160,40,0)']])
-};
-let plankTexCache = null;
-function plankTex() {
-  if (plankTexCache) return plankTexCache;
-  const t = canvasTex(128, 128, (g, w, h) => {
-    g.fillStyle = '#a8794a'; g.fillRect(0, 0, w, h);
-    for (let i = 0; i < 8; i++) {
-      g.fillStyle = i % 2 ? '#9c6e42' : '#b2844f'; g.fillRect(i * 16, 0, 16, h);
-      g.fillStyle = 'rgba(40,20,5,0.55)'; g.fillRect(i * 16, 0, 2, h);
-      g.fillStyle = 'rgba(40,20,5,0.25)'; g.fillRect(i * 16 + 3, ((i * 37) % 100) + 5, 10, 2);
-    }
-  });
-  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(1 / 6, 1 / 6);
-  plankTexCache = t; return t;
+function initThree() {
+  renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:false});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 1.8)); renderer.setSize(innerWidth, innerHeight);
+  renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.12;
+  scene = new THREE.Scene(); scene.background = new THREE.Color('#8dc6ce'); scene.fog = new THREE.Fog('#8dc6ce', 400, 2600);
+  camera = new THREE.PerspectiveCamera(66, innerWidth/innerHeight, .1, 5000);
+  clock = new THREE.Clock();
+  const hemi = new THREE.HemisphereLight('#d5f2ff','#384c38',2.0); scene.add(hemi);
+  const sun = new THREE.DirectionalLight('#fff1d1',3.0); sun.position.set(-280,500,180); sun.castShadow=true; sun.shadow.mapSize.set(2048,2048); sun.shadow.camera.left=-900; sun.shadow.camera.right=900; sun.shadow.camera.top=900; sun.shadow.camera.bottom=-900; scene.add(sun);
+  const ocean = new THREE.Mesh(new THREE.PlaneGeometry(6000,6000,1,1), new THREE.MeshStandardMaterial({color:'#176e88',roughness:.32,metalness:.2}));
+  ocean.rotation.x=-Math.PI/2; ocean.position.y=-.65; ocean.receiveShadow=true; scene.add(ocean);
+  // Subtle ocean grid gives the low-poly sea texture without external assets.
+  const grid=new THREE.GridHelper(5000,160,'#2a8291','#247586'); grid.position.y=-.61; grid.material.transparent=true; grid.material.opacity=.16; scene.add(grid);
+  const skyGlow = new THREE.Mesh(new THREE.SphereGeometry(2400,24,12),new THREE.MeshBasicMaterial({color:'#8dc6ce',side:THREE.BackSide})); skyGlow.position.y=0; scene.add(skyGlow);
+  buildAmbientIslands();
+  buildDungeonInterior();
+  window.addEventListener('resize', resize);
+  canvas.addEventListener('click', ()=>{ if(joined && !pointerLocked && !currentPanel) canvas.requestPointerLock?.(); });
+  document.addEventListener('pointerlockchange',()=>{ pointerLocked=document.pointerLockElement===canvas; });
+  document.addEventListener('mousemove',e=>{ if(!pointerLocked)return; camYaw -= e.movementX*.0024; camPitch=THREE.MathUtils.clamp(camPitch+e.movementY*.0015,-.05,.7); });
+  animate();
 }
-function sailTex(team) {
-  const col = '#' + TEAM_COL[team].toString(16).padStart(6, '0');
-  return canvasTex(256, 320, (g, w, h) => {
-    g.fillStyle = '#e9dfbf'; g.fillRect(0, 0, w, h);
-    g.fillStyle = col; g.fillRect(0, 0, w, 26); g.fillRect(0, h - 26, w, 26);
-    g.fillStyle = '#1a1209';
-    g.beginPath(); g.arc(128, 140, 46, 0, Math.PI * 2); g.fill();
-    g.fillRect(100, 170, 56, 24);
-    g.fillStyle = '#e9dfbf';
-    g.beginPath(); g.arc(110, 135, 12, 0, 7); g.fill(); g.beginPath(); g.arc(146, 135, 12, 0, 7); g.fill();
-    g.fillRect(124, 150, 8, 12);
-    g.strokeStyle = '#1a1209'; g.lineWidth = 14; g.lineCap = 'round';
-    g.beginPath(); g.moveTo(70, 205); g.lineTo(186, 255); g.moveTo(186, 205); g.lineTo(70, 255); g.stroke();
-  });
-}
-
-// ---- 海 ----
-function makeSea(scene) {
-  const geo = new THREE.PlaneGeometry(1500, 1500, 100, 100);
-  geo.rotateX(-Math.PI / 2);
-  const m = new THREE.Mesh(geo, new THREE.MeshPhongMaterial({ color: 0x1b78b5, flatShading: true, shininess: 70, specular: 0x446688 }));
-  scene.add(m);
-  const pos = geo.attributes.position, n = pos.count, bx = new Float32Array(n), bz = new Float32Array(n);
-  for (let i = 0; i < n; i++) { bx[i] = pos.getX(i); bz[i] = pos.getZ(i); }
-  return {
-    mesh: m,
-    update(t) {
-      for (let i = 0; i < n; i++) pos.setY(i, waveH(bx[i], bz[i], t));
-      pos.needsUpdate = true;
-    }
-  };
-}
-function addLightsSky(scene, rimMin, rimMax, fogFar) {
-  scene.add(new THREE.HemisphereLight(0xcfe8ff, 0x2a4a6a, 0.8));
-  const sun = new THREE.DirectionalLight(0xfff0d0, 0.95); sun.position.set(-60, 90, 40); scene.add(sun);
-  scene.background = new THREE.Color(0x8fc7e8);
-  scene.fog = new THREE.Fog(0x8fc7e8, 90, fogFar);
-  const cm = new THREE.MeshLambertMaterial({ color: 0xffffff });
-  for (let i = 0; i < 14; i++) {
-    const g = new THREE.Group();
-    for (let k = 0; k < 4; k++) {
-      const s = new THREE.Mesh(new THREE.IcosahedronGeometry(rand(6, 11), 0), cm);
-      s.position.set(rand(-10, 10), rand(-2, 2), rand(-5, 5)); s.scale.y = 0.55; g.add(s);
-    }
-    const a = rand(0, 6.28), r = rand(120, 330) * (rimMax / 225);
-    g.position.set(Math.cos(a) * r, rand(55, 95), Math.sin(a) * r);
-    scene.add(g);
-  }
-  // 海域の縁の島々
-  const rock = mat(0x6d6a60), sand = mat(0xe6d29a), leaf = mat(0x2f8a3a), trunk = mat(0x6b4423);
-  for (let i = 0; i < 9; i++) {
-    const a = (i / 9) * Math.PI * 2 + rand(-0.15, 0.15), r = rand(rimMin, rimMax);
-    const g = new THREE.Group();
-    const base = new THREE.Mesh(new THREE.CylinderGeometry(rand(14, 22), rand(20, 28), 4, 9), sand); base.position.y = -0.5; g.add(base);
-    const cone = new THREE.Mesh(new THREE.ConeGeometry(rand(7, 12), rand(14, 26), 7), rock); cone.position.set(rand(-4, 4), 8, rand(-4, 4)); g.add(cone);
-    for (let k = 0; k < 3; k++) {
-      const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.45, 6, 5), trunk); tr.position.set(rand(-9, 9), 3, rand(-9, 9));
-      const lf = new THREE.Mesh(new THREE.IcosahedronGeometry(2.6, 0), leaf); lf.position.y = 3.6; tr.add(lf); g.add(tr);
-    }
-    g.position.set(Math.cos(a) * r, 0, Math.sin(a) * r);
-    scene.add(g);
-  }
-}
-const gameSea = makeSea(gameScene); addLightsSky(gameScene, 345, 420, 640);
-const lobbySea = makeSea(lobbyScene); addLightsSky(lobbyScene, 185, 225, 430);
-
-// ---- 広大なマップの島々（宝の舞台）----
-(function addGameIslands(scene) {
-  const sand = mat(0xe6d29a), grass = mat(0x4a9a48), rock = mat(0x6d6a60), leaf = mat(0x2f8a3a), trunk = mat(0x6b4423);
-  ISLANDS.forEach((isl, idx) => {
-    const g = new THREE.Group();
-    const base = new THREE.Mesh(new THREE.CylinderGeometry(isl.r * 0.88, isl.r * 1.05, 4.2, 14), sand); base.position.y = -0.1; g.add(base);
-    const top = new THREE.Mesh(new THREE.CylinderGeometry(isl.r * 0.6, isl.r * 0.8, 1, 12), grass); top.position.y = 1.5; g.add(top);
-    const cone = new THREE.Mesh(new THREE.ConeGeometry(isl.r * 0.3, 7 + (idx % 3) * 3, 7), rock); cone.position.set(-isl.r * 0.25, 5.5, isl.r * 0.15); g.add(cone);
-    for (let k = 0; k < 5; k++) {
-      const a = k * 1.3 + idx + 1.2, rr = isl.r * (0.35 + 0.12 * (k % 3));
-      const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.45, 6, 5), trunk); tr.position.set(Math.cos(a) * rr, 4.5, Math.sin(a) * rr);
-      const lf = new THREE.Mesh(new THREE.IcosahedronGeometry(2.6, 0), leaf); lf.position.y = 3.6; tr.add(lf); g.add(tr);
-    }
-    g.position.set(isl.x, 0, isl.z); scene.add(g);
-  });
-})(gameScene);
-
-// ---- 宝（チェスト・光の柱・制圧エリア）----
-const treasureView = (function () {
-  const g = new THREE.Group(); g.visible = false;
-  const chest = new THREE.Group();
-  const bodyM = mat(0x7a4a22), goldM = mat(0xf2b632, 60);
-  const box = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.1, 1.2), bodyM); box.position.y = 0.55; chest.add(box);
-  const lid = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 1.8, 10), bodyM); lid.rotation.z = Math.PI / 2; lid.position.y = 1.1; chest.add(lid);
-  [-0.6, 0.6].forEach((x) => { const b = new THREE.Mesh(new THREE.BoxGeometry(0.16, 1.2, 1.3), goldM); b.position.set(x, 0.6, 0); chest.add(b); });
-  const lock = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.35, 0.1), goldM); lock.position.set(0, 0.95, 0.62); chest.add(lock);
-  const glow = new THREE.PointLight(0xffd070, 1.4, 30); glow.position.y = 2.5; chest.add(glow);
-  g.add(chest);
-  const beamM = new THREE.MeshBasicMaterial({ color: 0xffe08a, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
-  const beam = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 2.2, 150, 14, 1, true), beamM); beam.position.y = 75; g.add(beam);
-  const ringM = new THREE.MeshBasicMaterial({ color: 0xffd24a, transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false, fog: false });
-  const ring = new THREE.Mesh(new THREE.RingGeometry(0.965, 1, 80), ringM); ring.rotation.x = -Math.PI / 2; g.add(ring);
-  const discM = new THREE.MeshBasicMaterial({ color: 0xffd24a, transparent: true, opacity: 0.1, side: THREE.DoubleSide, depthWrite: false, fog: false });
-  const disc = new THREE.Mesh(new THREE.CircleGeometry(1, 64), discM); disc.rotation.x = -Math.PI / 2; g.add(disc);
-  gameScene.add(g);
-  return { g, chest, beam, beamM, ring, ringM, disc, discM, i: -1 };
-})();
-
-// ---- クラーケン ----
-const krakenView = (function () {
-  const g = new THREE.Group(); g.visible = false; g.rotation.order = 'YXZ';
-  const skin = mat(0x6a2c8a, 12), skin2 = mat(0x8a44b0, 12);
-  const white = new THREE.MeshBasicMaterial({ color: 0xfff4c0 }), black = new THREE.MeshBasicMaterial({ color: 0x100010 });
-  const head = new THREE.Mesh(new THREE.SphereGeometry(5, 12, 10), skin); head.scale.set(1, 1.1, 1.15); head.position.y = 2.5; g.add(head);
-  const crest = new THREE.Mesh(new THREE.ConeGeometry(2.8, 6, 8), skin2); crest.position.set(0, 8, -1.5); crest.rotation.x = -0.4; g.add(crest);
-  [-1.9, 1.9].forEach((x) => {
-    const e = new THREE.Mesh(new THREE.SphereGeometry(0.95, 8, 6), white); e.position.set(x, 4, 4.4); g.add(e);
-    const p = new THREE.Mesh(new THREE.SphereGeometry(0.45, 6, 6), black); p.position.set(x, 4, 5.2); g.add(p);
-  });
-  const tents = [];
-  for (let i = 0; i < 8; i++) {
-    const root = new THREE.Group(); root.rotation.order = 'YXZ';
-    const a = (i / 8) * Math.PI * 2;
-    root.position.set(Math.sin(a) * 3.6, 0.5, Math.cos(a) * 3.6); root.rotation.y = a;
-    let parent = root; const segs = [];
-    for (let k = 0; k < 6; k++) {
-      const len = 3.4, r0 = 0.95 - k * 0.12, r1 = Math.max(0.12, r0 - 0.12);
-      const geo = new THREE.CylinderGeometry(r1, r0, len, 7); geo.translate(0, len / 2, 0);
-      const seg = new THREE.Group(); seg.add(new THREE.Mesh(geo, k % 2 ? skin : skin2));
-      seg.position.y = k === 0 ? 0 : len; parent.add(seg); segs.push(seg); parent = seg;
-    }
-    g.add(root); tents.push({ root, segs });
-  }
-  gameScene.add(g);
-  return { g, tents, x: 0, z: 0, h: 0, atk: 0, rise: 0, init: false };
-})();
-
-// =====================================================
-//  船モデル
-// =====================================================
-const X_AXIS = new THREE.Vector3(1, 0, 0);
-function sailGeo(w, h, bulge) {
-  const g = new THREE.PlaneGeometry(w, h, 8, 6);
-  const p = g.attributes.position;
-  for (let i = 0; i < p.count; i++) {
-    const x = p.getX(i), y = p.getY(i);
-    p.setZ(i, bulge * (1 - Math.pow(x / (w / 2), 2)) * (0.6 + 0.4 * (y / h + 0.5)));
-  }
-  g.computeVertexNormals();
-  return g;
-}
-function buildShip(team) {
-  const root = new THREE.Group();
-  root.rotation.order = 'YXZ';
-  const wood = mat(0x6b4423), dark = mat(0x3e2713), metal = mat(0x2b2b30, 30), gold = mat(0xd9a625, 40);
-  const deckM = new THREE.MeshPhongMaterial({ map: plankTex(), shininess: 4 });
-  const trimM = mat(TEAM_COL[team]);
-  const hullWood = mat(0x6b4423), wRing = mat(0x6b4423), wHub = mat(0xd9a625, 40);
-
-  const shape = new THREE.Shape();
-  shape.moveTo(HULL[0][1], HULL[0][0]);
-  for (let i = 1; i < HULL.length; i++) shape.lineTo(HULL[i][1], HULL[i][0]);
-  for (let i = HULL.length - 1; i >= 0; i--) shape.lineTo(-HULL[i][1], HULL[i][0]);
-  shape.lineTo(HULL[0][1], HULL[0][0]);
-  const hg = new THREE.ExtrudeGeometry(shape, { depth: 3.4, bevelEnabled: false });
-  hg.rotateX(Math.PI / 2);
-  const hull = new THREE.Mesh(hg, [deckM, hullWood]); hull.position.y = DECK; root.add(hull);
-  const sg = new THREE.ExtrudeGeometry(shape, { depth: 0.32, bevelEnabled: false });
-  sg.rotateX(Math.PI / 2);
-  const stripe = new THREE.Mesh(sg, trimM); stripe.position.y = DECK - 0.35; stripe.scale.set(1.012, 1, 1.004); root.add(stripe);
-
-  function rail(x1, z1, x2, z2) {
-    const L = Math.hypot(x2 - x1, z2 - z1);
-    const m = new THREE.Mesh(new THREE.BoxGeometry(L + 0.05, 0.9, 0.18), dark);
-    m.position.set((x1 + x2) / 2, DECK + 0.45, (z1 + z2) / 2);
-    m.rotation.y = -Math.atan2(z2 - z1, x2 - x1);
-    root.add(m);
-  }
-  for (let i = 0; i < HULL.length - 1; i++) {
-    rail(HULL[i][1], HULL[i][0], HULL[i + 1][1], HULL[i + 1][0]);
-    rail(-HULL[i][1], HULL[i][0], -HULL[i + 1][1], HULL[i + 1][0]);
-  }
-  rail(-3.6, 12.8, 3.6, 12.8);
-  const bow = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.2, 5, 6), dark);
-  bow.rotation.x = Math.PI / 2 + 0.35; bow.position.set(0, DECK + 0.9, -16.5); root.add(bow);
-  const fig = new THREE.Mesh(new THREE.IcosahedronGeometry(0.45, 0), gold); fig.position.set(0, DECK + 0.4, -14.6); root.add(fig);
-  [-3.4, 3.4].forEach((x) => {
-    const post = new THREE.Mesh(new THREE.BoxGeometry(0.25, 1.8, 0.25), dark); post.position.set(x, DECK + 0.9, 12.6); root.add(post);
-    const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffd27a })); lamp.position.set(x, DECK + 1.95, 12.6); root.add(lamp);
-  });
-
-  // マスト & 帆
-  const sails = [];
-  const sMat = new THREE.MeshPhongMaterial({ map: sailTex(team), side: THREE.DoubleSide, flatShading: true, shininess: 2 });
-  let flag = null;
-  MASTS.forEach((m, i) => {
-    const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.34, m.h, 7), dark);
-    mast.position.set(m.x, DECK + m.h / 2, m.z); root.add(mast);
-    const yard = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 8.4 * m.s, 6), dark);
-    yard.rotation.z = Math.PI / 2; yard.position.set(m.x, DECK + m.h * 0.88, m.z); root.add(yard);
-    const sail = new THREE.Mesh(sailGeo(7.6 * m.s, m.h * 0.58, 1.0 * m.s), sMat);
-    sail.position.set(m.x, DECK + m.h * 0.88 - m.h * 0.29, m.z + 0.2); root.add(sail); sails.push(sail);
-    if (i === 0) {
-      flag = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 1.3), new THREE.MeshBasicMaterial({ color: TEAM_COL[team], side: THREE.DoubleSide }));
-      flag.geometry.translate(1.3, 0, 0); flag.position.set(0, DECK + m.h + 0.7, m.z); root.add(flag);
-    }
-  });
-
-  // 舵（ホイール）
-  const wheelG = new THREE.Group(); wheelG.position.set(HELM_POS.x, DECK + 1.1, HELM_POS.z); root.add(wheelG);
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.07, 6, 14), wRing);
-  const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.2, 8), wHub); hub.rotation.x = Math.PI / 2;
-  const wheel = new THREE.Group(); wheel.add(ring); wheel.add(hub);
-  for (let k = 0; k < 4; k++) { const sp = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.3, 0.06), wRing); sp.rotation.z = k * Math.PI / 4; wheel.add(sp); }
-  wheelG.add(wheel);
-  const ped = new THREE.Mesh(new THREE.BoxGeometry(0.34, 1.1, 0.34), dark); ped.position.set(HELM_POS.x, DECK + 0.55, HELM_POS.z); root.add(ped);
-
-  // 大砲
-  const cannons = [];
-  CANNONS.forEach((c) => {
-    const g = new THREE.Group(); g.position.set(c.x, DECK + 0.5, c.z);
-    const car = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.4, 0.8), dark); car.position.y = -0.1; g.add(car);
-    [-0.42, 0.42].forEach((dz) => {
-      const w = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.14, 8), wood); w.rotation.x = Math.PI / 2; w.position.set(0, -0.2, dz); g.add(w);
-    });
-    const pivot = new THREE.Group(); pivot.position.y = 0.25;
-    const bg = new THREE.CylinderGeometry(0.2, 0.3, 1.3, 10); bg.rotateZ(-Math.PI / 2); bg.translate(0.65, 0, 0);
-    const barrel = new THREE.Mesh(bg, metal); pivot.add(barrel);
-    const bandG = new THREE.CylinderGeometry(0.31, 0.31, 0.1, 10); bandG.rotateZ(-Math.PI / 2); bandG.translate(0.3, 0, 0);
-    pivot.add(new THREE.Mesh(bandG, gold));
-    g.add(pivot); root.add(g);
-    cannons.push({ group: g, pivot, barrel });
-  });
-
-  // 木箱
-  CRATES.forEach((c) => {
-    const b = new THREE.Mesh(new THREE.BoxGeometry(1, 0.8, 1), mat(0xb98a4e)); b.position.set(c.x, DECK + 0.4, c.z); root.add(b);
-    [-0.25, 0, 0.25].forEach((dz) => {
-      const pl = new THREE.Mesh(new THREE.BoxGeometry(1.25, 0.06, 0.18), mat(0xd9b777)); pl.position.set(c.x, DECK + 0.86 + Math.abs(dz) * 0.2, c.z + dz); pl.rotation.y = rand(-0.2, 0.2); root.add(pl);
-    });
-  });
-  // 樽
-  [[-2.6, 7.5], [2.7, 7.2]].forEach((p) => {
-    const b = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.8, 8), mat(0x7a4a22)); b.position.set(p[0], DECK + 0.4, p[1]); root.add(b);
-  });
-
-  const holeGroup = new THREE.Group(); root.add(holeGroup);
-  return { root, wheel, cannons, sails, flag, holeGroup, holes: new Map(), mats: { hull: hullWood, sail: sMat, wRing, wHub } };
-}
-function applyShipSkin(obj, team, id) {
-  const sk = SSKINS[id] || SSKINS.default;
-  obj.mats.hull.color.set(sk.hull); obj.mats.hull.emissive.set(sk.em || 0x000000);
-  obj.mats.sail.color.set(sk.sail); obj.mats.sail.emissive.set(sk.em ? (sk.em & 0x7f7f7f) >> 1 : 0x000000);
-}
-function applyHelmSkin(obj, id) {
-  const h = HELMS[id] || HELMS.oak;
-  obj.mats.wRing.color.set(h.ring); obj.mats.wRing.emissive.set(h.em || 0x000000); obj.mats.wHub.color.set(h.hub);
-}
-function holeMesh() {
-  const g = new THREE.Group();
-  const d = new THREE.Mesh(new THREE.CircleGeometry(0.75, 10), new THREE.MeshBasicMaterial({ color: 0x120a05 })); d.rotation.x = -Math.PI / 2; g.add(d);
-  const r = new THREE.Mesh(new THREE.RingGeometry(0.72, 0.98, 10), new THREE.MeshBasicMaterial({ color: 0xff8a30 })); r.rotation.x = -Math.PI / 2; r.position.y = 0.01; g.add(r);
-  return g;
-}
-
-// =====================================================
-//  海賊モデル
-// =====================================================
-function buildPirate(skinId, team, bodyId, wskinId) {
-  const g = new THREE.Group();
-  const sk = SKINS[skinId] || SKINS.classic, bd = BODIES[bodyId] || BODIES.normal, ws = WSKINS[wskinId] || WSKINS.default;
-  const coat = mat(sk.color), pants = mat(0x2a2320), tone = mat(bd.color), teamM = mat(TEAM_COL[team] || 0xffffff), hatM = mat(0x1a1a1f);
-  function limb(w, h, d, m, x, y) {
-    const p = new THREE.Group(); p.position.set(x, y, 0);
-    const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); b.position.y = -h / 2; p.add(b); g.add(p); return p;
-  }
-  const legL = limb(0.28, 0.8, 0.3, pants, -0.17, 0.8), legR = limb(0.28, 0.8, 0.3, pants, 0.17, 0.8);
-  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.8, 0.4), coat); torso.position.y = 1.2; g.add(torso);
-  const sash = new THREE.Mesh(new THREE.BoxGeometry(0.74, 0.14, 0.44), teamM); sash.position.y = 0.88; g.add(sash);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 8), tone); head.position.y = 1.72; g.add(head);
-  const hat = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.36, 0.22, 3), hatM); hat.position.y = 1.96; hat.rotation.y = Math.PI; g.add(hat);
-  const band = new THREE.Mesh(new THREE.CylinderGeometry(0.205, 0.37, 0.05, 3), teamM); band.position.y = 1.88; band.rotation.y = Math.PI; g.add(band);
-  const patch = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.08, 0.04), hatM); patch.position.set(0.09, 1.74, -0.21); g.add(patch);
-  const armL = limb(0.2, 0.65, 0.22, coat, -0.46, 1.55), armR = limb(0.2, 0.65, 0.22, coat, 0.46, 1.55);
-  if (bd.belly) { const belly = new THREE.Mesh(new THREE.SphereGeometry(0.42, 10, 8), coat); belly.scale.set(1.05, 0.95, 0.95); belly.position.set(0, 1.02, -0.2); g.add(belly); }
-  if (bd.skel) {
-    [-0.08, 0.08].forEach((x) => { const e = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.09, 0.04), hatM); e.position.set(x, 1.74, -0.2); g.add(e); });
-    const jaw = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.05, 0.04), hatM); jaw.position.set(0, 1.6, -0.2); g.add(jaw);
-  }
-  if (bd.arm) { armL.scale.set(bd.arm, 1, bd.arm); armR.scale.set(bd.arm, 1, bd.arm); }
-  // 右手の武器（武器スキン反映）
-  const gm = mat(ws.metal, 30), gw = mat(ws.wood);
-  if (ws.em) gm.emissive.set(ws.em);
-  const barrel = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.36, 0.07), gm); barrel.position.set(0, -0.82, 0); armR.add(barrel);
-  const grip = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.12, 0.08), gw); grip.position.set(0, -0.62, 0.05); armR.add(grip);
-  g.scale.set(bd.sx, bd.sy, bd.sx);
-  return { group: g, legL, legR, armL, armR };
-}
-function makeTag(text, team) {
-  const t = canvasTex(256, 64, (g, w, h) => {
-    g.font = 'bold 30px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.lineWidth = 6; g.strokeStyle = 'rgba(0,0,0,.85)'; g.strokeText(text, w / 2, h / 2);
-    g.fillStyle = team === 'A' ? '#ff8d92' : '#8dbbff'; g.fillText(text, w / 2, h / 2);
-  });
-  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true }));
-  s.scale.set(2.8, 0.7, 1); s.position.y = 2.5;
-  return s;
-}
-
-// =====================================================
-//  FX（スプライト / 破片 / 光）
-// =====================================================
-const fxList = [], fxPool = [], debris = [], tracers = [];
-const boomLight = new THREE.PointLight(0xffaa55, 0, 90); gameScene.add(boomLight);
-const debrisGeo = new THREE.BoxGeometry(1, 1, 1);
-const debrisMats = [mat(0x6b4423), mat(0x3e2713), mat(0xa8794a), mat(0x4a2f1a)];
-let shake = 0, timeScale = 1;
-
-function spawnFx(o) {
-  let s = fxPool.pop();
-  if (!s) s = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthWrite: false }));
-  const m = s.material;
-  m.map = o.tex; m.blending = o.add ? THREE.AdditiveBlending : THREE.NormalBlending;
-  m.color.set(o.color == null ? 0xffffff : o.color); m.opacity = o.op == null ? 1 : o.op;
-  s.position.set(o.x, o.y, o.z); s.scale.set(o.size, o.size, 1);
-  gameScene.add(s);
-  fxList.push({ spr: s, age: 0, life: o.life || 1, size0: o.size, grow: o.grow || 0, vx: o.vx || 0, vy: o.vy || 0, vz: o.vz || 0, drag: o.drag || 0, g: o.g || 0, op0: m.opacity });
-}
-function updateFxList(dt) {
-  for (let i = fxList.length - 1; i >= 0; i--) {
-    const f = fxList[i];
-    f.age += dt;
-    if (f.age >= f.life) { gameScene.remove(f.spr); fxPool.push(f.spr); fxList.splice(i, 1); continue; }
-    f.vy -= f.g * dt;
-    const dr = Math.max(0, 1 - f.drag * dt);
-    f.vx *= dr; f.vy *= dr; f.vz *= dr;
-    f.spr.position.x += f.vx * dt; f.spr.position.y += f.vy * dt; f.spr.position.z += f.vz * dt;
-    const k = f.age / f.life, sz = f.size0 + f.grow * f.age;
-    f.spr.scale.set(sz, sz, 1);
-    f.spr.material.opacity = f.op0 * (1 - k) * (1 - k * 0.3);
-  }
-  boomLight.intensity = Math.max(0, boomLight.intensity - dt * 22);
-}
-function addShake(amount, x, y, z) {
-  const d = Math.hypot(camera.position.x - x, camera.position.y - y, camera.position.z - z);
-  shake = Math.max(shake, amount / (1 + d * 0.04));
-}
-function vd(x, z) { return clamp(1 - Math.hypot(camera.position.x - x, camera.position.z - z) / 190, 0.07, 1); }
-function explosionAt(x, y, z, s) {
-  for (let i = 0; i < 5; i++) spawnFx({ tex: TEX.fire, x: x + rand(-0.5, 0.5) * s, y: y + rand(-0.3, 0.5) * s, z: z + rand(-0.5, 0.5) * s, size: rand(2.5, 4) * s, grow: rand(3, 6) * s, life: rand(0.35, 0.65), vx: rand(-3, 3) * s, vy: rand(1, 5) * s, vz: rand(-3, 3) * s, add: true });
-  for (let i = 0; i < 6; i++) spawnFx({ tex: TEX.smoke, x: x + rand(-1, 1) * s, y: y + rand(0, 1) * s, z: z + rand(-1, 1) * s, size: 2 * s, grow: 3.5 * s, life: rand(1.3, 2.4), vx: rand(-2, 2), vy: rand(2, 5), vz: rand(-2, 2), drag: 0.5, op: 0.7 });
-  for (let i = 0; i < 4; i++) spawnFx({ tex: TEX.spark, x, y, z, size: 0.6 * s, grow: 0, life: rand(0.4, 0.9), vx: rand(-9, 9) * s, vy: rand(2, 10) * s, vz: rand(-9, 9) * s, g: 14, add: true });
-  boomLight.position.set(x, y + 1, z); boomLight.intensity = Math.max(boomLight.intensity, 7 * Math.min(s, 3));
-  addShake(0.55 * s, x, y, z);
-}
-function splashFx(x, z, silent) {
-  for (let i = 0; i < 9; i++) spawnFx({ tex: TEX.splash, x: x + rand(-0.4, 0.4), y: 0.3, z: z + rand(-0.4, 0.4), size: rand(1.4, 2.6), grow: 1.2, life: rand(0.7, 1.1), vx: rand(-1.5, 1.5), vy: rand(5, 10), vz: rand(-1.5, 1.5), g: 14, op: 0.9 });
-  const r = new THREE.Mesh(new THREE.RingGeometry(0.5, 0.8, 18), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false }));
-  r.rotation.x = -Math.PI / 2; r.position.set(x, 0.35, z); gameScene.add(r);
-  debris.push({ ring: r, age: 0, life: 1.1, big: 1 });
-  if (!silent) SFX.splash(vd(x, z));
-}
-function spawnDebris(x, y, z, size, vx, vy, vz, life, burn) {
-  const m = new THREE.Mesh(debrisGeo, debrisMats[(Math.random() * debrisMats.length) | 0]);
-  m.scale.set(size * rand(0.5, 1.6), size * rand(0.12, 0.3), size * rand(0.4, 1.2));
-  m.position.set(x, y, z); m.rotation.set(rand(0, 6), rand(0, 6), rand(0, 6));
-  gameScene.add(m);
-  debris.push({ mesh: m, vx, vy, vz, sx: rand(-5, 5), sy: rand(-5, 5), sz: rand(-5, 5), age: 0, life, burn: !!burn, float: false, floatT: 0 });
-}
-function updateDebris(dt, t) {
-  for (let i = debris.length - 1; i >= 0; i--) {
-    const d = debris[i];
-    d.age += dt;
-    if (d.ring) {
-      const k = d.age / d.life; d.ring.scale.setScalar(1 + k * 7 * d.big); d.ring.material.opacity = 0.8 * (1 - k);
-      if (k >= 1) { gameScene.remove(d.ring); debris.splice(i, 1); }
-      continue;
-    }
-    if (d.age > d.life) { gameScene.remove(d.mesh); debris.splice(i, 1); continue; }
-    const m = d.mesh;
-    if (!d.float) {
-      d.vy -= GRAV * dt;
-      m.position.x += d.vx * dt; m.position.y += d.vy * dt; m.position.z += d.vz * dt;
-      m.rotation.x += d.sx * dt; m.rotation.y += d.sy * dt; m.rotation.z += d.sz * dt;
-      if (m.position.y < 0.1 && d.vy < 0) { d.float = true; if (Math.random() < 0.4) splashFx(m.position.x, m.position.z, true); }
-    } else {
-      d.floatT += dt;
-      const wy = waveH(m.position.x, m.position.z, t) + 0.1 - Math.max(0, d.floatT - 5) * 0.25;
-      m.position.y = lerp(m.position.y, wy, 0.2);
-      m.position.x += d.vx * dt * 0.1; m.position.z += d.vz * dt * 0.1;
-      d.vx *= 0.97; d.vz *= 0.97;
-      m.rotation.x *= 0.96; m.rotation.z *= 0.96;
-      if (d.burn && d.floatT < 9 && Math.random() < dt * 6) {
-        spawnFx({ tex: TEX.fire, x: m.position.x, y: m.position.y + 0.3, z: m.position.z, size: rand(1.2, 2.2), grow: 0.8, life: 0.7, vy: 2, add: true });
-        if (Math.random() < 0.5) spawnFx({ tex: TEX.smoke, x: m.position.x, y: m.position.y + 0.6, z: m.position.z, size: 1.6, grow: 2.5, life: 2, vy: 3, drag: 0.4, op: 0.6 });
-      }
-    }
-  }
-}
-function tracerFx(o, d, color, len) {
-  const geo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(o.x, o.y - 0.15, o.z), new THREE.Vector3(o.x + d.x * len, o.y - 0.15 + d.y * len, o.z + d.z * len)]);
-  const l = new THREE.Line(geo, new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.9 }));
-  gameScene.add(l); tracers.push({ l, age: 0 });
-}
-function updateTracers(dt) {
-  for (let i = tracers.length - 1; i >= 0; i--) {
-    const t = tracers[i]; t.age += dt;
-    t.l.material.opacity = 0.9 * (1 - t.age / 0.12);
-    if (t.age > 0.12) { gameScene.remove(t.l); t.l.geometry.dispose(); tracers.splice(i, 1); }
-  }
-}
-
-// =====================================================
-//  ゲーム状態
-// =====================================================
-const me = { alive: false, hp: 200, mhp: 200, wood: 0, team: 'A', credits: 0, mount: null, respawn: 0, kills: 0, deaths: 0 };
-const P = { ship: null, x: 0, y: DECK, z: 0, vx: 0, vy: 0, vz: 0, yaw: 0, pitch: 0, onGround: true, wheel: 0, throttle: 0 };
-const shipViews = {}, remotes = {}, pdata = {}, ballMeshes = {};
-let netPhase = 'idle';
-let netTr = null, netKr = null, resultShown = false;
-let lastSnapAt = 0;
-const cin = { active: false, team: null, t0: 0, blasted: false, focus: new THREE.Vector3(), ang: 0, nextBoom: 0 };
-const keys = {};
-let mouseDown = false;
-let curWeapon = 'pistol', reloading = false, reloadEnd = 0, lastShotT = 0, kick = 0, swing = 0;
-const WEAP = {
-  pistol: { name: 'フリントロック', mag: 6, reload: 1800, rate: 450 },
-  blunder: { name: 'ブランダーバス', mag: 2, reload: 2600, rate: 1100 },
-  cutlass: { name: 'カットラス', mag: 0, reload: 0, rate: 600, melee: true }
-};
-const ammo = { pistol: 6, blunder: 2 };
-let holdRepair = null, hammerT = 0;
-let lastSend = 0, lastHelmSend = 0, lastHelmVal = '';
-let walkT = 0, stepT = 0, splashedFlag = false;
-
-function initShipViews() {
-  ['A', 'B'].forEach((k) => {
-    const obj = buildShip(k); gameScene.add(obj.root);
-    shipViews[k] = { obj, x: 0, z: 0, h: 0, tx: 0, tz: 0, th: 0, hp: 100, holes: [], cn: [], speed: 0, throttle: 0, wheel: 0, helm: 0, sunk: false, init: false, ph: k === 'A' ? 0 : 2 };
-  });
-}
-initShipViews();
-
-// ---- 一人称ビューモデル ----
-const gunView = new THREE.Group(); camera.add(gunView);
-const vmWeapons = {}, vmMats = {};
-(function () {
-  const dark = mat(0x2a2320), metal = mat(0x3b3b44, 30), wood = mat(0x7a4a22), brass = mat(0xd9a625, 40), steel = mat(0xcfd6dd, 60), coat = mat(0x9c3b2e);
-  Object.assign(vmMats, { metal, wood, brass, steel });
-  const sleeve = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.5), coat); sleeve.position.set(0, -0.04, 0.12);
-  const pistol = new THREE.Group();
-  pistol.add(new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.06, 0.36), metal)).position.set(0, 0.03, -0.1);
-  const grip = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.14, 0.07), wood); grip.position.set(0, -0.07, 0.06); grip.rotation.x = 0.3; pistol.add(grip);
-  pistol.add(sleeve.clone());
-  const blunder = new THREE.Group();
-  const bb = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.035, 0.5, 8), metal); bb.rotation.x = Math.PI / 2; bb.position.set(0, 0.02, -0.15); blunder.add(bb);
-  const stock = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.1, 0.3), wood); stock.position.set(0, -0.03, 0.22); blunder.add(stock);
-  blunder.add(sleeve.clone());
-  const cutlass = new THREE.Group();
-  const blade = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.07, 0.72), steel); blade.position.set(0, 0.04, -0.4); cutlass.add(blade);
-  const hilt = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.025, 0.04), brass); hilt.position.set(0, 0.04, -0.03); cutlass.add(hilt);
-  const hnd = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, 0.16), wood); hnd.position.set(0, 0.04, 0.07); cutlass.add(hnd);
-  cutlass.add(sleeve.clone());
-  vmWeapons.pistol = pistol; vmWeapons.blunder = blunder; vmWeapons.cutlass = cutlass;
-  Object.values(vmWeapons).forEach((w) => { w.visible = false; gunView.add(w); });
-})();
-const flashSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: TEX.fire, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0 }));
-flashSprite.scale.set(0.5, 0.5, 1); flashSprite.position.set(0, 0.04, -0.55); gunView.add(flashSprite);
-const muzzleLight = new THREE.PointLight(0xffc070, 0, 14); muzzleLight.position.set(0, 0, -0.6); gunView.add(muzzleLight);
-
-// ---- 砲弾の弾道予測ライン ----
-const arcGeo = new THREE.BufferGeometry();
-arcGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(60 * 3), 3));
-const arcLine = new THREE.Line(arcGeo, new THREE.LineBasicMaterial({ color: 0xffe08a, transparent: true, opacity: 0.75, depthTest: false }));
-arcLine.frustumCulled = false; arcLine.visible = false; gameScene.add(arcLine);
-
-// =====================================================
-//  ロビー 3D
-// =====================================================
-const lobbyShips = [];
-(function () {
-  const a = buildShip('A'), b = buildShip('B');
-  a.root.position.set(-4, 0, 0); a.root.rotation.y = 0.35;
-  b.root.position.set(-62, 0, -70); b.root.rotation.y = -0.7;
-  lobbyScene.add(a.root); lobbyScene.add(b.root); lobbyShips.push(a, b);
-  // 桟橋：自分とフレンドのキャラクターが並んで立つ場所
-  const pt = plankTex().clone(); pt.needsUpdate = true; pt.repeat.set(3, 1);
-  const pier = new THREE.Group();
-  const deck = new THREE.Mesh(new THREE.BoxGeometry(13, 0.4, 3.4), new THREE.MeshPhongMaterial({ map: pt, flatShading: true, shininess: 4 }));
-  deck.position.y = 0.9; pier.add(deck);
-  const postM = mat(0x3e2713);
-  for (let i = -3; i <= 3; i++) [-1.5, 1.5].forEach((z) => { const p = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.26, 3.2, 6), postM); p.position.set(i * 2.1, 0, z); pier.add(p); });
-  pier.position.set(0, 0, 18); lobbyScene.add(pier);
-})();
-let previewSkin = 'classic', previewBody = 'normal';
-const lobbyCrew = [];
-const CREW_SLOTS = [0, 1.5, -1.5, 3.0, -3.0];
-function rebuildLobbyCrew() {
-  lobbyCrew.forEach((c) => lobbyScene.remove(c.root)); lobbyCrew.length = 0;
-  if (!profile) return;
-  const list = [{ n: profile.name, skin: previewSkin, body: previewBody, ws: profile.wskin, me: true }];
-  friendsData.friends.filter((f) => f.online && !f.inMatch).slice(0, 4)
-    .forEach((f) => list.push({ n: f.name, skin: f.skin || 'classic', body: f.body || 'normal', ws: f.wskin || 'default' }));
-  list.forEach((d, i) => {
-    const root = new THREE.Group();
-    const m = buildPirate(d.skin, d.me ? 'A' : 'B', d.body, d.ws);
-    m.group.rotation.y = Math.PI + clamp(-CREW_SLOTS[i] * 0.05, -0.2, 0.2);   // カメラ(+z)の方を向く
-    root.add(m.group); root.add(makeTag(d.n, d.me ? 'A' : 'B'));
-    root.position.set(CREW_SLOTS[i], 1.1, 18);
-    lobbyCrew.push({ root, m, born: performance.now(), ph: i * 1.7 });
-    lobbyScene.add(root);
-  });
-}
-const _v = new THREE.Vector3(), _v2 = new THREE.Vector3(), _dir = new THREE.Vector3();
-// ロビーのカメラは固定（動かさない）
-lobbyCam.position.set(0, 3.2, 26.5);
-lobbyCam.lookAt(0, 2.2, 18);
-function updateLobby(dt, t) {
-  lobbySea.update(t);
-  lobbyShips.forEach((s, i) => {
-    s.root.position.y = waveH(s.root.position.x, s.root.position.z, t) * 0.7;
-    s.root.rotation.z = Math.sin(t * 0.6 + i) * 0.025; s.root.rotation.x = Math.sin(t * 0.8 + i) * 0.012;
-    s.wheel.rotation.z = Math.sin(t * 0.5) * 0.4;
-    s.sails.forEach((sl, k) => { sl.rotation.y = Math.sin(t * 0.7 + k) * 0.04; });
-    if (s.flag) s.flag.rotation.y = Math.sin(t * 3) * 0.35;
-  });
-  const now = performance.now();
-  lobbyCrew.forEach((c) => {
-    const k = clamp((now - c.born) / 450, 0, 1), e = 1 - Math.pow(1 - k, 3);
-    c.root.scale.setScalar(0.2 + 0.8 * e);
-    c.m.armR.rotation.x = Math.sin(t * 1.2 + c.ph) * 0.1 - 0.12;
-    c.m.armL.rotation.x = Math.sin(t * 1.1 + c.ph + 1) * 0.08;
-  });
-}
-
-// =====================================================
-//  UI（タイトル / ロビー / フレンド / スキン）
-// =====================================================
-function showScreen(name) {
-  appState = name;
-  $('title').classList.toggle('hidden', name !== 'title');
-  $('lobby').classList.toggle('hidden', name !== 'lobby');
-  $('hud').classList.toggle('hidden', name !== 'game');
-  if (name !== 'game') { $('pause').classList.add('hidden'); document.body.classList.remove('cinema'); }
-}
-function applyWeaponSkin(id) {
-  const sk = WSKINS[id] || WSKINS.default;
-  vmMats.metal.color.set(sk.metal); vmMats.wood.color.set(sk.wood); vmMats.brass.color.set(sk.brass); vmMats.steel.color.set(sk.steel);
-  Object.values(vmMats).forEach((m) => m.emissive.set(sk.em || 0x000000));
-}
-function applyCosmetics() {
-  if (!profile) return;
-  applyWeaponSkin(profile.wskin);
-  applyShipSkin(lobbyShips[0], 'A', profile.sskin);
-  applyHelmSkin(lobbyShips[0], profile.helm);
-}
-let shopTab = 'body', shopOpen = false, gachaTab = 'helm', gachaBusy = false;
-const CATS = { helm: HELMS, wskin: WSKINS, sskin: SSKINS };
-const OWNK = { helm: 'helms', wskin: 'wskins', sskin: 'sskins' };
-const hex6 = (c) => '#' + c.toString(16).padStart(6, '0');
-function updateLobbyUi() {
-  if (!profile) return;
-  $('lbName').textContent = profile.name;
-  $('lbCredits').textContent = profile.credits.toLocaleString() + ' G';
-  $('lbMedal').textContent = '🪙 メダル ' + (profile.medals || 0);
-  $('lbRecord').textContent = `${profile.wins}勝 ${profile.losses}敗 / ${profile.kills}キル`;
-  $('myCode').textContent = profile.code;
-  me.credits = profile.credits;
-  applyCosmetics(); renderEquipSummary(); renderShop();
-  if (!gachaBusy) renderGacha();
-  rebuildLobbyCrew();
-}
-function updateOnlineUi() {
-  $('lbOnline').textContent = `オンライン ${online.total}人`;
-  const busy = online.phase !== 'idle';
-  $('lbStatus').textContent = busy
-    ? `海戦進行中：${online.inMatch}人が参加中（赤 ${online.hpA}% / 青 ${online.hpB}%）  ― いつでも途中参加できます`
-    : '海は静まり返っている…出航すると、CPUの海賊が仲間と敵になって戦ってくれます';
-}
-function renderEquipSummary() {
-  const rows = [
-    ['体型', (BODIES[profile.body] || BODIES.normal).name], ['外套', (SKINS[profile.skin] || SKINS.classic).name],
-    ['舵', (HELMS[profile.helm] || HELMS.oak).name], ['武器', (WSKINS[profile.wskin] || WSKINS.default).name],
-    ['船', (SSKINS[profile.sskin] || SSKINS.default).name]
+function resize(){ if(!renderer)return; camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight); }
+function buildAmbientIslands(){
+  // Initial island layout matches the authoritative server world.
+  const fallback=[
+    {id:'outpost',name:'帆影の港（アウトポスト）',x:0,z:0,r:80,type:'outpost'},
+    {id:'skull',name:'髑髏岩島',x:360,z:250,r:44,type:'jungle',dungeonX:374,dungeonZ:238},
+    {id:'palm',name:'ヤシの入江',x:-320,z:260,r:39,type:'palm'},
+    {id:'storm',name:'嵐鳴りの島',x:260,z:-420,r:46,type:'rock',dungeonX:246,dungeonZ:-433},
+    {id:'wreck',name:'難破船の墓場',x:-470,z:-300,r:42,type:'wreck',dungeonX:-484,dungeonZ:-292},
+    {id:'mist',name:'霧の島',x:690,z:70,r:49,type:'mist',dungeonX:706,dungeonZ:59},
+    {id:'crescent',name:'三日月島',x:-770,z:510,r:45,type:'palm'},
+    {id:'ember',name:'火山の小島',x:820,z:-470,r:53,type:'rock',dungeonX:832,dungeonZ:-488},
+    {id:'reef',name:'珊瑚礁島',x:-900,z:-610,r:38,type:'palm'},
+    {id:'needle',name:'針岩の島',x:1050,z:410,r:37,type:'rock'}
   ];
-  $('equipSummary').innerHTML = rows.map((r) => `<div class="eq-row"><span>${r[0]}</span><span>${r[1]}</span></div>`).join('');
+  islands=fallback; fallback.forEach(addIsland);
 }
-function renderShop() {
-  if (!profile) return;
-  $('shopCredits').textContent = `所持金 ${profile.credits.toLocaleString()} G`;
-  document.querySelectorAll('#shopModal .tab').forEach((t) => t.classList.toggle('on', t.dataset.tab === shopTab));
-  const box = $('shopList'); box.innerHTML = '';
-  const isBody = shopTab === 'body';
-  const cat = isBody ? BODIES : SKINS, owned = isBody ? profile.bodies : profile.skins;
-  const eq = isBody ? profile.body : profile.skin, prev = isBody ? previewBody : previewSkin;
-  Object.keys(cat).forEach((id) => {
-    const sk = cat[id], has = owned.includes(id);
-    const el = document.createElement('div'); el.className = 'item' + (prev === id ? ' sel' : '');
-    el.innerHTML = `<div class="chip" style="background:${hex6(sk.color)}"></div><div><b>${sk.name}</b><small>${has ? '所持済み' : sk.cost.toLocaleString() + ' G'}</small></div>`;
-    const tag = document.createElement('span'); tag.className = 'tag';
-    if (eq === id) tag.textContent = '装備中';
-    else {
-      const b = document.createElement('button'); b.className = 'mini' + (has ? ' ok' : ''); b.textContent = has ? '装備' : '購入';
-      b.onclick = (e) => { e.stopPropagation(); socket.emit(isBody ? (has ? 'equipBody' : 'buyBody') : (has ? 'equipSkin' : 'buySkin'), id); };
-      tag.appendChild(b);
-    }
-    el.appendChild(tag);
-    el.onclick = () => { if (isBody) previewBody = id; else previewSkin = id; rebuildLobbyCrew(); renderShop(); };
-    box.appendChild(el);
-  });
-}
-function renderGacha() {
-  if (!profile) return;
-  const med = profile.medals || 0;
-  $('gachaInfo').innerHTML = `ガチャメダル <b style="color:#8fe3ff;font-size:18px">${med}</b> 枚　（1試合勝つごとに1枚／3枚で1回）<br>排出率　<span class="r-N">N 55%</span>　<span class="r-R">R 30%</span>　<span class="r-SR">SR 12%</span>　<span class="r-UR">UR 3%</span>　※ダブりはGに交換されます`;
-  $('gachaRoll').disabled = gachaBusy || med < 3;
-  document.querySelectorAll('#gachaModal .tab').forEach((t) => t.classList.toggle('on', t.dataset.tab === gachaTab));
-  const box = $('invList'); box.innerHTML = '';
-  const cat = CATS[gachaTab], owned = profile[OWNK[gachaTab]], eq = profile[gachaTab];
-  Object.keys(cat).forEach((id) => {
-    const sk = cat[id], has = owned.includes(id);
-    const el = document.createElement('div'); el.className = 'item' + (has ? '' : ' lock') + (eq === id ? ' sel' : '');
-    const col = gachaTab === 'helm' ? sk.ring : gachaTab === 'wskin' ? sk.metal : sk.hull;
-    el.innerHTML = `<div class="chip" style="background:${hex6(col)}"></div><div><b><span class="rar r-${sk.r}">${sk.r}</span>${has ? sk.name : '？？？'}</b><small>${has ? '所持済み' : '未入手'}</small></div>`;
-    const tag = document.createElement('span'); tag.className = 'tag';
-    if (eq === id) tag.textContent = '装備中';
-    else if (has) {
-      const b = document.createElement('button'); b.className = 'mini ok'; b.textContent = '装備';
-      b.onclick = (e) => { e.stopPropagation(); socket.emit('equipItem', { type: gachaTab, id }); }; tag.appendChild(b);
-    }
-    el.appendChild(tag); box.appendChild(el);
-  });
-}
-$('shopBtn').onclick = () => { shopOpen = true; $('shopModal').classList.remove('hidden'); renderShop(); };
-$('shopClose').onclick = () => {
-  shopOpen = false; $('shopModal').classList.add('hidden');
-  if (profile) { previewSkin = profile.skin; previewBody = profile.body || 'normal'; rebuildLobbyCrew(); }
-};
-$('gachaBtn').onclick = () => { $('gachaModal').classList.remove('hidden'); renderGacha(); };
-$('gachaClose').onclick = () => { if (!gachaBusy) $('gachaModal').classList.add('hidden'); };
-document.querySelectorAll('#shopModal .tab').forEach((t) => { t.onclick = () => { shopTab = t.dataset.tab; renderShop(); }; });
-document.querySelectorAll('#gachaModal .tab').forEach((t) => { t.onclick = () => { gachaTab = t.dataset.tab; renderGacha(); }; });
-$('gachaRoll').onclick = () => {
-  if (gachaBusy || !profile || (profile.medals || 0) < 3) return;
-  ac(); gachaBusy = true; $('gachaRoll').disabled = true; $('gachaMsg').innerHTML = '';
-  $('capsule').classList.remove('hidden'); $('capsule').classList.add('shake');
-  SFX.hammer(); socket.emit('gacha');
-};
-socket.on('gachaResult', (d) => {
-  if (d.error) { gachaBusy = false; $('capsule').classList.remove('shake'); $('capsule').classList.add('hidden'); renderGacha(); return; }
-  const sk = (CATS[d.item.t] || {})[d.item.id] || { name: d.item.id, r: d.item.r };
-  setTimeout(() => {
-    $('capsule').classList.remove('shake'); $('capsule').classList.add('hidden');
-    const typeName = { helm: '舵', wskin: '武器スキン', sskin: '船スキン' }[d.item.t];
-    $('gachaMsg').innerHTML = `<div class="reveal"><div class="r-${sk.r}" style="font-weight:900">${sk.r}　${typeName}</div><div class="nm r-${sk.r}">${sk.name}</div><div>${d.dup ? `ダブり！ ${d.refund} G に交換しました` : 'NEW！ 新しく手に入れた！'}</div></div>`;
-    gachaBusy = false; SFX.hammer(); SFX.hit(); renderGacha();
-  }, 1300);
-});
-function renderFriends() {
-  const rb = $('reqBox'); rb.innerHTML = '';
-  if (friendsData.requests.length) {
-    const h = document.createElement('div'); h.className = 'sec'; h.textContent = 'フレンド申請'; rb.appendChild(h);
-    friendsData.requests.forEach((r) => {
-      const row = document.createElement('div'); row.className = 'frow';
-      row.innerHTML = `<span class="nm"></span>`; row.querySelector('.nm').textContent = r.name;
-      const ok = document.createElement('button'); ok.className = 'mini ok'; ok.textContent = '承認'; ok.onclick = () => socket.emit('friendRespond', { code: r.code, accept: true });
-      const ng = document.createElement('button'); ng.className = 'mini ng'; ng.textContent = '拒否'; ng.onclick = () => socket.emit('friendRespond', { code: r.code, accept: false });
-      row.appendChild(ok); row.appendChild(ng); rb.appendChild(row);
-    });
+function addIsland(island){
+  if(islandMeshes.has(island.id)){scene.remove(islandMeshes.get(island.id)); islandMeshes.delete(island.id);}
+  const group=new THREE.Group(); group.position.set(island.x,0,island.z); scene.add(group); islandMeshes.set(island.id,group);
+  const sand=mat(island.type==='rock'?'#777d70':'#cfb783'); const grass=mat(island.type==='rock'?'#4d6250':island.type==='mist'?'#6d9478':island.type==='wreck'?'#6d8268':'#5d9862');
+  const base=new THREE.Mesh(new THREE.CylinderGeometry(island.r*.97,island.r*1.17,8,14),sand); base.position.y=-3.55; base.receiveShadow=true; base.castShadow=true; group.add(base);
+  const top=new THREE.Mesh(new THREE.CylinderGeometry(island.r*.97,island.r*1.01,1.0,14),grass); top.position.y=.0; top.receiveShadow=true; group.add(top);
+  const beach=new THREE.Mesh(new THREE.CylinderGeometry(island.r*.99,island.r*1.015,.32,14),mat('#d9c38f')); beach.position.y=-.37; group.add(beach);
+  // Low-poly rocks near island edges.
+  for(let i=0;i<Math.max(6,Math.floor(island.r/4));i++){
+    const a=i/Math.max(6,Math.floor(island.r/4))*Math.PI*2 + .3; const rr=island.r*rand(.78,1.0);
+    const rock=cylinder(rand(1.2,2.4),rand(2,3.5),rand(2,5),mat(island.type==='rock'?'#59635f':'#a39a77'),5);
+    rock.position.set(Math.cos(a)*rr,rock.geometry.parameters.height/2-.7,Math.sin(a)*rr); rock.rotation.z=rand(-.18,.18); group.add(rock);
   }
-  const fl = $('friendList'); fl.innerHTML = '';
-  if (!friendsData.friends.length) { fl.innerHTML = '<div class="empty">まだフレンドがいません。コードを交換して追加しましょう。</div>'; return; }
-  friendsData.friends.slice().sort((a, b) => (b.online - a.online)).forEach((f) => {
-    const row = document.createElement('div'); row.className = 'frow';
-    row.innerHTML = `<span class="dot ${f.inMatch ? 'bt' : f.online ? 'on' : ''}"></span><span class="nm"></span><small>${f.inMatch ? '戦闘中' : f.online ? 'ロビー' : 'オフライン'}</small>`;
-    row.querySelector('.nm').textContent = f.name;
-    if (f.inMatch) { const b = document.createElement('button'); b.className = 'mini ok'; b.textContent = '合流'; b.onclick = () => joinGame(f.code); row.appendChild(b); }
-    const x = document.createElement('button'); x.className = 'mini ng'; x.textContent = '×'; x.title = 'フレンド解除';
-    x.onclick = () => { if (confirm(`${f.name} をフレンドから外しますか？`)) socket.emit('friendRemove', f.code); };
-    row.appendChild(x); fl.appendChild(row);
-  });
-}
-$('copyCode').onclick = () => {
-  if (!profile) return;
-  try { navigator.clipboard.writeText(profile.code); toast('フレンドコードをコピーしました'); } catch (e) { toast('コード: ' + profile.code); }
-};
-$('friendAddBtn').onclick = () => { const v = $('friendInput').value.trim(); if (v) { socket.emit('friendAdd', v); $('friendInput').value = ''; } };
-$('friendInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('friendAddBtn').click(); });
-$('startBtn').onclick = () => {
-  ac();
-  const n = $('nameInput').value.trim();
-  if (n && profile && n !== profile.name) socket.emit('setName', n);
-  try { localStorage.setItem('pp_name', n); } catch (e) {}
-  showScreen('lobby');
-};
-$('nameInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('startBtn').click(); });
-function joinGame(friendCode) {
-  ac();
-  $('joinBtn').disabled = true;
-  socket.emit('join', { friendCode: friendCode || null });
-  setTimeout(() => { $('joinBtn').disabled = false; }, 4000);
-}
-$('joinBtn').onclick = () => joinGame(null);
-$('resumeBtn').onclick = () => requestLock();
-$('toLobbyBtn').onclick = () => leaveGame();
-
-// =====================================================
-//  ソケットイベント（共通）
-// =====================================================
-socket.on('connect', () => {
-  myId = socket.id;
-  $('loadMsg').textContent = 'セーブデータを読み込み中…';
-  let nm = ''; try { nm = localStorage.getItem('pp_name') || ''; } catch (e) {}
-  socket.emit('auth', { token, name: nm, backup: loadBackup() });
-});
-socket.on('disconnect', () => { toast('サーバーとの接続が切れました'); if (appState === 'game') leaveGame(true); });
-socket.on('profile', (d) => {
-  if (d.token) { token = d.token; try { localStorage.setItem('pp_token', token); } catch (e) {} }
-  profile = d.profile;
-  try { localStorage.setItem('pp_backup', JSON.stringify(profile)); } catch (e) {}
-  if (!shopOpen) { previewSkin = profile.skin; previewBody = profile.body || 'normal'; }
-  if (appState === 'boot') {
-    $('nameInput').value = profile.name === '海賊' ? '' : profile.name;
-    previewSkin = profile.skin; previewBody = profile.body || 'normal';
-    $('loading').classList.add('hidden'); showScreen('title');
-  }
-  updateLobbyUi();
-});
-socket.on('friends', (d) => {
-  const prev = new Set(friendsData.friends.filter((f) => f.online && !f.inMatch).map((f) => f.code));
-  friendsData = d;
-  if (appState === 'lobby') d.friends.forEach((f) => { if (f.online && !f.inMatch && !prev.has(f.code)) toast(`${f.name} がロビーに参加しました`); });
-  renderFriends(); rebuildLobbyCrew();
-});
-socket.on('notice', (t) => toast(t));
-socket.on('online', (d) => { online = d; updateOnlineUi(); });
-
-// =====================================================
-//  試合に入る / 出る
-// =====================================================
-function enterGame(d) {
-  me.team = d.team; me.alive = true; me.mount = null;
-  applyState(d.st);
-  P.ship = d.ship; P.x = d.x; P.y = d.y; P.z = d.z; P.vx = P.vy = P.vz = 0; P.onGround = true;
-  P.yaw = d.h; P.pitch = 0;
-  Object.keys(shipViews).forEach((k) => { shipViews[k].init = false; });
-  curWeapon = 'pistol'; ammo.pistol = 6; ammo.blunder = 2; reloading = false;
-  showScreen('game');
-  $('meShipName').textContent = TEAM_NAME[me.team] + '（自船）';
-  $('enShipName').textContent = TEAM_NAME[me.team === 'A' ? 'B' : 'A'];
-  banner('出航！', '島の宝のエリアを制圧するか、敵船を沈めろ！', '', 4000);
-  requestLock();
-}
-function leaveGame(silent) {
-  if (!silent) socket.emit('leave');
-  if (document.pointerLockElement) document.exitPointerLock();
-  clearRemotes();
-  resetVisuals();
-  cin.active = false; netTr = null; netKr = null;
-  hideResult();
-  me.alive = false; me.mount = null; holdRepair = null;
-  showScreen('lobby');
-  updateOnlineUi();
-}
-socket.on('joined', (d) => { $('joinBtn').disabled = false; enterGame(d); });
-function clearRemotes() {
-  Object.keys(remotes).forEach((id) => { const r = remotes[id]; if (r.m.group.parent) r.m.group.parent.remove(r.m.group); delete remotes[id]; });
-  Object.keys(pdata).forEach((id) => { delete pdata[id]; });
-  Object.keys(ballMeshes).forEach((id) => { gameScene.remove(ballMeshes[id].mesh); delete ballMeshes[id]; });
-}
-function resetVisuals() {
-  ['A', 'B'].forEach((k) => { shipViews[k].obj.root.visible = true; shipViews[k].sunk = false; });
-  for (let i = debris.length - 1; i >= 0; i--) { const d = debris[i]; gameScene.remove(d.mesh || d.ring); }
-  debris.length = 0;
-  for (let i = fxList.length - 1; i >= 0; i--) { gameScene.remove(fxList[i].spr); fxPool.push(fxList[i].spr); }
-  fxList.length = 0;
-  document.body.classList.remove('cinema');
-  timeScale = 1;
-}
-
-// =====================================================
-//  スナップショット受信
-// =====================================================
-socket.on('snap', (s) => {
-  if (appState !== 'game') return;
-  netPhase = s.ph; lastSnapAt = performance.now();
-  netTr = s.tr || null; netKr = s.kr || null;
-  ['A', 'B'].forEach((k) => {
-    const v = shipViews[k], d = s.sh[k];
-    v.tx = d.x; v.tz = d.z; v.th = d.h; v.speed = d.sp; v.throttle = d.th; v.wheel = d.wh;
-    v.hp = d.hp; v.holes = d.hl; v.helm = d.hm; v.cn = d.cn; v.sunk = !!d.sk; v.ss = d.ss; v.hs = d.hs;
-    if (!v.init) { v.x = d.x; v.z = d.z; v.h = d.h; v.init = true; }
-    if (v.sunk && v.obj.root.visible && !cin.active) v.obj.root.visible = false;
-  });
-  const seen = {};
-  s.pl.forEach((d) => { pdata[d.id] = d; seen[d.id] = 1; if (d.id !== myId) ensureRemote(d); });
-  Object.keys(pdata).forEach((id) => {
-    if (!seen[id]) {
-      delete pdata[id];
-      const r = remotes[id]; if (r) { if (r.m.group.parent) r.m.group.parent.remove(r.m.group); delete remotes[id]; }
+  if(island.type==='palm'||island.type==='jungle'||island.type==='outpost'||island.type==='mist'){
+    const count=island.type==='outpost'?8:Math.max(4,Math.floor(island.r/7));
+    for(let i=0;i<count;i++){
+      const a=i*2.399, rr=island.r*rand(.25,.72), x=Math.cos(a)*rr,z=Math.sin(a)*rr;
+      if(island.type==='outpost'&&Math.hypot(x-18,z+8)<18)continue;
+      const trunk=cylinder(.45,.68,5,mat('#715036'),6); trunk.position.set(x,2.3,z); trunk.rotation.z=rand(-.12,.12); group.add(trunk);
+      for(let j=0;j<5;j++){
+        const leaf=box(.6,.2,4.8,mat('#347d51')); leaf.position.set(x,4.7,z); leaf.rotation.y=j*Math.PI*2/5; leaf.rotation.x=-.18; leaf.rotation.z=.45; group.add(leaf);
+      }
     }
-  });
-  const now = performance.now(), live = {};
-  s.bl.forEach((b) => {
-    live[b[0]] = 1;
-    let bm = ballMeshes[b[0]];
-    if (!bm) {
-      bm = { mesh: new THREE.Mesh(new THREE.SphereGeometry(0.32, 8, 6), mat(0x222226, 40)), trail: 0 };
-      gameScene.add(bm.mesh); ballMeshes[b[0]] = bm;
-    }
-    bm.x = b[1]; bm.y = b[2]; bm.z = b[3]; bm.vx = b[4]; bm.vy = b[5]; bm.vz = b[6]; bm.t = now;
-  });
-  Object.keys(ballMeshes).forEach((id) => { if (!live[id]) { gameScene.remove(ballMeshes[id].mesh); delete ballMeshes[id]; } });
-});
-function ensureRemote(d) {
-  let r = remotes[d.id];
-  if (r && (r.skin !== d.sk || r.bd !== d.bd || r.ws !== d.ws)) { if (r.m.group.parent) r.m.group.parent.remove(r.m.group); delete remotes[d.id]; r = null; }
-  if (!r) {
-    const m = buildPirate(d.sk, d.t, d.bd, d.ws);
-    const tag = makeTag(d.n, d.t); m.group.add(tag);
-    r = { m, x: d.x, y: d.y, z: d.z, parentKey: null, skin: d.sk, bd: d.bd, ws: d.ws, phase: rand(0, 6), spd: 0 };
-    remotes[d.id] = r;
   }
-  return r;
-}
-function updateRemotes(dt) {
-  const kk = 1 - Math.exp(-dt * 14);
-  Object.keys(remotes).forEach((id) => {
-    const r = remotes[id], d = pdata[id]; if (!d) return;
-    const key = d.s || 0;
-    if (r.parentKey !== key) {
-      if (r.m.group.parent) r.m.group.parent.remove(r.m.group);
-      (key ? shipViews[key].obj.root : gameScene).add(r.m.group);
-      r.parentKey = key; r.x = d.x; r.y = d.y; r.z = d.z;
-    }
-    const ox = r.x, oz = r.z;
-    r.x = lerp(r.x, d.x, kk); r.y = lerp(r.y, d.y, kk); r.z = lerp(r.z, d.z, kk);
-    r.spd = lerp(r.spd, Math.hypot(r.x - ox, r.z - oz) / Math.max(dt, 0.001), 0.2);
-    const g = r.m.group;
-    g.position.set(r.x, r.y, r.z);
-    g.rotation.y = d.yw - (key ? shipViews[key].h : 0);
-    g.visible = !!d.a;
-    r.phase += dt * clamp(r.spd, 0, 6) * 2.4;
-    const sw = Math.sin(r.phase) * clamp(r.spd / 4, 0, 1) * 0.8;
-    r.m.legL.rotation.x = sw; r.m.legR.rotation.x = -sw;
-    if (d.m) { r.m.armL.rotation.x = -1.2; r.m.armR.rotation.x = -1.2; }
-    else { r.m.armL.rotation.x = -sw * 0.8; r.m.armR.rotation.x = sw * 0.8 - (d.w === 'cutlass' ? 0.5 : 0.9); }
-    if (!key) { r.m.legL.rotation.x = r.m.legR.rotation.x = Math.sin(performance.now() * 0.006 + r.phase) * 0.5; }
-  });
-}
-
-// =====================================================
-//  サーバーイベント（試合中）
-// =====================================================
-function applyState(st) {
-  if (!st) return;
-  const prevMount = me.mount;
-  me.hp = st.hp; me.mhp = st.mhp || 200; me.wood = st.wood; me.alive = st.alive; me.team = st.team || me.team;
-  me.credits = st.credits; me.respawn = st.respawn; me.kills = st.kills; me.deaths = st.deaths;
-  me.mount = st.mount;
-  if (me.mount && (!prevMount || prevMount.type !== me.mount.type || prevMount.idx !== me.mount.idx)) enterMount();
-  if (!me.mount && prevMount) P.vy = 0;
-}
-function enterMount() {
-  const sv = P.ship ? shipViews[P.ship] : null; if (!sv) return;
-  holdRepair = null;
-  if (me.mount.type === 'helm') {
-    P.x = HELM_STAND.x; P.z = HELM_STAND.z; P.y = DECK; P.vy = 0;
-    P.wheel = sv.wheel; P.throttle = sv.throttle; P.yaw = sv.h; P.pitch = -0.05;
-  } else {
-    const c = CANNONS[me.mount.idx];
-    P.x = c.sx; P.z = c.z; P.y = DECK; P.vy = 0;
-    P.yaw = c.side > 0 ? sv.h - Math.PI / 2 : sv.h + Math.PI / 2; P.pitch = 0.1;
+  if(island.type==='rock'||island.type==='wreck'){
+    for(let i=0;i<5;i++){const b=new THREE.Mesh(new THREE.DodecahedronGeometry(rand(4,8),0),mat(island.type==='wreck'?'#7d786b':'#626c68')); b.position.set(rand(-island.r*.5,island.r*.5),2,rand(-island.r*.5,island.r*.5)); b.scale.y=rand(.8,1.8); b.castShadow=true; group.add(b);}
   }
-  toast(me.mount.type === 'helm' ? '舵を握った！ W/S:帆 A/D:舵' : '大砲に着いた！ クリックで発射');
+  if(island.type==='outpost') buildOutpost(group);
+  if(island.dungeonX!=null) buildDungeonEntrance(group,island);
+  const label=makeLabel(island.name); label.position.set(0,18,0); label.scale.set(Math.min(28, island.name.length*1.05+8),3.8,1); group.add(label);
 }
-socket.on('st', applyState);
-socket.on('respawn', (d) => {
-  me.alive = true; me.mount = null; holdRepair = null;
-  P.ship = d.ship; P.x = d.x; P.y = d.y; P.z = d.z; P.vx = P.vy = P.vz = 0; P.onGround = true; P.yaw = d.h; P.pitch = 0;
-  ammo.pistol = 6; ammo.blunder = 2; reloading = false;
-});
-socket.on('eject', (d) => { P.ship = null; P.x = d.x; P.y = d.y; P.z = d.z; P.vy = 3; P.vx = rand(-2, 2); P.vz = rand(-2, 2); me.mount = null; });
-socket.on('gone', (d) => { delete pdata[d.id]; const r = remotes[d.id]; if (r) { if (r.m.group.parent) r.m.group.parent.remove(r.m.group); delete remotes[d.id]; } });
-socket.on('phase', (d) => { netPhase = d.phase; });
-socket.on('battleStart', () => {
-  resetVisuals(); cin.active = false;
-  Object.keys(shipViews).forEach((k) => { shipViews[k].init = false; });
-  hideResult();
-  if (appState === 'game') {
-    banner('再戦開始！', '宝のエリアを制圧するか、敵船を沈めろ', '', 3500);
-    $('pause').classList.toggle('hidden', isLocked());
-    requestLock();
+function buildOutpost(group){
+  const wood=mat('#815431'), roof=mat('#9b4d32'), plaster=mat('#d7c79a'), dark=mat('#382d22');
+  function house(x,z,w,d,height,roofColor=roof){
+    const g=new THREE.Group();g.position.set(x,.45,z);group.add(g);
+    const walls=box(w,height,d,plaster);walls.position.y=height/2;walls.castShadow=true;g.add(walls);
+    const top= new THREE.Mesh(new THREE.ConeGeometry(Math.max(w,d)*.72,Math.max(2,height*.48),4),roofColor);top.position.y=height+height*.18;top.rotation.y=Math.PI/4;top.castShadow=true;g.add(top);
+    const door=box(w*.22,height*.55,.15,dark);door.position.set(0,height*.28,d/2+.08);g.add(door);
+    const label=makeLabel('');label.visible=false;g.add(label);
   }
-});
-socket.on('sinkStart', (d) => {
-  if (appState !== 'game') return;
-  cin.active = true; cin.team = d.team; cin.t0 = performance.now(); cin.blasted = false; cin.nextBoom = cin.t0 + 500; cin.ang = rand(0, 6.28);
-  holdRepair = null; mouseDown = false;
-  document.body.classList.add('cinema');
-  const lost = d.team === me.team;
-  showCenter(lost ? '船が破壊された…' : '相手の船を破壊！', lost ? 'lose' : 'win', lost ? 'もう船は持たない…' : '敵船が炎に包まれる！', 5200);
-  $('pause').classList.add('hidden');
-});
-socket.on('result', (d) => {
-  const startAt = performance.now() + (d.reason === 'treasure' ? 3200 : 800);
-  setTimeout(() => showResult(d, startAt), d.reason === 'treasure' ? 3200 : 800);
-});
-socket.on('treasureWin', (d) => {
-  if (appState !== 'game') return;
-  const won = d.winner === me.team;
-  showCenter(won ? '宝を制圧した！' : '宝を奪われた…', won ? 'win' : 'lose', won ? '勝利！' : '敗北…', 5500);
-  mouseDown = false; holdRepair = null;
-});
-socket.on('treasure', () => { if (appState === 'game') banner('宝が移動した！', '新しい島に宝が現れた。制圧エリアへ向かえ！', '', 4000); });
-socket.on('krakenSpawn', () => { if (appState !== 'game') return; banner('クラーケン出現！', '海から巨大な触手が…！ 大砲で撃退せよ', 'lose', 4200); SFX.roar(); });
-socket.on('krakenDead', (d) => {
-  if (appState !== 'game') return;
-  banner('クラーケン撃退！', '海に静けさが戻った', 'win', 3500);
-  explosionAt(d.x, 4, d.z, 3.5); SFX.boom(vd(d.x, d.z));
-  for (let i = 0; i < 20; i++) spawnDebris(d.x, 4, d.z, rand(0.4, 1.4), rand(-8, 8), rand(6, 18), rand(-8, 8), 8, false);
-});
-socket.on('krakenGone', () => { if (appState === 'game') toast('クラーケンは海の底へ去っていった…'); });
-socket.on('dmg', (d) => {
-  const f = $('dmgFlash'); f.classList.add('on'); void f.offsetWidth; f.classList.remove('on');
-  shake = Math.max(shake, 0.25); SFX.hit();
-});
-socket.on('hitm', (d) => {
-  const h = $('hitmarker'); h.className = d.kill ? 'kill on' : d.head ? 'head on' : 'on';
-  setTimeout(() => { h.classList.remove('on'); }, 90); SFX.hit();
-});
-socket.on('feed', (d) => {
-  const el = document.createElement('div'); el.className = 'kf';
-  const wn = { pistol: 'ピストル', blunder: 'ブランダーバス', cutlass: 'カットラス', cannon: '大砲', kraken: '触手' }[d.w] || '';
-  const c = (t) => (t === 'A' ? '#ff8d92' : '#8dbbff');
-  el.innerHTML = d.k
-    ? `<span style="color:${c(d.kt)}"></span><em>[${wn}]</em><span style="color:${c(d.vt)}"></span>`
-    : `<span style="color:${c(d.vt)}"></span><em>海に沈んだ</em>`;
-  const sp = el.querySelectorAll('span');
-  if (d.k) { sp[0].textContent = d.k; sp[1].textContent = d.v; } else sp[0].textContent = d.v;
-  $('killfeed').appendChild(el);
-  setTimeout(() => el.remove(), 5000);
-  while ($('killfeed').children.length > 5) $('killfeed').firstChild.remove();
-});
-socket.on('shot', (d) => {
-  if (appState !== 'game') return;
-  tracerFx(d.o, d.d, d.w === 'cutlass' ? 0xcfd6dd : 0xffe9a8, d.w === 'cutlass' ? 0.01 : 45);
-  const v = vd(d.o.x, d.o.z);
-  if (d.w === 'cutlass') SFX.swing(); else if (d.w === 'blunder') SFX.blunder(v * 0.8); else SFX.pistol(v * 0.8);
-  if (d.w !== 'cutlass') spawnFx({ tex: TEX.fire, x: d.o.x + d.d.x, y: d.o.y - 0.1, z: d.o.z + d.d.z, size: 0.8, grow: 0, life: 0.07, add: true });
-});
-socket.on('fx', (f) => {
-  if (appState !== 'game') return;
-  switch (f.t) {
-    case 'fire': {
-      explosionAt(f.x, f.y, f.z, 0.6);
-      for (let i = 0; i < 7; i++) spawnFx({ tex: TEX.smoke, x: f.x, y: f.y, z: f.z, size: 1.6, grow: 3, life: rand(1.5, 2.6), vx: f.dx * rand(3, 10) + rand(-1, 1), vy: rand(0.5, 2), vz: f.dz * rand(3, 10) + rand(-1, 1), drag: 0.8, op: 0.65 });
-      SFX.cannon(vd(f.x, f.z));
-      addShake(0.5, f.x, f.y, f.z);
-      break;
-    }
-    case 'shipHit': {
-      explosionAt(f.x, f.y, f.z, 1.1);
-      for (let i = 0; i < 9; i++) spawnDebris(f.x, f.y, f.z, rand(0.2, 0.6), rand(-6, 6), rand(3, 10), rand(-6, 6), 3.5, false);
-      SFX.boom(vd(f.x, f.z)); SFX.wood(vd(f.x, f.z));
-      const mine = shipViews[me.team] && (f.s === me.team);
-      addShake(mine ? 1.8 : 1.0, f.x, f.y, f.z);
-      if (mine) { const fl = $('dmgFlash'); fl.classList.add('on'); void fl.offsetWidth; fl.classList.remove('on'); toast('船体に被弾！ 穴を塞げ！'); }
-      break;
-    }
-    case 'splash': splashFx(f.x, f.z); break;
-    case 'boom': explosionAt(f.x, f.y, f.z, 1.0); SFX.boom(vd(f.x, f.z)); break;
-    case 'fixed': {
-      const sv = shipViews[f.s]; SFX.hammer();
-      if (sv) { sv.obj.root.updateMatrixWorld(); }
-      break;
-    }
-    case 'kAtk': {
-      krakenView.atk = 1;
-      const mine = f.s === me.team;
-      addShake(mine ? 2.6 : 1.4, f.x, 3, f.z);
-      SFX.roar(); SFX.wood(vd(f.x, f.z));
-      for (let i = 0; i < 8; i++) spawnDebris(f.x + rand(-3, 3), 3, f.z + rand(-8, 8), rand(0.3, 0.8), rand(-5, 5), rand(4, 10), rand(-5, 5), 4, false);
-      if (netKr) { splashFx(netKr.x + rand(-4, 4), netKr.z + rand(-4, 4), true); splashFx(netKr.x + rand(-4, 4), netKr.z + rand(-4, 4), true); }
-      if (mine) { const fl = $('dmgFlash'); fl.classList.add('on'); void fl.offsetWidth; fl.classList.remove('on'); toast('クラーケンの触手が船を襲う！'); }
-      break;
-    }
-    case 'kHit': explosionAt(f.x, f.y, f.z, 1.2); SFX.boom(vd(f.x, f.z)); break;
-    case 'blast': bigBlast(f.s); break;
-    case 'swing': SFX.swing(); break;
-    default: break;
-  }
-});
-
-// =====================================================
-//  シネマティック：大爆発
-// =====================================================
-function bigBlast(team) {
-  const v = shipViews[team], root = v.obj.root;
-  root.updateMatrixWorld(true);
-  const c = root.localToWorld(new THREE.Vector3(0, 3, 0));
-  cin.focus.copy(c); cin.blasted = true; cin.active = true; cin.team = team; if (!cin.t0) cin.t0 = performance.now();
-  root.visible = false;
-  explosionAt(c.x, c.y + 2, c.z, 4.5);
-  for (let i = 0; i < 22; i++) spawnFx({ tex: TEX.fire, x: c.x + rand(-6, 6), y: c.y + rand(0, 6), z: c.z + rand(-6, 6), size: rand(6, 11), grow: rand(8, 16), life: rand(0.8, 1.6), vx: rand(-14, 14), vy: rand(4, 18), vz: rand(-14, 14), drag: 0.6, add: true });
-  for (let i = 0; i < 20; i++) spawnFx({ tex: TEX.smoke, x: c.x + rand(-7, 7), y: c.y + rand(0, 5), z: c.z + rand(-7, 7), size: rand(5, 9), grow: rand(5, 9), life: rand(3.5, 6), vx: rand(-6, 6), vy: rand(6, 16), vz: rand(-6, 6), drag: 0.5, op: 0.85 });
-  for (let i = 0; i < 40; i++) spawnFx({ tex: TEX.spark, x: c.x, y: c.y + 2, z: c.z, size: 0.9, life: rand(1, 2.2), vx: rand(-26, 26), vy: rand(6, 30), vz: rand(-26, 26), g: 16, add: true });
-  for (let i = 0; i < 80; i++) {
-    const loc = new THREE.Vector3(rand(-3.5, 3.5), rand(0, 3), rand(-13, 12));
-    const w = root.localToWorld(loc);
-    const dx = w.x - c.x, dz = w.z - c.z, l = Math.hypot(dx, dz) || 1, sp = rand(5, 20);
-    spawnDebris(w.x, w.y, w.z, rand(0.5, 2.0), dx / l * sp + rand(-3, 3), rand(10, 28), dz / l * sp + rand(-3, 3), rand(14, 22), Math.random() < 0.3);
-  }
-  const ring = new THREE.Mesh(new THREE.RingGeometry(1, 2.2, 32), new THREE.MeshBasicMaterial({ color: 0xffe0a0, transparent: true, opacity: 0.9, side: THREE.DoubleSide, depthWrite: false }));
-  ring.rotation.x = -Math.PI / 2; ring.position.set(c.x, 0.5, c.z); gameScene.add(ring);
-  debris.push({ ring, age: 0, life: 2.2, big: 9 });
-  boomLight.position.set(c.x, c.y + 4, c.z); boomLight.intensity = 40;
-  const fl = $('flash'); fl.classList.add('on'); void fl.offsetWidth; fl.classList.remove('on');
-  timeScale = 0.2; shake = 3.2;
-  SFX.big();
+  house(18,-8,12,10,7,mat('#a55032')); // General shop
+  house(-20,-8,12,10,7,mat('#6e4c91')); // Pawn shop
+  house(8,22,10,9,6,mat('#477b8b')); // Chart / gacha hut
+  // Crates, barrels and the pier to the sea at the southern shore.
+  for(let i=0;i<5;i++){const plank=box(4,.35,4,wood);plank.position.set(-4+i*2,.05,79+i*.7);group.add(plank);}
+  for(let i=0;i<5;i++){const pier=box(1,.6,2,wood);pier.position.set(-4+i*2,-.1,84+i*.7);group.add(pier);}
+  for(let i=0;i<4;i++){const b=cylinder(.8,.8,2.2,wood,7);b.position.set(-8+i*5,.9,10+i%2*3);group.add(b);}
+  // Little signposts make the three services readable from the street.
+  const signs=[{x:18,z:-17,t:'SHOP'},{x:-20,z:-17,t:'質屋'},{x:8,z:15,t:'宝の地図'}];
+  for(const s of signs){const p=box(.22,2.6,.22,wood);p.position.set(s.x,1.3,s.z);group.add(p);const board=box(5,.9,.24,mat('#47301d'));board.position.set(s.x,2.6,s.z);group.add(board);const sprite=makeLabel(s.t);sprite.position.set(s.x,3.8,s.z);sprite.scale.set(7,1.75,1);group.add(sprite);}
 }
-
-// =====================================================
-//  入力
-// =====================================================
-function isLocked() { return document.pointerLockElement === canvas; }
-function requestLock() { try { canvas.requestPointerLock(); } catch (e) {} }
-document.addEventListener('pointerlockchange', () => {
-  if (appState !== 'game') return;
-  const locked = isLocked();
-  $('pause').classList.toggle('hidden', locked || cin.active || resultShown);
-  if (!locked) { mouseDown = false; if (holdRepair) stopRepair(); }
-});
-canvas.addEventListener('click', () => { if (appState === 'game' && !isLocked() && !cin.active && !resultShown) requestLock(); });
-window.addEventListener('mousemove', (e) => {
-  if (!isLocked() || appState !== 'game' || cin.active) return;
-  P.yaw -= e.movementX * 0.0022;
-  P.pitch = clamp(P.pitch - e.movementY * 0.0022, -1.5, 1.5);
-});
-window.addEventListener('mousedown', (e) => {
-  if (appState !== 'game' || e.button !== 0) return;
-  if (!isLocked()) return;
-  mouseDown = true;
-  if (!canAct()) return;
-  if (me.mount && me.mount.type === 'cannon') { socket.emit('fire'); return; }
-  if (!me.mount) tryShoot(performance.now());
-});
-window.addEventListener('mouseup', () => { mouseDown = false; });
-function typing() { const a = document.activeElement; return a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA'); }
-window.addEventListener('keydown', (e) => {
-  if (typing()) return;
-  keys[e.code] = true;
-  if (e.code === 'Space' || e.code === 'Tab') e.preventDefault();
-  if (appState !== 'game' || e.repeat) return;
-  if (e.code === 'KeyF') onInteractKey();
-  if (e.code === 'KeyR') startReload(performance.now());
-  if (e.code === 'Digit1') switchWeapon('pistol');
-  if (e.code === 'Digit2') switchWeapon('blunder');
-  if (e.code === 'Digit3') switchWeapon('cutlass');
-  if (e.code === 'KeyC') diveOverboard();
-  if (e.code === 'Space' && me.mount && me.mount.type === 'helm') socket.emit('use', { kind: 'dismount' });
-});
-window.addEventListener('keyup', (e) => {
-  keys[e.code] = false;
-  if (e.code === 'KeyF' && holdRepair) stopRepair();
-});
-function canAct() { return appState === 'game' && me.alive && netPhase === 'live' && !cin.active && isLocked(); }
-
-// =====================================================
-//  武器
-// =====================================================
-function switchWeapon(w) {
-  if (!me.alive || me.mount || curWeapon === w) return;
-  curWeapon = w; reloading = false; kick = 0;
-}
-function startReload(now) {
-  const w = WEAP[curWeapon];
-  if (!w || w.melee || reloading || ammo[curWeapon] >= w.mag || !me.alive) return;
-  reloading = true; reloadEnd = now + w.reload;
-}
-function tryShoot(now) {
-  const w = WEAP[curWeapon];
-  if (!w || reloading || now - lastShotT < w.rate) return;
-  if (!w.melee) {
-    if (ammo[curWeapon] <= 0) { startReload(now); return; }
-    ammo[curWeapon]--;
+function buildDungeonInterior(){
+  // A small shared cave instance lives at x=2000,z=2000. The server moves explorers into it.
+  const cave=new THREE.Group();cave.position.set(2000,0,2000);scene.add(cave);
+  const stone=mat('#353b3b'),floor=mat('#494c42'),dark=mat('#101617'),gold=mat('#a98236');
+  const ground=box(34,.6,78,floor);ground.position.set(0,-.2,28);cave.add(ground);
+  // Cave walls and ceiling form a traversable corridor with a visible opening at the start.
+  for(let i=0;i<8;i++){
+    const z=i*9+3;const wl=box(5,9,10,stone);wl.position.set(-13,4.2,z);cave.add(wl);
+    const wr=box(5,9,10,stone);wr.position.set(13,4.2,z);cave.add(wr);
+    const roof=box(27,3,10,stone);roof.position.set(0,9.4,z);cave.add(roof);
   }
-  lastShotT = now;
-  camera.updateMatrixWorld();
-  camera.getWorldDirection(_dir);
-  const o = camera.position;
-  socket.emit('shoot', { w: curWeapon, o: { x: o.x, y: o.y, z: o.z }, d: { x: _dir.x, y: _dir.y, z: _dir.z } });
-  if (w.melee) { swing = 1; SFX.swing(); }
+  const mouthL=box(2,6,2,stone);mouthL.position.set(-4,3,0);cave.add(mouthL);
+  const mouthR=box(2,6,2,stone);mouthR.position.set(4,3,0);cave.add(mouthR);
+  const chest=box(4,2.3,2.8,mat('#76502b'));chest.position.set(10,1.1,40);cave.add(chest);
+  const lid=box(4.1,.65,2.9,gold);lid.position.set(10,2.45,40);cave.add(lid);
+  const latch=box(.45,.7,.2,mat('#d9d8bf'));latch.position.set(10,1.9,38.5);cave.add(latch);
+  for(let i=0;i<5;i++){const crystal=new THREE.Mesh(new THREE.OctahedronGeometry(rand(.8,1.5)),new THREE.MeshStandardMaterial({color:i%2?'#39a9a5':'#9469c5',emissive:i%2?'#0d5555':'#42255b',emissiveIntensity:.8}));crystal.position.set(rand(-10,10),rand(1,4),rand(8,63));cave.add(crystal);}
+  const torchMat=new THREE.MeshStandardMaterial({color:'#bd6732',emissive:'#d15d18',emissiveIntensity:1.4});
+  for(const z of [10,28,47,64]){const t=cylinder(.15,.2,2,mat('#4d3120'),6);t.position.set(-8,2,z);cave.add(t);const flame=new THREE.Mesh(new THREE.OctahedronGeometry(.7),torchMat);flame.position.set(-8,3.3,z);cave.add(flame);}
+  const sign=makeLabel('洞窟の奥');sign.position.set(0,6,42);sign.scale.set(12,3,1);cave.add(sign);
+}
+function buildDungeonEntrance(group,island){
+  const localX=island.dungeonX-island.x,localZ=island.dungeonZ-island.z;
+  const stone=mat('#414747');
+  const left=cylinder(1.7,2.4,7,stone,5);left.position.set(localX-3,3,localZ);group.add(left);
+  const right=cylinder(1.7,2.4,7,stone,5);right.position.set(localX+3,3,localZ);group.add(right);
+  const arch=box(8,2.2,2,stone);arch.position.set(localX,6.1,localZ);group.add(arch);
+  const black=box(4.8,4.4,.5,mat('#071013'));black.position.set(localX,2.5,localZ-.15);group.add(black);
+  const sign=makeLabel('洞窟入口');sign.position.set(localX,9,localZ);sign.scale.set(9,2.25,1);group.add(sign);
+}
+function createShipModel(ship){
+  const root=new THREE.Group();
+  const wood=mat(ship.type==='brig'?'#573522':'#76502e'), deckMat=mat('#ba935c'), trim=mat('#e0bd79'), sail=mat(ship.type==='brig'?'#e1d5b1':'#eee3c5');
+  const w=ship.width||8.5,l=ship.length||28;
+  const hull=box(w,1.5,l,wood);hull.position.y=.8;hull.castShadow=true;hull.receiveShadow=true;root.add(hull);
+  const deck=box(w*.9,.32,l*.9,deckMat);deck.position.y=1.65;deck.castShadow=true;root.add(deck);
+  const bow= new THREE.Mesh(new THREE.ConeGeometry(w*.54,5,4),wood);bow.rotation.x=Math.PI/2;bow.rotation.y=Math.PI/4;bow.position.set(0,1,-l/2+1.5);bow.scale.set(1,.6,1);root.add(bow);
+  const stern=box(w*.82,1.1,2,wood);stern.position.set(0,2,l*.43);root.add(stern);
+  // Raised aft deck and steps place the steering wheel at the stern.
+  const aft=box(w*.62,.45,l*.2,deckMat);aft.position.set(0,2.05,l*.32);root.add(aft);
+  for(let i=0;i<3;i++){const step=box(w*.35,.25,1.15,deckMat);step.position.set(0,1.7+i*.18,l*.19+i*.9);root.add(step);}
+  const mastCount=ship.type==='brig'?3:2;
+  for(let i=0;i<mastCount;i++){
+    const z=-l*.31+i*(l*.28/(mastCount-1||1)); const mast=cylinder(.24,.38,10,wood,7);mast.position.set(0,6,z);mast.castShadow=true;root.add(mast);
+    const sailMesh=box(w*(ship.type==='brig'?.66:.75),4.3,.2,sail);sailMesh.position.set(0,6,z-.2);root.add(sailMesh);
+    const yard=box(w*.78,.16,.2,trim);yard.position.set(0,7.9,z-.15);root.add(yard);
+  }
+  // Helm wheel at high stern deck.
+  const wheelGroup=new THREE.Group();wheelGroup.position.set(0,2.75,l*.31);root.add(wheelGroup);
+  const wheel=new THREE.Mesh(new THREE.TorusGeometry(1,.12,7,12),trim);wheel.rotation.x=Math.PI/2;wheelGroup.add(wheel);
+  const hub=cylinder(.28,.28,.6,wood);hub.rotation.x=Math.PI/2;wheelGroup.add(hub);
+  for(let i=0;i<6;i++){const spoke=box(.12,.12,1.8,trim);spoke.rotation.y=i*Math.PI/3;wheelGroup.add(spoke);}
+  // Galley: stove, pan and pot.
+  const kx=-w*.25,kz=0;const table=box(2.6,1.1,2.1,wood);table.position.set(kx,2.1,kz);root.add(table);
+  const stove=box(1.4,.25,1.3,mat('#343a3b'));stove.position.set(kx,2.8,kz);root.add(stove);
+  const pan=cylinder(.62,.72,.22,mat('#272c30'),10);pan.position.set(kx,3.05,kz-.15);root.add(pan);
+  const pot=cylinder(.45,.52,.7,mat('#535b59'),9);pot.position.set(kx+.75,3.17,kz+.2);root.add(pot);
+  // Loot storage chest on the inner deck.
+  const cx=w*.24,cz=l*.08;const chest=box(2.5,1.55,2.1,mat('#674126'));chest.position.set(cx,2.4,cz);root.add(chest);
+  const lid=box(2.55,.35,2.15,trim);lid.position.set(cx,3.22,cz);root.add(lid);
+  const latch=box(.28,.42,.16,mat('#393d39'));latch.position.set(cx,2.8,cz-l*.0-1.1);root.add(latch);
+  // Anchor at the very back of the vessel.
+  const anchorGroup=new THREE.Group();anchorGroup.position.set(0,1.8,l*.43);root.add(anchorGroup);
+  const anchorRing=new THREE.Mesh(new THREE.TorusGeometry(.8,.18,6,9),mat('#48535a',.4,.4));anchorRing.rotation.x=Math.PI/2;anchorGroup.add(anchorRing);
+  const anchorStem=cylinder(.16,.24,1.9,mat('#48535a',.4,.4),6);anchorStem.position.y=-.8;anchorGroup.add(anchorStem);
+  const label=makeLabel(ship.name);label.position.set(0,12,0);label.scale.set(15,3.5,1);root.add(label);
+  root.userData={helm:wheelGroup,anchor:anchorGroup,label};return root;
+}
+function createPirate(name){
+  const g=new THREE.Group();const coat=mat('#315b63'),skin=mat('#d6ac82'),dark=mat('#272c30'),gold=mat('#d7ad53');
+  const body=box(.9,1.25,.55,coat);body.position.y=1.25;body.castShadow=true;g.add(body);
+  const head=new THREE.Mesh(new THREE.SphereGeometry(.36,8,6),skin);head.position.y=2.15;head.castShadow=true;g.add(head);
+  const hat= new THREE.Mesh(new THREE.CylinderGeometry(.48,.5,.18,7),dark);hat.position.y=2.47;g.add(hat);
+  const hatTop= new THREE.Mesh(new THREE.CylinderGeometry(.3,.42,.42,7),dark);hatTop.position.y=2.7;g.add(hatTop);
+  const belt=box(.92,.16,.58,gold);belt.position.y=1.05;g.add(belt);
+  for(const side of [-1,1]){
+    const leg=box(.3,.78,.34,dark);leg.position.set(side*.24,.42,0);leg.castShadow=true;g.add(leg);
+    const arm=box(.26,.9,.32,coat);arm.position.set(side*.62,1.35,0);arm.rotation.z=side*.12;g.add(arm);
+  }
+  const label=makeLabel(name,'#12242c','#ffffff');label.position.y=3.35;label.scale.set(7,1.75,1);g.add(label);g.userData.label=label;return g;
+}
+function addQuestMarker(){
+  if(questMarker)scene.remove(questMarker);
+  questMarker=new THREE.Group();const glow=new THREE.Mesh(new THREE.OctahedronGeometry(1.8,0),new THREE.MeshStandardMaterial({color:'#ffd14c',emissive:'#b27b14',emissiveIntensity:1.4,metalness:.2,roughness:.25}));glow.position.y=5;questMarker.add(glow);
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(3.5,.22,7,24),mat('#ffd14c',.3,.2));ring.rotation.x=Math.PI/2;ring.position.y=.3;questMarker.add(ring);
+  const beam=new THREE.Mesh(new THREE.CylinderGeometry(.12,.8,9,8,1,true),new THREE.MeshBasicMaterial({color:'#ffc54a',transparent:true,opacity:.25,side:THREE.DoubleSide}));beam.position.y=6;questMarker.add(beam);scene.add(questMarker);
+}
+function syncWorldObjects(state){
+  shipsData=state.ships||[];playersData=state.players||[];self=state.self||self;
+  const shipIds=new Set(shipsData.map(s=>s.id));
+  for(const [id,g] of shipMeshes){if(!shipIds.has(id)){scene.remove(g);shipMeshes.delete(id);}}
+  for(const ship of shipsData){
+    let g=shipMeshes.get(ship.id);if(!g){g=createShipModel(ship);shipMeshes.set(ship.id,g);scene.add(g);}
+    g.position.set(ship.x,0,ship.z);g.rotation.y=ship.yaw;
+    if(g.userData.label){g.userData.label.material.opacity=1;}
+    if(g.userData.helm){g.userData.helm.rotation.z=ship.helmBy?Math.sin(performance.now()*.004)*.12:0;}
+    if(g.userData.anchor){g.userData.anchor.position.y=ship.anchored?-.4:1.8;}
+  }
+  const ids=new Set(playersData.map(p=>p.id));
+  for(const [id,g] of playerMeshes){if(!ids.has(id)){scene.remove(g);playerMeshes.delete(id);}}
+  for(const pl of playersData){
+    let g=playerMeshes.get(pl.id);if(!g){g=createPirate(pl.name);playerMeshes.set(pl.id,g);scene.add(g);}
+    if(g.userData.label && pl.id!==selfId)g.userData.label.material.opacity=1;
+    const targetY=pl.inDungeon?.9:(pl.shipId?2.5:landY(pl.x,pl.z));
+    g.position.lerp(new THREE.Vector3(pl.x,targetY,pl.z),.5);g.rotation.y=pl.yaw||0;
+    if(pl.id===selfId)g.visible=true;
+  }
+  if(self && self.activeQuest){
+    if(!questMarker)addQuestMarker();questMarker.visible=true;questMarker.position.set(self.activeQuest.x,landY(self.activeQuest.x,self.activeQuest.z),self.activeQuest.z);
+  }else if(questMarker)questMarker.visible=false;
+}
+function landY(x,z){const isl=nearestIsland(x,z);return isl&&isl.d<=isl.island.r+9?1.15:.3;}
+function nearestIsland(x,z){let best=null;for(const i of islands){const d=Math.hypot(x-i.x,z-i.z);if(!best||d<best.d)best={island:i,d};}return best;}
+function clientLocalToWorld(s,lx,lz){const c=Math.cos(s.yaw),sn=Math.sin(s.yaw);return{x:s.x+lx*c+lz*sn,z:s.z-lx*sn+lz*c};}
+function serverShip(id){return shipsData.find(s=>s.id===id);}
+function nearestTarget(){
+  if(!self)return null;
+  const px=self.x,pz=self.z;const candidates=[];
+  const push=(id,label,hint,x,z,max=5)=>{const d=Math.hypot(px-x,pz-z);if(d<=max)candidates.push({id,label,hint,d,x,z});};
+  if(self.inDungeon){push('dungeonExit','E — 洞窟から出る','入口に戻る',2000,2000,9);push('dungeonChest','E — 奥の宝箱を開ける','レアな戦利品が眠っている',2010,2040,7);}
   else {
-    kick = curWeapon === 'blunder' ? 1.6 : 1;
-    flashSprite.material.opacity = 1; muzzleLight.intensity = 4;
-    if (curWeapon === 'blunder') SFX.blunder(); else SFX.pistol();
-    tracerFx({ x: o.x + _dir.x * 0.6, y: o.y + 0.1, z: o.z + _dir.z * 0.6 }, _dir, 0xffe9a8, 45);
-    P.pitch = clamp(P.pitch + (curWeapon === 'blunder' ? 0.045 : 0.014), -1.5, 1.5);
-    if (ammo[curWeapon] <= 0) startReload(now);
-  }
-}
-
-// =====================================================
-//  インタラクト（舵 / 大砲 / 木箱 / 修理 / 乗船）
-// =====================================================
-function worldToShipLocal(v, wx, wz) {
-  const c = Math.cos(v.h), s = Math.sin(v.h), dx = wx - v.x, dz = wz - v.z;
-  return { x: dx * c - dz * s, z: dx * s + dz * c };
-}
-function interactHint() {
-  if (appState !== 'game' || !me.alive || cin.active || netPhase !== 'live') return null;
-  if (me.mount) return { kind: 'dismount', ok: true, label: '[F] 降りる' };
-  if (P.ship) {
-    const sv = shipViews[P.ship]; let best = null;
-    const consider = (d, o) => { if (d < 2.5 && (!best || d < best.d)) { o.d = d; best = o; } };
-    sv.holes.forEach((h) => {
-      const d = Math.hypot(P.x - h[1], P.z - h[2]);
-      consider(d - 0.5, me.wood > 0
-        ? { kind: 'repair', id: h[0], ok: true, label: '[F] 長押しで穴を修理（木材 -1）' }
-        : { kind: 'repair', id: h[0], ok: false, label: '穴を塞ぐ木材がない（木箱で補給）' });
-    });
-    consider(Math.hypot(P.x - HELM_POS.x, P.z - HELM_POS.z) - 0.2,
-      sv.helm && sv.helm !== myId && pdata[sv.helm] && !pdata[sv.helm].b ? { kind: 'helm', ok: false, label: '舵は使用中' } : { kind: 'helm', ok: true, label: '[F] 舵を握る' });
-    CANNONS.forEach((c) => {
-      const op = sv.cn[c.idx] ? sv.cn[c.idx][3] : 0;
-      const busy = op && pdata[op] && !pdata[op].b;
-      consider(Math.hypot(P.x - c.sx, P.z - c.z), busy ? { kind: 'cannon', idx: c.idx, ok: false, label: '大砲は使用中' } : { kind: 'cannon', idx: c.idx, ok: true, label: '[F] 大砲に乗る' });
-    });
-    CRATES.forEach((c) => consider(Math.hypot(P.x - c.x, P.z - c.z), { kind: 'wood', ok: me.wood < MAX_WOOD, label: me.wood < MAX_WOOD ? `[F] 木材を補給（${me.wood}/${MAX_WOOD}）` : '木材は満タン' }));
-    return best;
-  }
-  // 海上：近くの船によじ登る
-  for (const k of ['A', 'B']) {
-    const v = shipViews[k]; if (v.sunk || !v.init) continue;
-    const l = worldToShipLocal(v, P.x, P.z);
-    const hw = halfW(clamp(l.z, -14, 12.5)) + 2.8;
-    if (Math.abs(l.x) <= hw && l.z > -16 && l.z < 14.5 && P.y < 1.6) return { kind: 'climb', ship: k, ok: true, label: '[F] 船によじ登る', lx: l.x, lz: l.z };
-  }
-  return null;
-}
-function onInteractKey() {
-  const h = interactHint(); if (!h || !h.ok) return;
-  switch (h.kind) {
-    case 'dismount': socket.emit('use', { kind: 'dismount' }); break;
-    case 'helm': socket.emit('use', { kind: 'helm' }); break;
-    case 'cannon': socket.emit('use', { kind: 'cannon', idx: h.idx }); break;
-    case 'wood': socket.emit('use', { kind: 'wood' }); SFX.wood(); break;
-    case 'repair': holdRepair = { id: h.id, start: performance.now() }; socket.emit('repair', { id: h.id, on: true }); break;
-    case 'climb': {
-      const v = shipViews[h.ship], hw = Math.max(0.6, halfW(clamp(h.lz, -12, 11.5)) - 0.8);
-      P.ship = h.ship; P.x = clamp(h.lx, -hw, hw); P.z = clamp(h.lz, -12, 11.5); P.y = DECK; P.vy = 0; P.vx = P.vz = 0; P.onGround = true;
-      break;
-    }
-    default: break;
-  }
-}
-function stopRepair() { holdRepair = null; socket.emit('repair', { id: 0, on: false }); }
-function diveOverboard() {
-  if (!P.ship || me.mount || !me.alive) return;
-  const hw = halfW(P.z) - 0.45;
-  if (Math.abs(P.x) < hw - 0.9) { toast('船の縁に寄って C で飛び込めます'); return; }
-  const v = shipViews[P.ship]; v.obj.root.updateMatrixWorld();
-  const w = v.obj.root.localToWorld(new THREE.Vector3(P.x, P.y, P.z));
-  const sgn = P.x >= 0 ? 1 : -1, c = Math.cos(v.h), s = Math.sin(v.h);
-  P.vx = sgn * c * 4.5; P.vz = -sgn * s * 4.5; P.vy = 4.5;
-  P.ship = null; P.x = w.x; P.z = w.z; P.y = DECK + 0.4; P.onGround = false;
-}
-
-// =====================================================
-//  ローカルプレイヤーの移動
-// =====================================================
-function stepLocal(dt, t, active) {
-  if (!me.alive) return;
-  const mounted = !!me.mount;
-  if (mounted) {
-    if (me.mount.type === 'helm' && active) {
-      const a = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0);
-      if (a) P.wheel = clamp(P.wheel + a * 1.6 * dt, -1, 1); else P.wheel += clamp(-P.wheel, -1.1 * dt, 1.1 * dt);
-      const s = (keys.KeyW ? 1 : 0) - (keys.KeyS ? 1 : 0);
-      P.throttle = clamp(P.throttle + s * 0.4 * dt, 0, 1);
-      const val = P.wheel.toFixed(2) + '|' + P.throttle.toFixed(2);
-      const now = performance.now();
-      if (val !== lastHelmVal && now - lastHelmSend > 80) { lastHelmSend = now; lastHelmVal = val; socket.emit('helm', { wheel: P.wheel, throttle: P.throttle }); }
-      P.pitch = clamp(P.pitch, -0.6, 0.6);
-    }
-    if (me.mount.type === 'cannon' && P.ship) {
-      const sv = shipViews[P.ship], c = CANNONS[me.mount.idx];
-      const out = c.side > 0 ? sv.h - Math.PI / 2 : sv.h + Math.PI / 2;
-      let psi = c.side > 0 ? wrapA(P.yaw - out) : wrapA(out - P.yaw);
-      psi = clamp(psi, -0.6, 0.6);
-      P.yaw = c.side > 0 ? out + psi : out - psi;
-      P.pitch = clamp(P.pitch, -0.1, 0.6);
-    }
-    return;
-  }
-  let fwd = 0, str = 0;
-  if (active) { fwd = (keys.KeyW ? 1 : 0) - (keys.KeyS ? 1 : 0); str = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0); }
-  if (holdRepair) { fwd = 0; str = 0; }
-  const jump = active && !!keys.Space;
-  const sy = Math.sin(P.yaw), cy = Math.cos(P.yaw);
-  let mx = -sy * fwd + cy * str, mz = -cy * fwd - sy * str;
-  const ml = Math.hypot(mx, mz); if (ml > 1) { mx /= ml; mz /= ml; }
-  const moving = ml > 0.01;
-
-  if (P.ship) {
-    const sv = shipViews[P.ship];
-    const spd = keys.ShiftLeft ? 2.4 : 4.6, c = Math.cos(sv.h), s = Math.sin(sv.h);
-    P.x += (mx * c - mz * s) * spd * dt;
-    P.z += (mx * s + mz * c) * spd * dt;
-    if (P.onGround && jump) { P.vy = 5.2; P.onGround = false; }
-    P.vy -= 16 * dt; P.y += P.vy * dt;
-    if (P.y <= DECK) { P.y = DECK; P.vy = 0; P.onGround = true; } else P.onGround = false;
-    P.z = clamp(P.z, -12.4, 12.0);
-    const hw = Math.max(0.4, halfW(P.z) - 0.45);
-    P.x = clamp(P.x, -hw, hw);
-    MASTS.forEach((m) => {
-      const dx = P.x - m.x, dz = P.z - m.z, d = Math.hypot(dx, dz);
-      if (d < 0.75) { const k = 0.75 / (d || 0.01); P.x = m.x + dx * k; P.z = m.z + dz * k; }
-    });
-    if (moving && P.onGround) {
-      stepT += dt * (keys.ShiftLeft ? 0.6 : 1);
-      if (stepT > 0.42) { stepT = 0; SFX.step(); }
-    }
-    P._moving = moving;
-  } else {
-    const airborne = P.y > waveH(P.x, P.z, t) - 0.7 + 0.12;
-    if (!airborne) { P.x += mx * 3.0 * dt; P.z += mz * 3.0 * dt; P.vx = P.vz = 0; }
-    else { P.x += P.vx * dt; P.z += P.vz * dt; P.vx *= 0.995; P.vz *= 0.995; }
-    P.vy -= 16 * dt; P.y += P.vy * dt;
-    let landed = false;
-    for (const k of ['A', 'B']) {
-      const v = shipViews[k]; if (v.sunk || !v.init) continue;
-      const l = worldToShipLocal(v, P.x, P.z);
-      if (Math.abs(l.x) <= halfW(l.z) - 0.2 && l.z > -12.5 && l.z < 12.4 && P.y <= DECK + 0.15 && P.y >= DECK - 1.2 && P.vy <= 0) {
-        P.ship = k; P.x = l.x; P.z = l.z; P.y = DECK; P.vy = 0; P.onGround = true; P.vx = P.vz = 0; landed = true; break;
+    if(self.shipId){
+      const s=serverShip(self.shipId);
+      if(s){
+        const helm=clientLocalToWorld(s,0,s.length*.31);push('helm','E — 舵を握る / 離れる','W/Sで速度、A/Dで旋回',helm.x,helm.z,5.2);
+        const anchor=clientLocalToWorld(s,0,s.length*.43);push('anchor',s.anchored?'E — 錨を上げる':'E — 錨を下ろす','船をその場に固定',anchor.x,anchor.z,5.2);
+        const kitchen=clientLocalToWorld(s,-s.width*.25,0);push('kitchen','E — 台所を使う','魚やじゃがいもを調理',kitchen.x,kitchen.z,5.5);
+        const storage=clientLocalToWorld(s,s.width*.24,s.length*.08);push('storage','E — 船の保管箱','戦利品を出し入れ',storage.x,storage.z,5.5);
       }
-    }
-    if (!landed) {
-      const wy = waveH(P.x, P.z, t) - 0.7;
-      if (P.y <= wy) {
-        if (P.vy < -3 && !splashedFlag) { splashedFlag = true; splashFx(P.x, P.z); }
-        P.y = wy; P.vy = 0; P.vx = P.vz = 0;
-      } else if (P.y > wy + 0.3) splashedFlag = false;
-      if (P.y <= wy + 0.05 && P.vy === 0) splashedFlag = false;
-      const r = Math.hypot(P.x, P.z); if (r > MAP_R) { P.x *= MAP_R / r; P.z *= MAP_R / r; }
-    }
-    P._moving = moving;
-  }
-}
-
-// =====================================================
-//  ゲーム更新
-// =====================================================
-const camPos = new THREE.Vector3();
-function updateShipViews(dt, t) {
-  const kk = 1 - Math.exp(-dt * 10);
-  ['A', 'B'].forEach((k) => {
-    const v = shipViews[k]; if (!v.init) return;
-    v.x = lerp(v.x, v.tx, kk); v.z = lerp(v.z, v.tz, kk); v.h += wrapA(v.th - v.h) * kk;
-    const root = v.obj.root;
-    if (!root.visible) return;
-    if (v.ss && v.appSS !== v.ss) { applyShipSkin(v.obj, k, v.ss); v.appSS = v.ss; }
-    if (v.hs && v.appHS !== v.hs) { applyHelmSkin(v.obj, v.hs); v.appHS = v.hs; }
-    root.position.set(v.x, waveH(v.x, v.z, t) * 0.7 + Math.sin(t * 1.3 + v.ph) * 0.05, v.z);
-    root.rotation.set(Math.sin(t * 0.8 + v.ph) * 0.012 - v.speed * 0.003, v.h, Math.sin(t * 0.6 + v.ph * 1.7) * 0.025 + v.wheel * v.speed * 0.004);
-    v.obj.wheel.rotation.z = -v.wheel * 2.4;
-    v.obj.sails.forEach((sl, i) => { sl.rotation.y = Math.sin(t * 0.9 + i) * 0.03; sl.scale.z = 0.7 + v.throttle * 0.6; });
-    if (v.obj.flag) v.obj.flag.rotation.y = Math.sin(t * 4) * 0.35;
-    CANNONS.forEach((c, i) => {
-      const cn = v.cn[i]; if (!cn) return;
-      const dir = cannonDirL(c, cn[0], cn[1]);
-      v.obj.cannons[i].pivot.quaternion.setFromUnitVectors(X_AXIS, dir);
-      const rec = Math.max(0, (cn[2] - (CANNON_RELOAD - 350)) / 350);
-      v.obj.cannons[i].barrel.position.x = -rec * 0.35;
-    });
-    // 穴
-    const have = {};
-    v.holes.forEach((h) => {
-      have[h[0]] = 1;
-      let m = v.obj.holes.get(h[0]);
-      if (!m) { m = holeMesh(); v.obj.holeGroup.add(m); v.obj.holes.set(h[0], m); }
-      m.position.set(h[1], DECK + 0.03, h[2]);
-      if (Math.random() < dt * 2.2) {
-        const wp = root.localToWorld(new THREE.Vector3(h[1], DECK + 0.4, h[2]));
-        spawnFx({ tex: TEX.smoke, x: wp.x, y: wp.y, z: wp.z, size: 0.9, grow: 1.6, life: 1.6, vy: 1.8, drag: 0.3, op: 0.5 });
-      }
-    });
-    v.obj.holes.forEach((m, id) => { if (!have[id]) { v.obj.holeGroup.remove(m); v.obj.holes.delete(id); } });
-    // 大破寸前は炎上
-    if (v.hp < 35 && Math.random() < dt * 8) {
-      const wp = root.localToWorld(new THREE.Vector3(rand(-3, 3), DECK + 0.5, rand(-10, 10)));
-      spawnFx({ tex: TEX.fire, x: wp.x, y: wp.y, z: wp.z, size: rand(1.5, 2.8), grow: 1, life: 0.7, vy: 3, add: true });
-      spawnFx({ tex: TEX.smoke, x: wp.x, y: wp.y + 1, z: wp.z, size: 2, grow: 3, life: 2.4, vy: 4, drag: 0.3, op: 0.7 });
-    }
-  });
-}
-const _t1 = new THREE.Vector3();
-function playerWorldEye(out) {
-  if (P.ship) {
-    const r = shipViews[P.ship].obj.root; r.updateMatrixWorld(true);
-    return r.localToWorld(out.set(P.x, P.y + EYE, P.z));
-  }
-  return out.set(P.x, P.y + EYE, P.z);
-}
-function updateArc() {
-  if (!(me.mount && me.mount.type === 'cannon' && P.ship && me.alive && !cin.active)) { arcLine.visible = false; return; }
-  const sv = shipViews[P.ship], c = CANNONS[me.mount.idx];
-  sv.obj.root.updateMatrixWorld(true);
-  const m = sv.obj.root.localToWorld(new THREE.Vector3(c.side * 3.9, DECK + 0.85, c.z));
-  camera.getWorldDirection(_dir);
-  let vx = _dir.x * BALL_SPEED + (-Math.sin(sv.h) * sv.speed), vy = _dir.y * BALL_SPEED, vz = _dir.z * BALL_SPEED + (-Math.cos(sv.h) * sv.speed);
-  const pos = arcGeo.attributes.position; let x = m.x, y = m.y, z = m.z, n = 0;
-  for (let i = 0; i < 60; i++) {
-    pos.setXYZ(i, x, y, z); n = i + 1;
-    vy -= GRAV * 0.1; x += vx * 0.1; y += vy * 0.1; z += vz * 0.1;
-    if (y < 0) { pos.setXYZ(i + 1 < 60 ? i + 1 : i, x, 0, z); n = Math.min(60, i + 2); break; }
-  }
-  arcGeo.setDrawRange(0, n); pos.needsUpdate = true; arcLine.visible = true;
-}
-function updateBalls(dt) {
-  const now = performance.now();
-  Object.keys(ballMeshes).forEach((id) => {
-    const b = ballMeshes[id], e = Math.min(0.3, (now - b.t) / 1000);
-    b.mesh.position.set(b.x + b.vx * e, b.y + b.vy * e - 0.5 * GRAV * e * e, b.z + b.vz * e);
-    b.trail -= dt;
-    if (b.trail <= 0) { b.trail = 0.035; spawnFx({ tex: TEX.smoke, x: b.mesh.position.x, y: b.mesh.position.y, z: b.mesh.position.z, size: 0.9, grow: 1.4, life: 1.0, drag: 1, op: 0.45 }); }
-  });
-}
-function updateGame(dt, t, now) {
-  const fdt = dt * timeScale;
-  timeScale = Math.min(1, timeScale + dt * 0.7);
-  gameSea.update(t);
-  updateShipViews(fdt, t);
-  const w = WEAP[curWeapon];
-  const active = canAct() && !holdRepair;
-  stepLocal(dt, t, canAct());
-
-  // ---- 修理（長押し） ----
-  if (holdRepair) {
-    const sv = P.ship ? shipViews[P.ship] : null;
-    const hole = sv ? sv.holes.find((h) => h[0] === holdRepair.id) : null;
-    if (!keys.KeyF || !hole || me.wood < 1 || me.mount || !me.alive || Math.hypot(P.x - hole[1], P.z - hole[2]) > 2.6) stopRepair();
-    else {
-      hammerT -= dt; if (hammerT <= 0) { hammerT = 0.42; SFX.hammer(); }
+    }else{
+      push('shop','E — 港のショップ','道具・食料を購入',18,-8,7);
+      push('pawn','E — 質屋','宝箱や遺物をゴールドに換金',-20,-8,7);
+      push('gacha','E — 宝の地図ガチャ','100Gで埋蔵金の地図',8,22,7);
+      if(self.activeQuest)push('dig','E — 宝を掘り出す', 'シャベルを使って埋蔵金を発掘',self.activeQuest.x,self.activeQuest.z,13);
+      for(const i of islands){if(i.dungeonX!=null)push('dungeonEnter','E — 洞窟に入る','徒歩でダンジョンを探索',i.dungeonX,i.dungeonZ,8);}
+      for(const s of shipsData){if(Math.hypot(px-s.x,pz-s.z)<=s.length/2+9)push('board:'+s.id,`E — ${s.name}に乗る`,`乗員 ${s.crew}/${s.maxCrew}`,s.x,s.z,s.length/2+9);}
     }
   }
+  candidates.sort((a,b)=>a.d-b.d);return candidates[0]||null;
+}
+function renderHUD(){
+  if(!self)return;
+  $('goldLabel').textContent=`${self.gold.toLocaleString()} G`;
+  $('hpLabel').textContent=`${self.hp} / ${self.maxHp}`;$('hpFill').style.width=`${100*self.hp/self.maxHp}%`;
+  const ship=self.shipId?serverShip(self.shipId):null;
+  $('shipLabel').textContent=ship?`${ship.type==='brig'?'大型船':'スループ'} · ${ship.anchored?'錨を下ろし停泊中':`速度 ${Math.round(Math.abs(ship.speed))}`}${self.role==='helm'?' · 操舵中':''}`:'徒歩で探索中';
+  const near=nearestIsland(self.x,self.z);$('islandLabel').textContent=self.inDungeon?'地下洞窟':near&&near.d<near.island.r+140?near.island.name:'大海原';
+  const inv=self.inventory||{};const itemNames={fishingRod:'🎣 釣り竿',shovel:'⛏ シャベル',potato:'🥔 じゃがいも',rawFish:'🐟 生魚',grilledFish:'🍽 焼き魚',bakedPotato:'🥔 ベイクドポテト',treasureChest:'🧰 宝箱',ancientRelic:'🏺 古代の遺物',jewel:'💎 宝石',seaGlass:'🟢 海ガラス',treasureMap:'🗺 宝の地図'};
+  const inventory=$('inventory');inventory.replaceChildren();let shown=0;
+  for(const [id,label] of Object.entries(itemNames)){const qty=Number(inv[id]||0);if(!qty&&!(id==='fishingRod'||id==='shovel'))continue;shown++;const row=document.createElement('div');row.className='inv-row';const name=document.createElement('span');name.className='inv-name';name.textContent=label;row.appendChild(name);const count=document.createElement('span');count.className='count';count.textContent=id==='fishingRod'||id==='shovel'?(qty?'所持':'未所持'):`×${qty}`;row.appendChild(count);
+    if(id==='grilledFish'&&qty){const b=document.createElement('button');b.className='dark-btn';b.textContent='食べる';b.onclick=()=>sendAction('eatFish');row.appendChild(b);}
+    if(id==='bakedPotato'&&qty){const b=document.createElement('button');b.className='dark-btn';b.textContent='食べる';b.onclick=()=>sendAction('eatPotato');row.appendChild(b);}
+    inventory.appendChild(row);
+  }
+  if(!shown){const e=document.createElement('div');e.className='hintline';e.textContent='持ち物はまだ空です。港で道具を買って冒険しよう。';inventory.appendChild(e);}
+  if(self.activeQuest){$('questCard').classList.remove('hidden');const q=self.activeQuest;const target=islands.find(i=>i.id===q.targetId);$('questText').textContent=`${target?target.name:q.title} · 残り ${Math.round(Math.hypot(self.x-q.x,self.z-q.z))}m`;}else $('questCard').classList.add('hidden');
+}
+function sendAction(action){socket.emit('action',{action});}
+function showPanel(type,data={}){
+  currentPanel=type;$('actionPanel').classList.remove('hidden');$('panelBody').replaceChildren();$('panelActions').replaceChildren();
+  const titles={shop:'港のショップ',pawn:'質屋 — 戦利品の換金',gacha:'航海図屋 — 宝の地図',kitchen:'船内の台所',storage:'船内の保管箱'};$('panelTitle').textContent=titles[type]||'船内';
+  const body=$('panelBody'),actions=$('panelActions');
+  function paragraph(t){const p=document.createElement('p');p.textContent=t;p.style.margin='4px 0 12px';body.appendChild(p);}
+  function option(name,desc,buttonText,action,disabled=false){const row=document.createElement('div');row.className='option';const text=document.createElement('div');text.className='desc';const b=document.createElement('b');b.textContent=name;const sm=document.createElement('small');sm.textContent=desc;text.append(b,sm);const btn=document.createElement('button');btn.className='gold-btn';btn.textContent=buttonText;btn.disabled=disabled;if(disabled)btn.style.opacity='.45';btn.onclick=()=>sendAction(action);row.append(text,btn);body.appendChild(row);}
+  function actionButton(label,action){const b=document.createElement('button');b.className='gold-btn';b.textContent=label;b.onclick=()=>sendAction(action);actions.appendChild(b);}
+  if(type==='shop'){
+    paragraph(`所持金：${self?.gold??0}G。冒険道具をそろえて出航しましょう。`);
+    option('釣り竿','120G · 海岸や停泊中の船で釣りができる','購入 120G','buyRod',!!self?.inventory?.fishingRod||self?.gold<120);
+    option('シャベル','80G · 宝の地図の場所を掘る','購入 80G','buyShovel',!!self?.inventory?.shovel||self?.gold<80);
+    option('じゃがいも ×5','15G · 船内の台所で焼ける','購入 15G','buyPotato',self?.gold<15);
+    option('宝の地図ガチャ','100G · ランダムな島に埋まった宝を示す地図','地図を引く 100G','buyMap',self?.gold<100||!!self?.activeQuest);
+    paragraph('大型船への乗り換えは「船種変更」、港から船を出し直すと反映されます。');
+    actionButton('船種を変更','switchShip');actionButton('新しい船を出す','newShip');
+  }else if(type==='gacha'){
+    paragraph('100Gで宝の地図を1枚引きます。行き先は島ごとにランダム。埋蔵地点は黄色い光で表示されます。');
+    option('宝の地図','100G · 宝箱と追加の戦利品を発掘','地図ガチャ 100G','buyMap',self?.gold<100||!!self?.activeQuest);
+    if(self?.activeQuest)paragraph('現在追跡中の地図があります。まずは目的地へ行き、シャベルで宝を掘り出してください。');
+  }else if(type==='pawn'){
+    paragraph('宝箱・古代の遺物・宝石・海ガラスを買い取ります。船の保管箱にある戦利品も一括で査定します。');
+    const inv=self?.inventory||{};let total=0;for(const [id,price] of Object.entries({treasureChest:180,ancientRelic:420,jewel:110,seaGlass:45}))total+=Number(inv[id]||0)*price;
+    const prices=document.createElement('div');prices.className='hintline';prices.textContent=`買取価格：宝箱180G / 古代の遺物420G / 宝石110G / 海ガラス45G。手持ち分の概算 ${total}G（船内保管分は追加）。`;body.appendChild(prices);
+    actionButton('戦利品を一括売却','sellLoot');
+  }else if(type==='kitchen'){
+    paragraph('釣った魚やじゃがいもを焼いて、航海中の食料にしましょう。食べる操作はどこでもできます。');
+    option('魚を焼く','生魚 ×1 → 焼き魚 ×1（HP +35）','調理する','cookFish',!(self?.inventory?.rawFish>0));
+    option('じゃがいもを焼く','じゃがいも ×1 → ベイクドポテト ×1（HP +22）','調理する','cookPotato',!(self?.inventory?.potato>0));
+    const f=document.createElement('div');f.className='hintline';f.textContent=`生魚：${self?.inventory?.rawFish||0} じゃがいも：${self?.inventory?.potato||0}`;body.appendChild(f);
+  }else if(type==='storage'){
+    const cargo=data.cargo||{};const nameMap={treasureChest:'宝箱',ancientRelic:'古代の遺物',jewel:'宝石',seaGlass:'海ガラス'};
+    paragraph('戦利品を船に保管できます。持ち物がいっぱいでも、ここに預けて航海を続けられます。');
+    for(const id of Object.keys(nameMap)){const d=document.createElement('div');d.className='option';const t=document.createElement('div');t.className='desc';const b=document.createElement('b');b.textContent=nameMap[id];const sm=document.createElement('small');sm.textContent=`手持ち ×${self?.inventory?.[id]||0} / 保管中 ×${cargo[id]||0}`;t.append(b,sm);d.append(t);body.appendChild(d);}
+    actionButton('戦利品を預ける','storeLoot');actionButton('戦利品を取り出す','takeLoot');
+  }
+}
+$('closePanel').addEventListener('click',()=>{currentPanel=null;$('actionPanel').classList.add('hidden');if(pointerLocked===false&&joined)canvas.requestPointerLock?.();});
+$('fishBtn').addEventListener('click',()=>sendAction('castFish'));
+$('newShipBtn').addEventListener('click',()=>sendAction('newShip'));
+$('startBtn').addEventListener('click',()=>{
+  if(!connected){$('startHint').textContent='サーバーに接続できません。npm start でサーバーを起動してください。';return;}
+  const name=$('pirateName').value.trim()||'見習い海賊';localStorage.setItem('polyPiratesName',name);
+  socket.emit('joinWorld',{token,name,shipType:$('shipType').value});$('startBtn').disabled=true;$('startBtn').textContent='出航準備中…';
+});
+$('pirateName').value=localStorage.getItem('polyPiratesName')||'';
+socket.on('connect',()=>{connected=true;$('startHint').textContent='WASD：移動・操船 / E：調べる / Q：船を降りる / R：釣り';});
+socket.on('connect_error',()=>{connected=false;$('startHint').textContent='サーバーに接続できません。ターミナルで npm start を実行してください。';});
+socket.on('worldInit',data=>{
+  worldInit=data;selfId=data.id;islands=data.islands||islands;shipTypes=data.shipTypes||{};joined=true;
+  $('title').classList.add('hidden');$('hud').classList.remove('hidden');$('startBtn').disabled=false;$('startBtn').textContent='航海を始める';
+  $('shipType').value=data.profile.shipType||'sloop';localStorage.setItem(shipTypeKey,$('shipType').value);if(data.profile.name)$('pirateName').value=data.profile.name;
+  toast('ようこそ、海賊。大海原はいつでも出航できます。',4800);
+});
+socket.on('worldState',state=>{latestState=state;self=state.self;syncWorldObjects(state);renderHUD();});
+socket.on('notice',message=>toast(message));
+socket.on('panel',data=>showPanel(data.type,data));
+socket.on('lootEffect',data=>{const g=new THREE.Group();const m=new THREE.Mesh(new THREE.OctahedronGeometry(1.2),new THREE.MeshBasicMaterial({color:'#ffe16a'}));g.add(m);g.position.set(data.x,4,data.z);scene.add(g);const start=performance.now();const spin=()=>{const age=(performance.now()-start)/1000;g.position.y=4+age*2;g.rotation.y+=.08;if(age<1.2)requestAnimationFrame(spin);else scene.remove(g);};spin();});
+socket.on('disconnect',()=>{connected=false;toast('サーバーとの接続が切れました。');});
 
-  // ---- リロード ----
-  if (reloading && now >= reloadEnd) { reloading = false; ammo[curWeapon] = w.mag; }
-  kick = Math.max(0, kick - dt * 7); swing = Math.max(0, swing - dt * 4.5);
-  flashSprite.material.opacity = Math.max(0, flashSprite.material.opacity - dt * 14);
-  muzzleLight.intensity = Math.max(0, muzzleLight.intensity - dt * 30);
+function keyAction(e,down){
+  if(['KeyW','KeyA','KeyS','KeyD','Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();
+  if(e.code==='KeyW'||e.code==='ArrowUp')keys.w=down;
+  if(e.code==='KeyA'||e.code==='ArrowLeft')keys.a=down;
+  if(e.code==='KeyS'||e.code==='ArrowDown')keys.s=down;
+  if(e.code==='KeyD'||e.code==='ArrowRight')keys.d=down;
+  if(!down||e.repeat||!joined)return;
+  if(e.code==='Escape'){return;}
+  if(e.code==='KeyE'){
+    if(currentPanel){currentPanel=null;$('actionPanel').classList.add('hidden');return;}
+    const target=nearestTarget();if(target){socket.emit('interact',{target:target.id});}else toast('近くに調べられるものはありません。',1500);
+  }
+  if(e.code==='KeyQ'){
+    if(currentPanel){currentPanel=null;$('actionPanel').classList.add('hidden');return;}
+    if(self?.shipId)sendAction('disembark');else{const target=nearestTarget();if(target&&target.id.startsWith('board:'))socket.emit('interact',{target:target.id});else toast('船のそばでQを押すと乗り込めます。',1600);}
+  }
+  if(e.code==='KeyR')sendAction('castFish');
+  if(e.code==='KeyM'&&self?.shipId)sendAction('switchShip');
+}
+window.addEventListener('keydown',e=>keyAction(e,true));window.addEventListener('keyup',e=>keyAction(e,false));window.addEventListener('blur',()=>{keys.w=keys.a=keys.s=keys.d=false;});
 
-  // ---- 位置送信 ----
-  if (me.alive && now - lastSend > 50 && netPhase !== 'idle') {
-    lastSend = now;
-    const msg = { ship: P.ship, x: P.x, y: P.y, z: P.z, yaw: P.yaw, pitch: P.pitch, w: curWeapon };
-    if (me.mount && me.mount.type === 'cannon' && P.ship) {
-      const sv = shipViews[P.ship], c = CANNONS[me.mount.idx], out = c.side > 0 ? sv.h - Math.PI / 2 : sv.h + Math.PI / 2;
-      msg.cy = c.side > 0 ? wrapA(P.yaw - out) : wrapA(out - P.yaw); msg.cp = P.pitch;
-    }
-    socket.emit('move', msg);
-  }
-
-  // ---- カメラ ----
-  let fov = 75;
-  if (cin.active) {
-    const el = (now - cin.t0) / 1000;
-    const v = shipViews[cin.team];
-    if (!cin.blasted) {
-      v.obj.root.updateMatrixWorld(true);
-      v.obj.root.localToWorld(cin.focus.set(0, 3, 0));
-      if (now >= cin.nextBoom) {
-        const p = v.obj.root.localToWorld(new THREE.Vector3(rand(-3, 3), rand(1, 5), rand(-12, 11)));
-        explosionAt(p.x, p.y, p.z, rand(1.6, 2.6));
-        for (let i = 0; i < 6; i++) spawnDebris(p.x, p.y, p.z, rand(0.3, 0.9), rand(-8, 8), rand(6, 16), rand(-8, 8), 5, false);
-        SFX.boom(0.9);
-        cin.nextBoom = now + rand(150, 420) * (1 - Math.min(0.5, el / 9));
-      }
-    }
-    const ang = cin.ang + el * 0.22, rad = (cin.blasted ? 54 : 36) + el * 1.2, hgt = 10 + el * 1.1;
-    camera.position.set(cin.focus.x + Math.cos(ang) * rad, cin.focus.y + hgt, cin.focus.z + Math.sin(ang) * rad);
-    camera.lookAt(cin.focus.x, cin.focus.y + 1, cin.focus.z);
-    fov = 52; gunView.visible = false;
-  } else if (me.alive) {
-    playerWorldEye(camPos);
-    camera.position.copy(camPos);
-    camera.rotation.set(P.pitch, P.yaw, 0);
-    gunView.visible = !me.mount;
-  } else {
-    gunView.visible = false;
-    const sv = shipViews[me.team];
-    if (sv && sv.init && sv.obj.root.visible) {
-      sv.obj.root.updateMatrixWorld(true);
-      const a = t * 0.15;
-      sv.obj.root.localToWorld(camPos.set(Math.sin(a) * 6, 9, 15));
-      camera.position.copy(camPos);
-      const look = sv.obj.root.localToWorld(_t1.set(0, 2, 0));
-      camera.lookAt(look);
-    }
-  }
-  if (Math.abs(camera.fov - fov) > 0.1) { camera.fov = lerp(camera.fov, fov, 1 - Math.exp(-dt * 6)); camera.updateProjectionMatrix(); }
-  if (shake > 0.002) {
-    camera.position.x += rand(-1, 1) * shake * 0.12; camera.position.y += rand(-1, 1) * shake * 0.12; camera.position.z += rand(-1, 1) * shake * 0.12;
-    shake *= Math.pow(0.02, dt);
-  }
-
-  // ---- 一人称ビューモデル ----
-  Object.keys(vmWeapons).forEach((k) => { vmWeapons[k].visible = (k === curWeapon); });
-  const bob = P.onGround && P._moving ? Math.sin(now * 0.012) * 0.008 : 0;
-  let gy = -0.24 + bob, gz = -0.46 + kick * 0.09, gx = 0.26, rx = kick * 0.14, rz = 0, ry = 0;
-  if (curWeapon === 'cutlass') { gx = 0.3 - swing * 0.35; rz = -swing * 1.0; ry = swing * 0.6; rx = -swing * 0.5; }
-  if (reloading) {
-    const rp = 1 - (reloadEnd - now) / (w.reload || 1), dip = Math.sin(clamp(rp, 0, 1) * Math.PI);
-    gy -= dip * 0.22; rx -= dip * 0.7; rz = dip * 0.4;
-  }
-  gunView.position.set(gx, gy, gz); gunView.rotation.set(rx, ry, rz);
-
-  updateRemotes(dt);
-  updateTreasureView(t, dt);
-  updateKrakenView(t, dt);
-  updateBalls(dt);
-  updateArc();
-  updateFxList(fdt);
-  updateDebris(fdt, t);
-  updateTracers(dt);
-  updateHud(now);
+function updateInput(){
+  if(!joined||!self)return;const now=performance.now();if(now-lastInputSent<70)return;lastInputSent=now;
+  const stopped=!!currentPanel;
+  socket.emit('input',{forward:!stopped&&keys.w,back:!stopped&&keys.s,left:!stopped&&keys.a,right:!stopped&&keys.d,yaw:camYaw});
 }
-
-// =====================================================
-//  HUD
-// =====================================================
-let bannerTimer = null;
-function banner(main, sub, cls, ms) {
-  const b = $('banner');
-  $('bannerMain').textContent = main; $('bannerSub').textContent = sub || '';
-  b.className = 'show ' + (cls || '');
-  clearTimeout(bannerTimer);
-  bannerTimer = setTimeout(() => { b.classList.remove('show'); }, ms || 2500);
+function drawMiniMap(){
+  const cv=$('minimap');if(!cv||!self)return;const c=cv.getContext('2d');const w=cv.width,h=cv.height;c.clearRect(0,0,w,h);
+  c.fillStyle='rgba(10,65,83,.88)';c.fillRect(0,0,w,h);
+  // Compass and map range: 1,200 world units from center.
+  const range=1250,scale=(w-14)/(range*2),cx=w/2,cy=h/2;
+  c.strokeStyle='rgba(255,255,255,.16)';c.lineWidth=1;for(let r of [w*.18,w*.32,w*.46]){c.beginPath();c.arc(cx,cy,r,0,Math.PI*2);c.stroke();}
+  c.strokeStyle='rgba(255,255,255,.1)';c.beginPath();c.moveTo(cx,5);c.lineTo(cx,h-5);c.moveTo(5,cy);c.lineTo(w-5,cy);c.stroke();
+  for(const isl of islands){const x=cx+isl.x*scale,y=cy+isl.z*scale;c.fillStyle=isl.id==='outpost'?'#d7bb7e':isl.type==='rock'?'#8b8d7d':'#75a26f';c.beginPath();c.arc(x,y,Math.max(2.5,isl.r*scale),0,Math.PI*2);c.fill();}
+  for(const s of shipsData){const x=cx+s.x*scale,y=cy+s.z*scale;c.fillStyle=s.ownerId===selfId?'#ffe16b':'#fafafa';c.save();c.translate(x,y);c.rotate(s.yaw);c.beginPath();c.moveTo(0,-4);c.lineTo(3,4);c.lineTo(-3,4);c.closePath();c.fill();c.restore();}
+  c.fillStyle='#fff';c.beginPath();c.arc(cx+self.x*scale,cy+self.z*scale,3.7,0,Math.PI*2);c.fill();c.strokeStyle='#08151b';c.lineWidth=1.5;c.stroke();
+  if(self.activeQuest){c.fillStyle='#ffd14c';c.beginPath();c.arc(cx+self.activeQuest.x*scale,cy+self.activeQuest.z*scale,4.5,0,Math.PI*2);c.fill();}
+  c.fillStyle='#dbe7df';c.font='bold 10px sans-serif';c.fillText('N',cx-3,10);
 }
-let centerTimer = null;
-function showCenter(main, cls, sub, ms) {
-  const c = $('centerMsg');
-  $('centerMain').textContent = main; $('centerSub').textContent = sub || '';
-  c.className = 'show ' + (cls || '');
-  clearTimeout(centerTimer);
-  centerTimer = setTimeout(() => { c.classList.remove('show'); }, ms || 4000);
-}
-let resultEnd = 0;
-function showResult(d, startAt) {
-  if (appState !== 'game') return;
-  resultShown = true; resultEnd = startAt + (d.next || 25000);
-  $('pause').classList.add('hidden');
-  if (document.pointerLockElement) document.exitPointerLock();
-  mouseDown = false;
-  $('resTitle').textContent = d.win ? 'VICTORY' : 'DEFEAT';
-  $('resTitle').className = d.win ? 'win' : 'lose';
-  $('resReason').textContent = d.reason === 'treasure' ? (d.win ? '宝のエリアを制圧した！' : '宝を奪われた…') : (d.win ? '敵船を撃沈した！' : '船を失った…');
-  $('resReward').textContent = '+' + d.reward + ' G';
-  $('resMedal').textContent = d.medal ? '+1 枚獲得！' : '（勝利で1枚獲得）';
-  $('resultScreen').classList.remove('hidden');
-}
-function hideResult() { resultShown = false; $('resultScreen').classList.add('hidden'); }
-$('resLobbyBtn').onclick = () => { hideResult(); leaveGame(); };
-let hudT = 0;
-function zoneControl() {
-  if (!netTr) return 'none';
-  const inZ = (k) => { const v = shipViews[k]; return v.init && !v.sunk && Math.hypot(v.x - netTr.x, v.z - netTr.z) < netTr.r; };
-  const a = inZ('A'), b = inZ('B');
-  return a && b ? 'both' : a ? 'A' : b ? 'B' : 'none';
-}
-function updateTreasureView(t) {
-  const v = treasureView, tr = netTr;
-  if (!tr) { v.g.visible = false; v.i = -1; return; }
-  v.g.visible = true;
-  if (v.i !== tr.i) {
-    v.i = tr.i;
-    v.chest.position.set(tr.cx, ISLAND_TOP, tr.cz);
-    v.beam.position.set(tr.cx, ISLAND_TOP + 75, tr.cz);
-    v.ring.position.set(tr.x, 0.5, tr.z); v.ring.scale.set(tr.r, tr.r, 1);
-    v.disc.position.set(tr.x, 0.45, tr.z); v.disc.scale.set(tr.r, tr.r, 1);
+function animate(){
+  requestAnimationFrame(animate);if(!renderer||!scene||!camera)return;
+  const delta=Math.min(clock.getDelta(),.05);updateInput();
+  if(joined&&self){
+    const myPlayer=playerMeshes.get(selfId);let target;
+    if(myPlayer)target=myPlayer.position.clone();else target=new THREE.Vector3(self.x,self.inDungeon?.9:(self.shipId?2.5:landY(self.x,self.z)),self.z);
+    const cp=Math.cos(camPitch);const camPos=new THREE.Vector3(target.x+Math.sin(camYaw)*camDistance*cp,target.y+4+Math.sin(camPitch)*camDistance,target.z+Math.cos(camYaw)*camDistance*cp);
+    camera.position.lerp(camPos,.14);camera.lookAt(target.x,target.y+1.7,target.z);
+    const tar=nearestTarget();const prompt=$('prompt');
+    if(tar&&!currentPanel){prompt.innerHTML=`${escapeHtml(tar.label)}<small>${escapeHtml(tar.hint)}</small>`;lastPromptTarget=tar.id;}
+    else if(self.role==='helm'&&!currentPanel){prompt.innerHTML='操舵中<small>W/S：前進・後退 A/D：旋回 E：舵を離れる 錨を下ろすと停泊</small>';}
+    else{prompt.textContent='';lastPromptTarget=null;}
+    const s=self.shipId?serverShip(self.shipId):null;
+    if(s&&s.helmBy===selfId&&s.anchored&&keys.w)toastOnce('anchorTip','錨を上げるには船尾の錨へ移動してE',2.5);
+    if(performance.now()-lastMini>130){drawMiniMap();lastMini=performance.now();}
   }
-  v.chest.rotation.y = t * 0.6; v.chest.position.y = ISLAND_TOP + Math.sin(t * 2) * 0.12;
-  v.beamM.opacity = 0.18 + Math.sin(t * 3) * 0.06;
-  const c = zoneControl();
-  const col = c === 'A' ? 0xff5a62 : c === 'B' ? 0x5a9aff : c === 'both' ? 0xffffff : 0xffd24a;
-  v.ringM.color.set(col); v.discM.color.set(col);
-  v.discM.opacity = c === 'none' ? 0.1 : 0.2;
+  const t=performance.now()*.001;if(questMarker){questMarker.rotation.y=t*.55;const orb=questMarker.children[0];if(orb)orb.position.y=5+Math.sin(t*2.5)*.55;}
+  renderer.render(scene,camera);
 }
-function updateKrakenView(t, dt) {
-  const v = krakenView, k = netKr;
-  if (!k || appState !== 'game') { v.g.visible = false; v.init = false; return; }
-  v.g.visible = true;
-  if (!v.init) { v.x = k.x; v.z = k.z; v.h = k.h; v.rise = 0; v.init = true; }
-  const kk = 1 - Math.exp(-dt * 6);
-  v.x = lerp(v.x, k.x, kk); v.z = lerp(v.z, k.z, kk); v.h += wrapA(k.h - v.h) * kk;
-  v.rise = Math.min(1, v.rise + dt * 0.4);
-  v.g.position.set(v.x, waveH(v.x, v.z, t) - 6 + v.rise * 5.5, v.z);
-  v.g.rotation.y = v.h;
-  v.atk = Math.max(0, v.atk - dt * 1.2);
-  v.tents.forEach((tt, i) => {
-    tt.root.rotation.x = 1.0 + Math.sin(t * 1.4 + i * 1.3) * 0.22 - v.atk * 0.8;
-    tt.segs.forEach((sg, j) => { sg.rotation.x = 0.26 + Math.sin(t * 2.1 + i + j * 0.8) * 0.16; });
-  });
-}
-function updateHud(now) {
-  if (now - hudT < 60) return;
-  hudT = now;
-  const my = shipViews[me.team], en = shipViews[me.team === 'A' ? 'B' : 'A'];
-  if (my && en) {
-    $('hpMeNum').textContent = Math.round(my.hp) + '%'; $('hpMeFill').style.width = clamp(my.hp, 0, 100) + '%';
-    $('hpEnNum').textContent = Math.round(en.hp) + '%'; $('hpEnFill').style.width = clamp(en.hp, 0, 100) + '%';
-    $('holesMe').textContent = my.holes.length ? `浸水中！ 穴 ${my.holes.length}` : '';
-    $('holesEn').textContent = en.holes.length ? `敵船 浸水 ${en.holes.length}` : '';
-  }
-  $('phaseLabel').textContent = netPhase === 'live' ? '交戦中' : netPhase === 'sinking' ? '大破！' : netPhase === 'result' ? '決着' : '';
-  $('hpNum').textContent = Math.max(0, Math.round(me.hp)); $('hpFill').style.width = clamp(me.hp / (me.mhp || 200) * 100, 0, 100) + '%';
-  $('woodRow').textContent = `木材 ${me.wood}/${MAX_WOOD}　${me.credits.toLocaleString()} G`;
-  const w = WEAP[curWeapon];
-  $('wName').textContent = w.name;
-  $('wAmmo').textContent = w.melee ? '∞' : (reloading ? '…' : ammo[curWeapon] + ' / ' + w.mag);
-  $('wSlots').innerHTML = `<b>1</b> ピストル　<b>2</b> ブランダー　<b>3</b> カットラス`;
-  // 照準
-  const ch = $('crosshair'); ch.className = me.mount && me.mount.type === 'cannon' ? 'cannon hudhide' : 'hudhide';
-  ch.style.display = me.alive && !(me.mount && me.mount.type === 'helm') ? '' : 'none';
-  // プロンプト
-  const h = interactHint(), pr = $('prompt');
-  if (holdRepair) {
-    pr.textContent = '';
-    $('progWrap').classList.remove('hidden');
-    $('progLabel').textContent = '修理中…';
-    $('progFill').style.width = clamp((now - holdRepair.start) / REPAIR_MS, 0, 1) * 100 + '%';
-  } else {
-    $('progWrap').classList.add('hidden');
-    if (me.mount && me.mount.type === 'cannon' && P.ship) {
-      const cn = shipViews[P.ship].cn[me.mount.idx], cd = cn ? cn[2] : 0;
-      pr.textContent = cd > 0 ? `装填中… ${(cd / 1000).toFixed(1)}s　[F] 降りる` : '[クリック] 発射！　[F] 降りる';
-      pr.className = cd > 0 ? 'dim' : '';
-    } else if (h) { pr.textContent = h.label; pr.className = h.ok ? '' : 'dim'; }
-    else { pr.textContent = ''; pr.className = ''; }
-  }
-  // 舵HUD
-  const hh = $('helmHud');
-  if (me.mount && me.mount.type === 'helm') {
-    hh.classList.remove('hidden');
-    $('sailFill').style.height = P.throttle * 100 + '%';
-    $('wheelDot').style.left = (41 + P.wheel * 38) + 'px';
-  } else hh.classList.add('hidden');
-  // 死亡表示
-  const di = $('deadInfo');
-  if (!me.alive && !cin.active) {
-    di.classList.remove('hidden');
-    di.textContent = netPhase === 'live' ? `撃沈された… 復活まで ${Math.max(0, Math.ceil((me.respawn - (now - lastStAt)) / 1000))}秒` : '戦闘終了を待っています…';
-  } else di.classList.add('hidden');
-  // 宝のエリア制圧HUD
-  const th = $('trHud');
-  if (netTr) {
-    th.classList.remove('hidden');
-    const mine = me.team === 'A' ? netTr.a : netTr.b, theirs = me.team === 'A' ? netTr.b : netTr.a;
-    $('trMe').style.width = clamp(mine, 0, 1) * 100 + '%'; $('trEn').style.width = clamp(theirs, 0, 1) * 100 + '%';
-    $('trMe').style.background = me.team === 'A' ? '#d23a40' : '#3a86ff'; $('trEn').style.background = me.team === 'A' ? '#3a86ff' : '#d23a40';
-    const c = zoneControl();
-    $('trZone').textContent = c === 'none' ? '宝のエリアへ船を向けろ！（40秒間居続けた船の勝ち）' : c === 'both' ? '奪い合い中！ 敵船を追い払え' : c === me.team ? '制圧中…！ このまま守り抜け' : '敵に制圧されている！ 追い払え';
-    const mv = shipViews[me.team];
-    $('trDist').textContent = mv && mv.init ? `宝まで ${Math.round(Math.hypot(mv.x - netTr.x, mv.z - netTr.z))}m` : '';
-  } else th.classList.add('hidden');
-  const kh = $('krHud');
-  if (netKr) { kh.classList.remove('hidden'); $('krFill').style.width = clamp(netKr.hp, 0, 100) + '%'; } else kh.classList.add('hidden');
-  if (resultShown) $('resCount').textContent = `${Math.max(0, Math.ceil((resultEnd - now) / 1000))}秒後に次の海戦が始まります`;
-  drawMinimap();
-}
-let lastStAt = performance.now();
-socket.on('st', () => { lastStAt = performance.now(); });
-const mm = $('minimap').getContext('2d');
-function drawMinimap() {
-  const W = 150, R = 150 / 2 - 4, sc = R / MAP_R;
-  mm.clearRect(0, 0, W, W);
-  mm.save(); mm.translate(W / 2, W / 2);
-  mm.strokeStyle = 'rgba(255,255,255,.25)'; mm.beginPath(); mm.arc(0, 0, R, 0, 7); mm.stroke();
-  mm.fillStyle = 'rgba(230,210,154,.8)';
-  ISLANDS.forEach((i) => { mm.beginPath(); mm.arc(i.x * sc, i.z * sc, Math.max(2.5, i.r * sc), 0, 7); mm.fill(); });
-  if (netTr) {
-    mm.strokeStyle = '#ffd24a'; mm.lineWidth = 1.5; mm.beginPath(); mm.arc(netTr.x * sc, netTr.z * sc, netTr.r * sc, 0, 7); mm.stroke();
-    mm.fillStyle = '#ffd24a'; mm.save(); mm.translate(netTr.cx * sc, netTr.cz * sc); mm.rotate(Math.PI / 4); mm.fillRect(-2.5, -2.5, 5, 5); mm.restore(); mm.lineWidth = 1;
-  }
-  if (netKr) { mm.fillStyle = '#d98cff'; mm.beginPath(); mm.arc(netKr.x * sc, netKr.z * sc, 4, 0, 7); mm.fill(); }
-  ['A', 'B'].forEach((k) => {
-    const v = shipViews[k]; if (!v.init || v.sunk) return;
-    mm.save(); mm.translate(v.x * sc, v.z * sc); mm.rotate(-v.h);
-    mm.fillStyle = k === me.team ? '#ff6b72' : '#6aa8ff';
-    mm.beginPath(); mm.moveTo(0, -8); mm.lineTo(4.5, 6); mm.lineTo(-4.5, 6); mm.closePath(); mm.fill();
-    mm.restore();
-  });
-  mm.fillStyle = '#ffec99';
-  Object.keys(ballMeshes).forEach((id) => { const b = ballMeshes[id].mesh.position; mm.fillRect(b.x * sc - 1, b.z * sc - 1, 3, 3); });
-  if (me.alive) {
-    let wx = P.x, wz = P.z;
-    if (P.ship) { const v = shipViews[P.ship], c = Math.cos(v.h), s = Math.sin(v.h); wx = v.x + P.x * c + P.z * s; wz = v.z - P.x * s + P.z * c; }
-    mm.fillStyle = '#fff'; mm.beginPath(); mm.arc(wx * sc, wz * sc, 2.5, 0, 7); mm.fill();
-  }
-  mm.restore();
-}
-
-// =====================================================
-//  メインループ
-// =====================================================
-let lastTime = performance.now();
-function frame(nowMs) {
-  requestAnimationFrame(frame);
-  const dt = Math.min(0.05, (nowMs - lastTime) / 1000);
-  lastTime = nowMs;
-  const t = nowMs / 1000;
-  if (appState === 'game') {
-    updateGame(dt, t, nowMs);
-    renderer.render(gameScene, camera);
-  } else {
-    updateLobby(dt, t);
-    renderer.render(lobbyScene, lobbyCam);
-  }
-}
-requestAnimationFrame(frame);
-})();
+const toastKeys=new Map();function toastOnce(key,msg,interval){const now=performance.now();if(now-(toastKeys.get(key)||0)>interval*1000){toastKeys.set(key,now);toast(msg,1900);}}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+initThree();
 </script>
 </body>
 </html>
