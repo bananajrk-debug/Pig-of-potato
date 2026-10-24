@@ -1,7 +1,7 @@
 {
-  "name": "poly-pirates",
-  "version": "6.0.0",
-  "description": "海賊テーマのオープンワールド航海＆冒険・生活アクション：昼夜サイクル・山あいの巨大拠点島・錨・釣りと料理・ダンジョン・宝の地図ガチャ・質屋 (Node.js + Three.js + Socket.io)",
+  "name": "pig-of-potato",
+  "version": "7.0.0",
+  "description": "Pig of potato：ブタ海賊のオープンワールド航海＆栽培・砲撃ゲーム（ジャガイモ砲弾・風と帆・嵐・クラーケン・敵海賊船・チーム協力）(Node.js + Three.js + Socket.io)",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
