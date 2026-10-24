@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>POLY PIRATES — 大海原の航海録</title>
+<title>Pig of potato — ブタ海賊の大航海</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:"Hiragino Sans","Yu Gothic",Meiryo,sans-serif;color:#fff;user-select:none}
@@ -29,22 +29,35 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:"Hi
 #barfill{height:100%;width:0;background:#ffd75a}
 #tool{right:14px;bottom:12px;font-size:15px;background:#0008;padding:6px 12px;border-radius:6px}
 #death{inset:0;background:#300c;display:none;align-items:center;justify-content:center;font-size:36px}
-#start{position:fixed;inset:0;background:radial-gradient(#13324f,#04080f);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:20;gap:14px}
-#start h1{font-size:54px;letter-spacing:4px;color:#ffd75a;text-shadow:0 3px 12px #000}
-#start p{opacity:.85;font-size:15px;max-width:560px;text-align:center;line-height:1.7}
+#start{position:fixed;inset:0;background:linear-gradient(#6fd6ff,#ffd3ec);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:20;gap:14px}
+#start h1{font-size:60px;letter-spacing:3px;color:#fff;text-shadow:0 4px 0 #ff5fa8,0 8px 0 #c93a84,0 10px 18px #0006}
+#start p{opacity:.95;font-size:15px;max-width:600px;text-align:center;line-height:1.7;color:#4a2a5a;text-shadow:none}
 #start input{padding:10px 14px;font-size:18px;border-radius:6px;border:none;width:260px;text-align:center}
-button{font-family:inherit;cursor:pointer;border:none;border-radius:6px;padding:8px 16px;font-size:15px;background:#c8892b;color:#fff;margin:2px}
-button:hover{background:#e8a63b}
+button{font-family:inherit;cursor:pointer;border:none;border-radius:6px;padding:8px 16px;font-size:15px;background:#ff6fae;color:#fff;margin:2px;box-shadow:0 3px 0 #c93a84}
+button:hover{background:#ff8cc0}
 button:disabled{opacity:.4;cursor:default}
 #go{font-size:22px;padding:12px 40px}
-#panel{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(640px,94vw);max-height:84vh;overflow:auto;background:#2a1d12f2;border:3px solid #c8892b;border-radius:10px;padding:18px;display:none;z-index:10}
-#panel h2{color:#ffd75a;margin-bottom:8px;font-size:22px}
+#panel{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(640px,94vw);max-height:84vh;overflow:auto;background:#3a2250f2;border:3px solid #ff6fae;border-radius:10px;padding:18px;display:none;z-index:10}
+#panel h2{color:#ffe36a;margin-bottom:8px;font-size:22px}
 #panel h3{margin:12px 0 4px;color:#ffe9a0;font-size:16px}
 .row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 8px;border-bottom:1px solid #fff2}
 .row b{font-weight:normal}
 .gl{color:#ffd75a}
 .rN{color:#ccc}.rR{color:#6fb4ff}.rSR{color:#d58bff}.rUR{color:#ffd23f;font-weight:bold}
 .sub{opacity:.75;font-size:13px}
+
+#wind{right:14px;top:392px;width:180px;text-align:center;font-size:13px;background:#0a2a4acc;border-radius:10px;padding:5px;border:2px solid #9fe8ff}
+#windarrow{display:inline-block;font-size:26px;color:#9fe8ff}
+#teamhud{left:14px;top:150px;font-size:13px;line-height:1.6;background:#0a2a4aaa;border-radius:8px;padding:6px 10px;display:none}
+#lobby{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;z-index:20;gap:12px;background:linear-gradient(#6fd6ffcc,#ffd3eccc)}
+#lobby h2{font-size:34px;color:#fff;text-shadow:0 3px 0 #ff5fa8,0 6px 12px #0006}
+#lobby .sub{color:#4a2a5a}
+#teamlist{width:min(620px,92vw);max-height:42vh;overflow:auto;background:#fff9;border-radius:12px;padding:8px;color:#3a2250}
+#teamlist .t{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border-bottom:1px dashed #c9a3d8}
+#teamlist .t b{font-size:16px}
+#sail{font-size:26px;padding:12px 56px}
+#shipwarn{left:50%;top:92px;transform:translateX(-50%);font-size:22px;font-weight:bold;color:#ff4a6a;text-shadow:0 2px 6px #000;display:none}
+#cnhud{left:50%;top:56%;transform:translateX(-50%);font-size:15px;background:#000a;border:1px solid #ffd75a;padding:6px 14px;border-radius:8px;display:none}
 </style>
 </head>
 <body>
@@ -58,16 +71,27 @@ button:disabled{opacity:.4;cursor:default}
 <div id="bite" class="hud">ヒット！ クリック！</div>
 <div id="bar" class="hud"><div id="barfill"></div></div>
 <div id="tool" class="hud"></div>
-<div id="help" class="hud">WASD 移動 / Shift 走る / Space ジャンプ・泳ぎ上がり / E 操作 / ＠ 視点切替 / 1 剣 2 釣竿 / クリック 使用 / I 持ち物 / M 地図</div>
+<div id="help" class="hud">WASD 移動 / Shift 走る / Space ジャンプ・飛び込み・梯子 / E 操作 / V 視点 / 1 剣 2 釣竿 / クリック 使用 / 舵: W/S 帆 A/D 舵 Q/R 帆の向き / I 持ち物 / M 海図</div>
 <div id="death" class="hud" style="position:fixed">気を失った…</div>
+<div id="wind" class="hud"><div>🌬 <span id="windtxt"></span></div><span id="windarrow">⬆</span><div id="sailguide" style="color:#ffe36a"></div></div>
+<div id="teamhud" class="hud"></div>
+<div id="shipwarn" class="hud"></div>
+<div id="cnhud" class="hud">🥔 大砲: マウスで照準 / クリックで発射 / Space・E で離れる</div>
 <div id="panel"></div>
 <div id="start">
-  <h1>POLY PIRATES</h1>
-  <p>山あいの巨大拠点島「ポートタウン」を拠点に、昼夜が移ろう大海原を航海しよう。釣り・料理・ダンジョン探索・宝の地図・質屋の取引…期限なしの自由な海賊ライフ。</p>
+  <h1>🐷 Pig of potato</h1>
+  <p>ブタの海賊になって大海原へ！ 遠い島でジャガイモを収穫し、船の上で育てて増やし、<b>ジャガイモ砲弾</b>で敵の海賊船やクラーケンをポンッとやっつけよう。昼夜と嵐、風と帆、宝の地図、釣りと料理。仲間とチームを組んで同じ船で協力プレイも！</p>
   <input id="name" maxlength="12" placeholder="海賊名">
-  <button id="go">出航する</button>
+  <button id="go">ロビーへ</button>
 </div>
 
+<div id="lobby">
+  <h2>🐷 ロビー ー チームで出航しよう</h2>
+  <div id="teamlist"></div>
+  <div><button id="tcreate">チームを作る</button><button id="tleave">チームを抜ける</button></div>
+  <button id="sail">出航する！</button>
+  <p class="sub">同じチームの仲間はミニマップに緑で表示され、同じ船で航海・栽培・砲撃を分担できます（スループ1人用 / 大型帆船は最大3人）。<br>チームなし（ひとり）でも出航できます。</p>
+</div>
 <script src="/socket.io/socket.io.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
@@ -84,18 +108,18 @@ const sstep = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t 
 const noise2 = (x, z) => Math.sin(x * 0.11 + 1.3) * Math.cos(z * 0.09 + 0.7) * 1.1 + Math.sin(x * 0.23 + z * 0.17) * 0.55 + Math.sin(z * 0.31 - x * 0.13) * 0.3;
 const angd = (a, b) => { let d = a - b; while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2; return d; };
 const ISLETS = [
-  { name: 'ドクロ島', x: -420, z: -300, r: 60, p: 14 }, { name: 'ヤシ島', x: 360, z: -250, r: 42, p: 8 },
-  { name: '岩礁島', x: -300, z: 390, r: 48, p: 13 }, { name: '砂州の島', x: 480, z: 300, r: 34, p: 5 },
-  { name: '霧の島', x: 130, z: -540, r: 52, p: 15 }, { name: 'クジラ湾', x: -540, z: 130, r: 40, p: 9 },
-  { name: '月影島', x: 560, z: -20, r: 36, p: 7 }
+  { name: 'ドクロ島', x: -820, z: -560, r: 60, p: 8 }, { name: 'ヤシ島', x: 700, z: -480, r: 46, p: 5 },
+  { name: '岩礁島', x: -600, z: 760, r: 50, p: 8 }, { name: '砂州の島', x: 940, z: 560, r: 38, p: 3 },
+  { name: '霧の島', x: 260, z: -1050, r: 54, p: 9 }, { name: 'クジラ湾', x: -1100, z: 260, r: 44, p: 6 },
+  { name: '月影島', x: 1130, z: -60, r: 40, p: 4 }, { name: 'ジャガ島', x: -150, z: 1180, r: 52, p: 5 }
 ];
 function mainH(x, z) {
   const d = Math.hypot(x, z), a = Math.atan2(z, x);
   const Rm = 108 + Math.sin(a * 3 + 1) * 9 + Math.sin(a * 5 + 2) * 5;
   const land = Rm - d;
-  const m = 46 * Math.exp(-((x + 8) ** 2 + (z + 24) ** 2) / 1800) + 26 * Math.exp(-((x - 52) ** 2 + (z + 8) ** 2) / 900) +
-    24 * Math.exp(-((x + 56) ** 2 + (z - 4) ** 2) / 800) + 14 * Math.exp(-(x ** 2 + (z + 72) ** 2) / 700);
-  let elev = (2.6 + m + noise2(x, z) * 0.9) * sstep(0, 26, land);
+  const m = 24 * Math.exp(-((x + 8) ** 2 + (z + 24) ** 2) / 2600) + 14 * Math.exp(-((x - 52) ** 2 + (z + 8) ** 2) / 1500) +
+    13 * Math.exp(-((x + 56) ** 2 + (z - 4) ** 2) / 1400) + 8 * Math.exp(-(x ** 2 + (z + 72) ** 2) / 1100);
+  let elev = (2.6 + m + noise2(x, z) * 0.7) * sstep(0, 34, land);
   const dx = Math.max(Math.abs(x) - 36, 0), dz = Math.max(Math.max(14 - z, z - 52), 0);
   elev = lerp(elev, 1.6, 1 - sstep(0, 14, Math.hypot(dx, dz)));
   const h = lerp(-5, elev, sstep(-6, 1, land));
@@ -106,8 +130,8 @@ function isletH(I, x, z) {
   const d = Math.hypot(x - I.x, z - I.z), a = Math.atan2(z - I.z, x - I.x);
   const R = I.r * (1 + 0.12 * Math.sin(a * 4 + I.x) + 0.08 * Math.sin(a * 7));
   const land = R - d;
-  const top = I.p * Math.exp(-(d * d) / (2 * (R * 0.45) ** 2)) * (1 + 0.15 * Math.sin(x * 0.2) * Math.cos(z * 0.17));
-  return lerp(-5, (1.4 + top) * sstep(0, R * 0.3, land), sstep(-6, 1, land));
+  const top = I.p * Math.exp(-(d * d) / (2 * (R * 0.5) ** 2)) * (1 + 0.15 * Math.sin(x * 0.2) * Math.cos(z * 0.17));
+  return lerp(-5, (1.4 + top) * sstep(0, R * 0.4, land), sstep(-6, 1, land));
 }
 function heightAt(x, z) {
   let h = -5;
@@ -118,8 +142,32 @@ function heightAt(x, z) {
   }
   return h;
 }
-const wave = (x, z, t) => 0.26 * Math.sin(x * 0.05 + t * 0.8) + 0.2 * Math.sin(z * 0.062 + t * 1.05 + 1.3) + 0.1 * Math.sin((x + z) * 0.12 + t * 1.6);
-const DUNGEON_ENTRANCE = { x: -394, z: -272 };
+let STORM = 0, STORM_T = 0;
+const WIND = { dir: 0, spd: 1 };
+const wave = (x, z, t) => (0.26 * Math.sin(x * 0.05 + t * 0.8) + 0.2 * Math.sin(z * 0.062 + t * 1.05 + 1.3) + 0.1 * Math.sin((x + z) * 0.12 + t * 1.6)) * (1 + 2.2 * STORM);
+const DUNGEON_ENTRANCE = { x: ISLETS[0].x + 26, z: ISLETS[0].z + 28 };
+const KZONES = [{ name: '嵐の渦潮', x: -1150, z: -1000, r: 260 }, { name: '大渦の海', x: 1050, z: 1150, r: 240 }];
+// ジャガイモ畑（server.js と同じ式）
+const FIELDS = [];
+{
+  let seed = 7771;
+  const rr = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+  ISLETS.forEach((I, ii) => {
+    const want = ii === 7 ? 5 : 3;
+    let got = 0;
+    for (let k = 0; k < 400 && got < want; k++) {
+      const a = rr() * Math.PI * 2, r = I.r * (0.2 + rr() * 0.4);
+      const x = Math.round(I.x + Math.cos(a) * r), z = Math.round(I.z + Math.sin(a) * r), h = heightAt(x, z);
+      if (h < 1.5 || h > 7) continue;
+      if (Math.hypot(x - DUNGEON_ENTRANCE.x, z - DUNGEON_ENTRANCE.z) < 22) continue;
+      if (FIELDS.some((f) => Math.hypot(f.x - x, f.z - z) < 20)) continue;
+      FIELDS.push({ id: FIELDS.length, x, z, isl: I.name });
+      got++;
+    }
+  });
+}
+const FR = new Set();   // まだ育っていない畑のID（サーバーから）
+
 const ROAD = [[0, 14], [-8, -2], [10, -16], [-12, -30], [8, -44], [-6, -60], [4, -74]];
 function roadDist(x, z) {
   let best = 1e9;
@@ -136,8 +184,8 @@ function roadDist(x, z) {
 // =====================================================
 const DECKY = 1.8, HOLDY = -0.4;
 const TYPES = {
-  sloop: { name: 'スループ', hull: [[6.5, 1.9], [4.5, 2.3], [0.5, 2.5], [-4, 2.2], [-7, 1.3], [-9.6, 0.12]], qlen: 3.4, masts: [-4.8], mastH: 9, color: 0x9a6a3c, sailC: 0xf2ead2 },
-  galleon: { name: '大型帆船', hull: [[12.8, 3.0], [10, 3.5], [5, 3.8], [-3, 3.8], [-9, 3.0], [-13, 1.5], [-16, 0.15]], qlen: 5.4, masts: [-3.5, -9.5], mastH: 15, color: 0x5a3a22, sailC: 0xe8dcc0 }
+  sloop: { name: 'スループ', hull: [[6.5, 1.9], [4.5, 2.3], [0.5, 2.5], [-4, 2.2], [-7, 1.3], [-9.6, 0.12]], qlen: 3.2, qh: 2.4, masts: [-6.0], mastH: 9, color: 0xff7a59, sailC: 0xfff4d8, cz: [-3.4], crops: 2 },
+  galleon: { name: '大型帆船', hull: [[12.8, 3.0], [10, 3.5], [5, 3.8], [-3, 3.8], [-9, 3.0], [-13, 1.5], [-16, 0.15]], qlen: 5.6, qh: 2.6, masts: [-3.5, -9.5], mastH: 15, color: 0x3a9cff, sailC: 0xffffff, cz: [-3, -8], crops: 4 }
 };
 function hwAt(T, z) {
   const H = T.hull;
@@ -150,21 +198,29 @@ function hwAt(T, z) {
 }
 function layoutOf(T) {
   const L = {};
-  L.stern = T.hull[0][0]; L.bow = T.hull[T.hull.length - 1][0]; L.qh = 1.2;
-  L.qz0 = L.stern - T.qlen; L.qs1 = L.qz0; L.qs0 = L.qz0 - 3.0;
-  const hq = hwAt(T, L.qs0 + 1.5);
-  L.qsx0 = -(hq - 0.35); L.qsx1 = L.qsx0 + 1.2;
-  L.ra1 = L.qs0 - 0.8; L.ra0 = L.ra1 - 3.0; L.rax = 0.65;
+  L.stern = T.hull[0][0]; L.bow = T.hull[T.hull.length - 1][0]; L.qh = T.qh;
+  L.qz0 = L.stern - T.qlen;                       // 船室（舵の下）の正面の壁
+  L.qs1 = L.qz0; L.qs0 = L.qz0 - T.qh / 0.55;     // 両サイドの階段（舵の甲板へ）
+  const hq = hwAt(T, (L.qs0 + L.qs1) / 2);
+  L.sw = hq > 3 ? 1.15 : 0.95; L.sxo = hq - 0.3; L.sxi = L.sxo - L.sw;
+  L.dxo = Math.min(1.1, L.sxi - 0.2);             // 2枚ドアの間口（半幅）
+  L.ra1 = L.qs0 - 0.9; L.ra0 = L.ra1 - 2.8; L.rax = 0.65;   // 船倉への階段
   L.wheelZ = L.stern - 1.7; L.standZ = L.stern - 0.85;
   L.winch = { x: hwAt(T, L.stern - 1.2) - 0.75, z: L.stern - 1.2 };
   L.hh = (z) => 0.85 * hwAt(T, z) - 0.35;
   L.stove = { x: -(L.hh(L.ra0 - 1.4) - 0.5), z: L.ra0 - 1.4 };
+  L.bucket = { x: L.hh(L.ra0 - 1.4) - 0.55, z: L.ra0 - 1.4 };
   L.chest = { x: L.hh(L.stern - 1.6) - 0.5, z: L.stern - 1.6 };
+  L.cannons = [];
+  for (const side of [-1, 1]) for (const z of T.cz) L.cannons.push({ side, z, x: side * (hwAt(T, z) - 0.6), idx: L.cannons.length });
+  L.lad = { z: (T.hull[2][0] + T.hull[3][0]) / 2 - 0.3 };
+  L.plant = [];
+  for (let i = 0; i < T.crops; i++) { const z = L.qz0 + 1.3 + Math.floor(i / 2) * 1.6; L.plant.push({ x: (i % 2 ? 1 : -1) * (hwAt(T, z) - 0.85), z }); }
   return L;
 }
 for (const k in TYPES) TYPES[k].L = layoutOf(TYPES[k]);
 // 船内での歩行可能面: 数値=床の高さ / null=壁 / 'off'=船外へ
-function shipSurface(T, anch, lx, lz, fy) {
+function shipSurface(T, anch, lx, lz, fy, dopen) {
   const L = T.L, hw = hwAt(T, lz);
   const inHold = fy < DECKY - 0.9;
   if (!inHold) {
@@ -178,13 +234,18 @@ function shipSurface(T, anch, lx, lz, fy) {
   if (Math.abs(lx) <= L.rax && lz >= L.ra0 && lz <= L.ra1) return HOLDY + (DECKY - HOLDY) * (lz - L.ra0) / (L.ra1 - L.ra0);
   if (!inHold) {
     for (const m of T.masts) if (Math.hypot(lx, lz - m) < 0.7 && fy < DECKY + 1.2) return null;
-    if (lx >= L.qsx0 && lx <= L.qsx1 && lz >= L.qs0 && lz <= L.qs1) return DECKY + L.qh * (lz - L.qs0) / (L.qs1 - L.qs0);
-    if (lz >= L.qz0) return DECKY + L.qh;
+    for (const c of L.cannons) if (Math.hypot(lx - c.x, lz - c.z) < 0.6 && fy < DECKY + 0.5) return null;
+    // 両サイドの階段（船尾楼＝舵の甲板へ）
+    if (lz >= L.qs0 && lz <= L.qs1 && Math.abs(lx) >= L.sxi && Math.abs(lx) <= L.sxo + 0.3) return DECKY + L.qh * (lz - L.qs0) / (L.qs1 - L.qs0);
+    if (lz >= L.qz0) {
+      if (fy > DECKY + L.qh * 0.55) return DECKY + L.qh;            // 舵の甲板（船室の屋根）
+      if (lz < L.qz0 + 0.45 && !(dopen && Math.abs(lx) < L.dxo)) return null;   // 船室の正面の壁（ドアの所だけ通れる）
+      return DECKY;                                                  // 船室の中
+    }
     return DECKY;
   }
   return HOLDY;
 }
-
 // =====================================================
 //  レンダラ / シーン / ライト / 空
 // =====================================================
@@ -192,7 +253,7 @@ const renderer = new THREE.WebGLRenderer({ canvas: $('c'), antialias: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
 renderer.setSize(innerWidth, innerHeight);
 const scene = new THREE.Scene();
-scene.fog = new THREE.Fog(0x9ec8ea, 120, 1300);
+scene.fog = new THREE.Fog(0xbfeaff, 70, 700);
 const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.1, 4000);
 camera.rotation.order = 'YXZ';
 scene.add(camera);
@@ -241,7 +302,7 @@ const clouds = [];
 const SEA_N = 110, SEA_S = 1400;
 const seaGeo = new THREE.PlaneGeometry(SEA_S, SEA_S, SEA_N, SEA_N); seaGeo.rotateX(-Math.PI / 2);
 const seaBase = Float32Array.from(seaGeo.attributes.position.array);
-const seaMat = new THREE.MeshPhongMaterial({ color: 0x1e78b4, shininess: 90, specular: 0x7799bb, flatShading: true });
+const seaMat = new THREE.MeshPhongMaterial({ color: 0x18bfe8, shininess: 90, specular: 0x7799bb, flatShading: true });
 const sea = new THREE.Mesh(seaGeo, seaMat); sea.frustumCulled = false; scene.add(sea);
 function updateSea(t) {
   const cell = SEA_S / SEA_N, ox = Math.round(camera.position.x / cell) * cell, oz = Math.round(camera.position.z / cell) * cell;
@@ -255,8 +316,8 @@ function updateSea(t) {
 let hourBase = 7, hourStamp = performance.now(), DAY_SEC = 720;
 const curHour = () => (hourBase + (performance.now() - hourStamp) / 1000 / DAY_SEC * 24) % 24;
 const sunDir = new THREE.Vector3(), cTop = new THREE.Color(), cBot = new THREE.Color(), tmpCol = new THREE.Color();
-const C = { nt: new THREE.Color(0x02040f), nb: new THREE.Color(0x0b1a3a), dt: new THREE.Color(0x3a7bd5), db: new THREE.Color(0xa9d4f5), dusk: new THREE.Color(0xff8a4a),
-  seaN: new THREE.Color(0x041a38), seaD: new THREE.Color(0x1e78b4), cloudN: new THREE.Color(0x2a3550), cloudD: new THREE.Color(0xffffff) };
+const C = { nt: new THREE.Color(0x070a22), nb: new THREE.Color(0x1a2a5a), dt: new THREE.Color(0x39a6ff), db: new THREE.Color(0xc4f0ff), dusk: new THREE.Color(0xff7aa8),
+  seaN: new THREE.Color(0x06244a), seaD: new THREE.Color(0x18bfe8), cloudN: new THREE.Color(0x2a3550), cloudD: new THREE.Color(0xffffff) };
 let nightAmt = 0, inDungeon = false;
 const winMat = new THREE.MeshBasicMaterial({ color: 0x222222 }), lampMat = new THREE.MeshBasicMaterial({ color: 0x333333 });
 function updateSky(hour) {
@@ -265,7 +326,8 @@ function updateSky(hour) {
   const day = sstep(-0.12, 0.28, sy), dusk = Math.exp(-Math.pow(sy / 0.22, 2));
   nightAmt = 1 - day;
   cTop.copy(C.nt).lerp(C.dt, day); cBot.copy(C.nb).lerp(C.db, day);
-  cBot.lerp(C.dusk, dusk * 0.7); cTop.lerp(tmpCol.set(0x6a4a8a), dusk * 0.3);
+  cBot.lerp(C.dusk, dusk * 0.7); cTop.lerp(tmpCol.set(0xb06ad8), dusk * 0.3);
+  cTop.lerp(tmpCol.set(0x4a5468), STORM * 0.8); cBot.lerp(tmpCol.set(0x707a8c), STORM * 0.8);
   skyMat.uniforms.top.value.copy(cTop); skyMat.uniforms.bot.value.copy(cBot);
   const camP = camera.position;
   sky.position.copy(camP);
@@ -275,19 +337,19 @@ function updateSky(hour) {
   stars.material.opacity = clamp(1 - day * 1.6, 0, 1);
   sunMesh.visible = sy > -0.15; sunMesh.material.color.set(0xfff2c0).lerp(tmpCol.set(0xff9a50), dusk);
   moonMesh.visible = sy < 0.15;
-  sunL.position.copy(sunDir).multiplyScalar(100); sunL.intensity = day * 1.05; sunL.color.set(0xffffff).lerp(tmpCol.set(0xffa860), dusk * 0.8);
+  sunL.position.copy(sunDir).multiplyScalar(100); sunL.intensity = day * 1.05 * (1 - 0.55 * STORM); sunL.color.set(0xffffff).lerp(tmpCol.set(0xffa860), dusk * 0.8);
   moonL.position.copy(sunDir).multiplyScalar(-100); moonL.intensity = (1 - day) * 0.55 * clamp(-sy + 0.3, 0, 1);
   hemi.intensity = 0.22 + 0.62 * day; hemi.color.copy(cTop).lerp(tmpCol.set(0xffffff), 0.4);
-  seaMat.color.copy(C.seaN).lerp(C.seaD, day); seaMat.color.lerp(tmpCol.set(0xb4603c), dusk * 0.18);
+  seaMat.color.copy(C.seaN).lerp(C.seaD, day); seaMat.color.lerp(tmpCol.set(0xff7a9a), dusk * 0.2); seaMat.color.lerp(tmpCol.set(0x2a4a64), STORM * 0.55);
   seaMat.specular.set(0x7799bb).lerp(tmpCol.set(0xaabbff), nightAmt);
-  clouds.mat.color.copy(C.cloudN).lerp(C.cloudD, day).lerp(tmpCol.set(0xffb890), dusk * 0.35);
-  if (!inDungeon) { scene.fog.color.copy(cBot); scene.fog.near = 120; scene.fog.far = 1300; renderer.setClearColor(cBot); }
+  clouds.mat.color.copy(C.cloudN).lerp(C.cloudD, day).lerp(tmpCol.set(0xffa0c0), dusk * 0.35).lerp(tmpCol.set(0x3a4050), STORM * 0.7);
+  if (!inDungeon) { scene.fog.color.copy(cBot); scene.fog.near = lerp(70, 22, STORM); scene.fog.far = lerp(700, 230, STORM); renderer.setClearColor(cBot); }
   winMat.color.setRGB(lerp(0.1, 1, nightAmt), lerp(0.12, 0.78, nightAmt), lerp(0.16, 0.38, nightAmt));
   lampMat.color.setRGB(lerp(0.3, 1, nightAmt), lerp(0.28, 0.82, nightAmt), lerp(0.2, 0.45, nightAmt));
   townLights.forEach((l) => { l.intensity = nightAmt * 1.4; });
   const h = Math.floor(hour), m = Math.floor((hour - h) * 60);
-  const label = hour >= 5 && hour < 10 ? '朝' : hour >= 10 && hour < 16 ? '昼' : hour >= 16 && hour < 19 ? '夕方' : '夜';
-  $('clock').textContent = (label === '朝' ? '🌅 ' : label === '昼' ? '☀️ ' : label === '夕方' ? '🌇 ' : '🌙 ') + label + '  ' + String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+  const label = STORM > 0.5 ? '嵐' : hour >= 5 && hour < 10 ? '朝' : hour >= 10 && hour < 16 ? '昼' : hour >= 16 && hour < 19 ? '夕方' : '夜';
+  $('clock').textContent = (label === '嵐' ? '⛈ ' : label === '朝' ? '🌅 ' : label === '昼' ? '☀️ ' : label === '夕方' ? '🌇 ' : '🌙 ') + label + '  ' + String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
 }
 
 // =====================================================
@@ -343,12 +405,12 @@ function terrainMesh(cx, cz, size, seg, isMain) {
   const nor = geo.attributes.normal, col = new Float32Array(n * 3), c = new THREE.Color();
   for (let i = 0; i < n; i++) {
     const x = pos.getX(i) + cx, z = pos.getZ(i) + cz, h = pos.getY(i), ny = nor.getY(i);
-    if (isMain && Math.abs(x) < 38 && z > 12 && z < 54 && h > 1) c.set(0x938d80);
-    else if (h < 0.9) c.set(0xd9c48b);
-    else if (isMain && roadDist(x, z) < 2.3) c.set(0xb59a6a);
-    else if (h > 38) c.set(0xe2e4e6);
-    else if (ny < 0.74 || h > 30) c.set(0x7d7b78);
-    else c.set(0x4c7c3a).lerp(tmpC.set(0x7a9448), clamp(noise2(x * 1.7, z * 1.7) * 0.4 + 0.4 + h * 0.015, 0, 1));
+    if (isMain && Math.abs(x) < 38 && z > 12 && z < 54 && h > 1) c.set(0xf0dcc0);
+    else if (h < 0.9) c.set(0xffe39a);
+    else if (isMain && roadDist(x, z) < 2.3) c.set(0xf5c878);
+    else if (h > 60) c.set(0xffffff);
+    else if (ny < 0.7 || h > 40) c.set(0xc8aee8);
+    else c.set(0x58d04a).lerp(tmpC.set(0xb0e856), clamp(noise2(x * 1.7, z * 1.7) * 0.4 + 0.4 + h * 0.015, 0, 1));
     col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
   }
   geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
@@ -363,8 +425,8 @@ ISLETS.forEach((I) => terrainMesh(I.x, I.z, Math.ceil(I.r * 3.4), Math.ceil(I.r 
 // =====================================================
 const R = rng(20241023);
 const rects = [];
-const PAL = [0x8a5a3c, 0x6b4a35, 0xa9794f, 0x7a8c7a, 0x9c6b5a, 0xb0a58a, 0x6d7f95, 0xa24c3b, 0x4d6a5a, 0xc2a36b];
-const ROOFC = [0x3b2f2a, 0x5a3a2a, 0x6b3b2b, 0x2f3f4f, 0x7a4a2a];
+const PAL = [0xff9aa8, 0xffd27a, 0x8fe0b0, 0x8ac8ff, 0xc8a0ff, 0xffb870, 0xa0e8e0, 0xff8a6a, 0xb8e86a, 0xf0a8e0];
+const ROOFC = [0xff5a5a, 0x4aa0ff, 0xffc83a, 0x3ac8a0, 0xb06aff];
 function building(cx, cz) {
   const w = 3.4 + R() * 3.6, d = 3.4 + R() * 3.6;
   const hs = [[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([a, b]) => heightAt(cx + a * w / 2, cz + b * d / 2));
@@ -490,10 +552,10 @@ var gachaOrb;
     dummy.rotation.set(0, R() * 6, 0);
     if (h > 5) {
       dummy.position.set(x, h + 1.4 * s, z); dummy.scale.set(s * 0.8, s, s * 0.8); dummy.updateMatrix(); trunkIM.setMatrixAt(nt++, dummy.matrix);
-      dummy.position.set(x, h + 4.2 * s, z); dummy.scale.set(s, s, s); dummy.updateMatrix(); coneIM.setMatrixAt(nc, dummy.matrix); coneIM.setColorAt(nc++, tmpC.set(0x2f5a34).lerp(new THREE.Color(0x4a7a3a), R()));
+      dummy.position.set(x, h + 4.2 * s, z); dummy.scale.set(s, s, s); dummy.updateMatrix(); coneIM.setMatrixAt(nc, dummy.matrix); coneIM.setColorAt(nc++, tmpC.set(0x2fb060).lerp(new THREE.Color(0x7ad040), R()));
     } else {
       dummy.position.set(x, h + 1.5 * s, z); dummy.rotation.set((R() - 0.5) * 0.3, R() * 6, (R() - 0.5) * 0.3); dummy.scale.set(s * 0.8, s, s * 0.8); dummy.updateMatrix(); trunkIM.setMatrixAt(nt++, dummy.matrix);
-      dummy.rotation.set(0, R() * 6, 0); dummy.position.set(x, h + 3.2 * s, z); dummy.scale.set(s * 1.3, s * 0.7, s * 1.3); dummy.updateMatrix(); blobIM.setMatrixAt(nbl, dummy.matrix); blobIM.setColorAt(nbl++, tmpC.set(0x3c8a3a).lerp(new THREE.Color(0x6ab04a), R()));
+      dummy.rotation.set(0, R() * 6, 0); dummy.position.set(x, h + 3.2 * s, z); dummy.scale.set(s * 1.3, s * 0.7, s * 1.3); dummy.updateMatrix(); blobIM.setMatrixAt(nbl, dummy.matrix); blobIM.setColorAt(nbl++, tmpC.set(0x40c040).lerp(new THREE.Color(0xa0e850), R()));
     }
   };
   for (let i = 0; i < 1100; i++) {
@@ -507,10 +569,54 @@ var gachaOrb;
   trunkIM.count = nt; coneIM.count = nc; blobIM.count = nbl;
   [trunkIM, coneIM, blobIM].forEach((m) => { m.frustumCulled = false; if (m.instanceColor) m.instanceColor.needsUpdate = true; m.instanceMatrix.needsUpdate = true; scene.add(m); });
 }
+// ---- 民族風の家・トーテム・ジャガイモ畑（遠くの島々）----
+const FIELDV = [];
+{
+  const thatch = M(0xe8b84a), wallM = M(0xe89a6a), dark = new THREE.MeshBasicMaterial({ color: 0x2a1a14 });
+  const leafM = M(0x3cc050), soil = M(0x8a5a3a), spudM = M(0xe8b868);
+  const plantGeo = new THREE.IcosahedronGeometry(0.34, 0), spudGeo = new THREE.IcosahedronGeometry(0.2, 0);
+  const hut = (x, z, s) => {
+    const h = heightAt(x, z); if (h < 1.3) return;
+    const g = new THREE.Group(); g.position.set(x, h, z);
+    const w = new THREE.Mesh(new THREE.CylinderGeometry(1.7 * s, 1.9 * s, 2.2 * s, 10), wallM); w.position.y = 1.1 * s; g.add(w);
+    const r = new THREE.Mesh(new THREE.ConeGeometry(2.7 * s, 2.4 * s, 10), thatch); r.position.y = 3.3 * s; g.add(r);
+    const door = new THREE.Mesh(new THREE.BoxGeometry(0.8 * s, 1.4 * s, 0.1), dark); door.position.set(0, 0.75 * s, 1.85 * s); g.add(door);
+    const band = new THREE.Mesh(new THREE.CylinderGeometry(1.78 * s, 1.82 * s, 0.35 * s, 10), M(0xff5a8a)); band.position.y = 1.55 * s; g.add(band);
+    g.rotation.y = R() * 6; scene.add(g);
+    addSolid({ x0: x - 1.8 * s, x1: x + 1.8 * s, z0: z - 1.8 * s, z1: z + 1.8 * s, y0: h, y1: h + 2.2 * s });
+  };
+  const totem = (x, z) => {
+    const h = heightAt(x, z); if (h < 1.3) return;
+    const g = new THREE.Group(); g.position.set(x, h, z);
+    [0xff5a5a, 0xffd23a, 0x3ac8a0, 0x4aa0ff].forEach((c, i) => {
+      const b = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.9, 0.9), M(c)); b.position.y = 0.45 + i * 0.9; b.rotation.y = i * 0.5; g.add(b);
+      const e = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.12, 0.05), dark); e.position.set(0, 0.55 + i * 0.9, 0.46); e.rotation.y = i * 0.5; g.add(e);
+    });
+    const wing = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.2, 0.2), M(0xff7ab0)); wing.position.y = 3.2; g.add(wing);
+    scene.add(g);
+  };
+  FIELDS.forEach((f) => {
+    const g = new THREE.Group(), h = heightAt(f.x, f.z); g.position.set(f.x, h + 0.05, f.z);
+    const bed = new THREE.Mesh(new THREE.BoxGeometry(9, 0.3, 7), soil); bed.position.y = 0.05; g.add(bed);
+    const plants = [], spuds = [];
+    for (let i = -3; i <= 3; i++) for (let j = -2; j <= 2; j++) {
+      const p = new THREE.Mesh(plantGeo, leafM); p.position.set(i * 1.2, 0.42, j * 1.3); p.scale.set(1, 0.8, 1); g.add(p); plants.push(p);
+      const sp = new THREE.Mesh(spudGeo, spudM); sp.position.set(i * 1.2 + 0.15, 0.3, j * 1.3 + 0.1); sp.scale.set(1, 0.8, 1.1); g.add(sp); spuds.push(sp);
+    }
+    const sg = label('🥔 ジャガイモ畑', 5, 1, null, '#fff3a0', 56); sg.position.set(0, 3.4, 0); g.add(sg);
+    scene.add(g);
+    FIELDV[f.id] = { g, plants, spuds };
+    INTER.push({ kind: 'field', fid: f.id, pos: new THREE.Vector3(f.x, h, f.z), r: 6.5, label: 'ジャガイモを収穫する（' + f.isl + '）' });
+    const a = R() * 6.28;
+    hut(f.x + Math.cos(a) * 14, f.z + Math.sin(a) * 14, 1);
+    hut(f.x + Math.cos(a + 2) * 16, f.z + Math.sin(a + 2) * 16, 0.85);
+    if (R() < 0.7) totem(f.x + Math.cos(a + 4) * 11, f.z + Math.sin(a + 4) * 11);
+  });
+}
 // ドクロ島のダンジョン入口
 const DENT = { x: DUNGEON_ENTRANCE.x, z: DUNGEON_ENTRANCE.z, y: heightAt(DUNGEON_ENTRANCE.x, DUNGEON_ENTRANCE.z) };
 {
-  const nx = DENT.x + 420, nz = DENT.z + 300, nl2 = Math.hypot(nx, nz), ry = Math.atan2(nx / nl2, nz / nl2);
+  const nx = DENT.x - ISLETS[0].x, nz = DENT.z - ISLETS[0].z, nl2 = Math.hypot(nx, nz), ry = Math.atan2(nx / nl2, nz / nl2);
   const px = Math.cos(ry), pz = -Math.sin(ry);
   const e = (dx, dy, dz, sx, sy, sz, col, solid) => box(DENT.x + px * dx + (nx / nl2) * dz, DENT.y + dy, DENT.z + pz * dx + (nz / nl2) * dz, sx, sy, sz, col, { ry, solid });
   e(-2.4, 2.4, 0, 1.4, 5, 1.6, 0x6a6862, true); e(2.4, 2.4, 0, 1.4, 5, 1.6, 0x6a6862, true); e(0, 5.2, 0, 6.4, 1.4, 1.8, 0x77756e);
@@ -594,16 +700,25 @@ function setHat(g, id) {
 }
 function makePirate(o) {
   const g = new THREE.Group();
-  const skin = o.skin || 0xe3b48a;
-  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.78, 0.34), M(o.coat || 0x8a2a2a)); torso.position.y = 1.18; g.add(torso);
-  const belt = new THREE.Mesh(new THREE.BoxGeometry(0.64, 0.1, 0.36), M(0x2a1c12)); belt.position.y = 0.88; g.add(belt);
-  const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.23, 1), M(skin)); head.position.y = 1.76; g.add(head);
+  const skin = o.skin || 0xffa6c8, coat = o.coat || 0xff5a8a, dk = new THREE.Color(skin).multiplyScalar(0.78).getHex();
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.5, 10, 8), M(skin)); body.scale.set(1.0, 1.05, 0.88); body.position.y = 1.02; g.add(body);
+  const vest = new THREE.Mesh(new THREE.CylinderGeometry(0.47, 0.52, 0.5, 9), M(coat)); vest.position.y = 0.98; g.add(vest);
+  const belt = new THREE.Mesh(new THREE.CylinderGeometry(0.53, 0.53, 0.09, 9), M(0x3a2a1c)); belt.position.y = 0.76; g.add(belt);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.36, 10, 8), M(skin)); head.position.y = 1.62; g.add(head);
+  const snout = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.17, 0.16, 8), M(dk)); snout.rotation.x = Math.PI / 2; snout.position.set(0, 1.56, -0.36); g.add(snout);
+  [-0.055, 0.055].forEach((x) => { const n = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.06, 0.03), M(0x6a2a40)); n.position.set(x, 1.56, -0.445); g.add(n); });
+  [-0.15, 0.15].forEach((x) => {
+    const e = new THREE.Mesh(new THREE.SphereGeometry(0.045, 6, 5), new THREE.MeshBasicMaterial({ color: 0x1a1020 })); e.position.set(x, 1.7, -0.32); g.add(e);
+    const ear = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.24, 4), M(dk)); ear.position.set(x * 1.55, 1.93, -0.04); ear.rotation.z = -x * 2.2; ear.rotation.x = -0.25; g.add(ear);
+    const ch = new THREE.Mesh(new THREE.CircleGeometry(0.06, 8), new THREE.MeshBasicMaterial({ color: 0xff6a9a })); ch.position.set(x * 1.45, 1.6, -0.345); g.add(ch);
+  });
+  const tail = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.025, 5, 8), M(dk)); tail.position.set(0, 0.95, 0.46); g.add(tail);
   const lleg = new THREE.Group(), rleg = new THREE.Group(), larm = new THREE.Group(), rarm = new THREE.Group();
-  lleg.position.set(-0.16, 0.8, 0); rleg.position.set(0.16, 0.8, 0); larm.position.set(-0.4, 1.5, 0); rarm.position.set(0.4, 1.5, 0);
-  [lleg, rleg].forEach((l) => { const m = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.8, 0.26), M(o.pants || 0x2a2a3a)); m.position.y = -0.4; l.add(m); g.add(l); });
-  [larm, rarm].forEach((a) => { const m = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.7, 0.2), M(o.coat || 0x8a2a2a)); m.position.y = -0.32; a.add(m); g.add(a); });
-  const hatG = new THREE.Group(); hatG.position.y = 1.88; g.add(hatG);
-  const toolG = new THREE.Group(); toolG.position.set(0.4, 1.2, -0.3); toolG.rotation.x = 0.35; g.add(toolG);
+  lleg.position.set(-0.2, 0.62, 0); rleg.position.set(0.2, 0.62, 0); larm.position.set(-0.5, 1.3, 0); rarm.position.set(0.5, 1.3, 0);
+  [lleg, rleg].forEach((l) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.15, 0.5, 7), M(skin)); m.position.y = -0.25; l.add(m); const hv = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.1, 7), M(0x3a2a40)); hv.position.y = -0.55; l.add(hv); g.add(l); });
+  [larm, rarm].forEach((a) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.5, 6), M(coat)); m.position.y = -0.22; a.add(m); const hv = new THREE.Mesh(new THREE.SphereGeometry(0.11, 6, 5), M(skin)); hv.position.y = -0.5; a.add(hv); g.add(a); });
+  const hatG = new THREE.Group(); hatG.position.y = 1.96; g.add(hatG);
+  const toolG = new THREE.Group(); toolG.position.set(0.5, 0.95, -0.3); toolG.rotation.x = 0.35; g.add(toolG);
   g.userData = { lleg, rleg, larm, rarm, hatG, toolG, ph: 0, tool: -1, atk: 0 };
   setHat(g, o.hat || 'none');
   return g;
@@ -632,7 +747,7 @@ function animPirate(g, dt, moving, run) {
   if (u.atk > 0) { u.atk -= dt; const k = 1 - Math.max(0, u.atk) / 0.35; u.toolG.rotation.x = 0.35 - Math.sin(k * Math.PI) * 1.6; u.rarm.rotation.x = -0.9 - Math.sin(k * Math.PI) * 0.8; }
   else u.toolG.rotation.x = 0.35 + (u.tool === 2 ? 0.25 : 0);
 }
-function nameTag(text) { const s = label(text, 2.4, 0.5, null, '#fff', 56); s.position.y = 2.35; return s; }
+function nameTag(text, col) { const s = label(text, 2.4, 0.5, null, col || '#fff', 56); s.position.y = 2.55; return s; }
 
 // =====================================================
 //  船
@@ -644,105 +759,336 @@ function shapeFrom(zs, wf) {
   for (let i = zs.length - 1; i >= 0; i--) sh.lineTo(-wf(zs[i]), -zs[i]);
   return sh;
 }
-function buildShip(type) {
+function wallStrip(T, y0, y1, za, zb, inset) {
+  const n = 14, pos = [], idx = [];
+  for (let i = 0; i <= n; i++) { const z = za + (zb - za) * i / n, w = Math.max(0.04, hwAt(T, z) - inset); pos.push(-w, y0, z, -w, y1, z, w, y0, z, w, y1, z); }
+  for (let i = 0; i < n; i++) { const a = i * 4, b = (i + 1) * 4; idx.push(a, b, b + 1, a, b + 1, a + 1, a + 2, a + 3, b + 3, a + 2, b + 3, b + 2); }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals(); return g;
+}
+function buildShip(type, style) {
+  style = style || {};
   const T = TYPES[type], L = T.L, g = new THREE.Group(); g.rotation.order = 'YXZ';
-  const lam = (c, ds) => new THREE.MeshLambertMaterial({ color: c, flatShading: true, side: ds ? THREE.DoubleSide : THREE.FrontSide });
+  const lam = (c, ds) => new THREE.MeshPhongMaterial({ color: c, flatShading: true, shininess: 0, specular: 0x000000, side: ds ? THREE.DoubleSide : THREE.FrontSide });
   const add = (geo, mat, x, y, z, parent) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); (parent || g).add(m); return m; };
+  const hullC = style.color || T.color, sailC = style.sailC || T.sailC;
   const H = T.hull, n = H.length, K = 9, pos = [], idx = [];
   const ring = (w) => [[-w, DECKY + 0.4], [-w, DECKY], [-w * 0.88, 0.3], [-w * 0.5, -0.85], [0, -1.3], [w * 0.5, -0.85], [w * 0.88, 0.3], [w, DECKY], [w, DECKY + 0.4]];
   H.forEach(([z, w]) => ring(w).forEach(([x, y]) => pos.push(x, y, z)));
   for (let i = 0; i < n - 1; i++) for (let k = 0; k < K - 1; k++) { const a = i * K + k, b = a + 1, c = a + K, d = c + 1; idx.push(a, b, c, b, d, c); }
   const ci = pos.length / 3; pos.push(0, 0.7, H[0][0]); for (let k = 0; k < K - 1; k++) idx.push(ci, k, k + 1);
   const hg = new THREE.BufferGeometry(); hg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); hg.setIndex(idx); hg.computeVertexNormals();
-  add(hg, lam(T.color, true), 0, 0, 0);
-  // 甲板（階段の穴あき）
+  add(hg, lam(hullC, true), 0, 0, 0);
+  // 甲板（船倉への階段の穴あき）
   const zsAll = H.map((h) => h[0]);
   const dsh = shapeFrom(zsAll, (z) => hwAt(T, z) - 0.03);
   const hole = new THREE.Path(); hole.moveTo(-L.rax, -L.ra0); hole.lineTo(L.rax, -L.ra0); hole.lineTo(L.rax, -L.ra1); hole.lineTo(-L.rax, -L.ra1); hole.lineTo(-L.rax, -L.ra0); dsh.holes.push(hole);
-  const dg = new THREE.ShapeGeometry(dsh); dg.rotateX(-Math.PI / 2); add(dg, lam(0xa57a4a, true), 0, DECKY, 0);
-  // 船倉の床
-  const fg = new THREE.ShapeGeometry(shapeFrom(zsAll, (z) => Math.max(0.05, L.hh(z) + 0.1))); fg.rotateX(-Math.PI / 2); add(fg, lam(0x5a4028, true), 0, HOLDY, 0);
-  // 後部の高い甲板（舵の台）
+  const dg = new THREE.ShapeGeometry(dsh); dg.rotateX(-Math.PI / 2); add(dg, lam(0xffd08a, true), 0, DECKY, 0);
+  // 船倉の床・浸水
+  const fgeo = new THREE.ShapeGeometry(shapeFrom(zsAll, (z) => Math.max(0.05, L.hh(z) + 0.1))); fgeo.rotateX(-Math.PI / 2); add(fgeo, lam(0xc89a68, true), 0, HOLDY, 0);
+  const waterM = add(fgeo.clone(), new THREE.MeshBasicMaterial({ color: 0x3ac8ff, transparent: true, opacity: 0.6, side: THREE.DoubleSide, depthWrite: false }), 0, HOLDY + 0.05, 0); waterM.visible = false;
+  // 船尾楼 = 舵の甲板（屋根）と、その下の船室
   const zq = []; for (let i = 0; i <= 8; i++) zq.push(L.stern - (L.stern - L.qz0) * i / 8);
-  const qg = new THREE.ExtrudeGeometry(shapeFrom(zq, (z) => hwAt(T, z) - 0.04), { depth: L.qh, bevelEnabled: false }); qg.rotateX(-Math.PI / 2);
-  add(qg, lam(0x9a7040), 0, DECKY, 0);
-  // 階段
-  for (let i = 0; i < 4; i++) { const top = L.qh * (i + 1) / 4, len = (L.qs1 - L.qs0) / 4; add(new THREE.BoxGeometry(1.2, top, len), lam(0x8a6038), (L.qsx0 + L.qsx1) / 2, DECKY + top / 2, L.qs0 + len * (i + 0.5)); }
+  const qg = new THREE.ExtrudeGeometry(shapeFrom(zq, (z) => hwAt(T, z) - 0.04), { depth: 0.28, bevelEnabled: false }); qg.rotateX(-Math.PI / 2);
+  add(qg, lam(0xffe0a0), 0, DECKY + L.qh - 0.28, 0);
+  const cabM = lam(0xff9ec0, true);
+  add(wallStrip(T, DECKY, DECKY + L.qh - 0.1, L.qz0, L.stern, 0.03), cabM, 0, 0, 0);
+  add(new THREE.BoxGeometry(hwAt(T, L.stern - 0.05) * 2, L.qh, 0.15), cabM, 0, DECKY + L.qh / 2, L.stern - 0.06);
+  // 正面の壁と2枚のドア
+  const fwz = L.qz0, hwF = hwAt(T, fwz) - 0.04;
+  [-1, 1].forEach((sd) => { const wd = hwF - L.dxo; add(new THREE.BoxGeometry(wd, L.qh - 0.28, 0.16), cabM, sd * (L.dxo + wd / 2), DECKY + (L.qh - 0.28) / 2, fwz); });
+  add(new THREE.BoxGeometry(L.dxo * 2 + 0.1, 0.5, 0.18), lam(0xc8783a), 0, DECKY + L.qh - 0.55, fwz);
+  const doors = [-1, 1].map((sd) => {
+    const pv = new THREE.Group(); pv.position.set(sd * L.dxo, DECKY, fwz + 0.06);
+    add(new THREE.BoxGeometry(L.dxo, L.qh - 0.85, 0.07), lam(0xb06a30), -sd * L.dxo / 2, (L.qh - 0.85) / 2, 0, pv);
+    add(new THREE.BoxGeometry(0.08, 0.08, 0.1), lam(0xffd23a), -sd * (L.dxo - 0.12), (L.qh - 0.85) / 2, 0.06, pv);
+    g.add(pv); return pv;
+  });
+  // 両サイドの階段（舵の甲板へ）
+  const nSt = 5, stLen = (L.qs1 - L.qs0) / nSt;
+  [-1, 1].forEach((sd) => {
+    for (let i = 0; i < nSt; i++) { const top = L.qh * (i + 1) / nSt; add(new THREE.BoxGeometry(L.sw, top, stLen + 0.02), lam(i % 2 ? 0xffc870 : 0xffb050), sd * (L.sxi + L.sw / 2), DECKY + top / 2, L.qs0 + stLen * (i + 0.5)); }
+    add(new THREE.BoxGeometry(0.08, L.qh + 0.7, L.qs1 - L.qs0), lam(0xc8783a), sd * (L.sxi - 0.05), DECKY + (L.qh + 0.7) / 2 - 0.1, (L.qs0 + L.qs1) / 2).rotation.x = 0;
+  });
   // 船倉への階段
-  for (let i = 0; i < 6; i++) { const top = (DECKY - HOLDY) * (i + 1) / 6, len = (L.ra1 - L.ra0) / 6; add(new THREE.BoxGeometry(L.rax * 2, top, len), lam(0x7a5a38), 0, HOLDY + top / 2, L.ra0 + len * (i + 0.5)); }
-  // マスト・帆
+  for (let i = 0; i < 6; i++) { const top = (DECKY - HOLDY) * (i + 1) / 6, len = (L.ra1 - L.ra0) / 6; add(new THREE.BoxGeometry(L.rax * 2, top, len), lam(0xe8b070), 0, HOLDY + top / 2, L.ra0 + len * (i + 0.5)); }
+  // マスト・帆（帆は向きを変えられる）
   const sails = [];
   T.masts.forEach((mz, i) => {
-    add(new THREE.CylinderGeometry(0.17, 0.26, T.mastH + 2.4, 6), lam(0x4a2f1c), 0, DECKY + T.mastH / 2 - 0.2, mz);
+    add(new THREE.CylinderGeometry(0.17, 0.26, T.mastH + 2.4, 6), lam(0x8a5a2a), 0, DECKY + T.mastH / 2 - 0.2, mz);
     const sw = T.hull === TYPES.sloop.hull ? 4.4 : 7.4 - i * 1.2, sh = T.mastH * 0.62, sy = DECKY + T.mastH * 0.52;
     const sg = new THREE.PlaneGeometry(sw, sh, 6, 4), sp = sg.attributes.position;
     for (let k = 0; k < sp.count; k++) { const x = sp.getX(k), y = sp.getY(k); sp.setZ(k, (1 - Math.pow(x / (sw / 2), 2)) * 0.5 * (1 - Math.pow(y / (sh / 2), 2) * 0.3)); }
     sg.computeVertexNormals();
-    const s = add(sg, lam(T.sailC, true), 0, sy, mz - 0.15); sails.push(s);
-    add(new THREE.BoxGeometry(sw + 0.5, 0.15, 0.15), lam(0x4a2f1c), 0, sy + sh / 2, mz - 0.1);
-    if (i === 0) { add(new THREE.PlaneGeometry(1.5, 0.9), new THREE.MeshLambertMaterial({ color: 0x15151a, side: THREE.DoubleSide }), 0.75, DECKY + T.mastH + 1.6, mz); add(new THREE.BoxGeometry(0.3, 0.3, 0.04), new THREE.MeshBasicMaterial({ color: 0xffffff }), 0.75, DECKY + T.mastH + 1.6, mz); }
+    const grp = new THREE.Group(); grp.position.set(0, 0, mz); g.add(grp);
+    add(sg, lam(sailC, true), 0, sy, -0.15, grp);
+    if (!style.plain) add(new THREE.CircleGeometry(sw * 0.17, 12), new THREE.MeshBasicMaterial({ color: style.mark || 0xffc83a, side: THREE.DoubleSide }), 0, sy + 0.2, 0.42, grp);
+    add(new THREE.BoxGeometry(sw + 0.5, 0.15, 0.15), lam(0x8a5a2a), 0, sy + sh / 2, -0.1, grp);
+    sails.push(grp);
+    if (i === 0) { add(new THREE.PlaneGeometry(1.6, 1.0), new THREE.MeshLambertMaterial({ color: style.flag || 0xff5fa8, side: THREE.DoubleSide }), 0.8, DECKY + T.mastH + 1.6, mz); add(new THREE.CircleGeometry(0.28, 10), new THREE.MeshBasicMaterial({ color: 0xffe36a, side: THREE.DoubleSide }), 0.8, DECKY + T.mastH + 1.6, mz + 0.02); }
   });
-  // 舵輪
+  // 舵輪（舵の甲板）
   const wheel = new THREE.Group(); wheel.position.set(0, DECKY + L.qh + 1.05, L.wheelZ); g.add(wheel);
-  add(new THREE.TorusGeometry(0.55, 0.07, 6, 14), lam(0x6a4220), 0, 0, 0, wheel);
-  for (let k = 0; k < 4; k++) { const sp = add(new THREE.BoxGeometry(1.5, 0.07, 0.07), lam(0x6a4220), 0, 0, 0, wheel); sp.rotation.z = k * Math.PI / 4; }
-  add(new THREE.BoxGeometry(0.3, 1.0, 0.3), lam(0x4a2f1c), 0, DECKY + L.qh + 0.5, L.wheelZ - 0.2);
+  add(new THREE.TorusGeometry(0.55, 0.07, 6, 14), lam(0xc8783a), 0, 0, 0, wheel);
+  for (let k = 0; k < 4; k++) { const sp = add(new THREE.BoxGeometry(1.5, 0.07, 0.07), lam(0xc8783a), 0, 0, 0, wheel); sp.rotation.z = k * Math.PI / 4; }
+  add(new THREE.BoxGeometry(0.3, 1.0, 0.3), lam(0x8a5a2a), 0, DECKY + L.qh + 0.5, L.wheelZ - 0.2);
   // 錨（巻き上げ機＋錨本体）
-  add(new THREE.BoxGeometry(0.7, 0.6, 0.7), lam(0x333333), L.winch.x, DECKY + L.qh + 0.3, L.winch.z);
-  add(new THREE.CylinderGeometry(0.18, 0.18, 0.9, 6), lam(0x8a8a8a), L.winch.x, DECKY + L.qh + 0.75, L.winch.z).rotation.z = Math.PI / 2;
+  add(new THREE.BoxGeometry(0.7, 0.6, 0.7), lam(0x555566), L.winch.x, DECKY + L.qh + 0.3, L.winch.z);
+  add(new THREE.CylinderGeometry(0.18, 0.18, 0.9, 6), lam(0xaaaabb), L.winch.x, DECKY + L.qh + 0.75, L.winch.z).rotation.z = Math.PI / 2;
   const anchorG = new THREE.Group(); const ax = hwAt(T, L.stern - 2.5) + 0.25; anchorG.position.set(ax, DECKY - 0.3, L.stern - 2.5); g.add(anchorG);
-  add(new THREE.BoxGeometry(0.16, 1.4, 0.16), lam(0x222222), 0, 0, 0, anchorG); add(new THREE.BoxGeometry(1.1, 0.16, 0.16), lam(0x222222), 0, 0.5, 0, anchorG);
-  add(new THREE.BoxGeometry(0.9, 0.14, 0.3), lam(0x222222), 0, -0.65, 0, anchorG);
-  const chain = add(new THREE.CylinderGeometry(0.04, 0.04, 1, 4), lam(0x555555), ax, DECKY, L.stern - 2.5);
-  // 台所
-  add(new THREE.BoxGeometry(1.0, 0.9, 1.2), lam(0x4a4a4a), L.stove.x, HOLDY + 0.45, L.stove.z);
+  add(new THREE.BoxGeometry(0.16, 1.4, 0.16), lam(0x333344), 0, 0, 0, anchorG); add(new THREE.BoxGeometry(1.1, 0.16, 0.16), lam(0x333344), 0, 0.5, 0, anchorG);
+  add(new THREE.BoxGeometry(0.9, 0.14, 0.3), lam(0x333344), 0, -0.65, 0, anchorG);
+  const chain = add(new THREE.CylinderGeometry(0.04, 0.04, 1, 4), lam(0x777788), ax, DECKY, L.stern - 2.5);
+  // 台所・宝箱・水汲みバケツ（船倉）
+  add(new THREE.BoxGeometry(1.0, 0.9, 1.2), lam(0x666677), L.stove.x, HOLDY + 0.45, L.stove.z);
   const plate = add(new THREE.BoxGeometry(0.8, 0.06, 0.9), new THREE.MeshBasicMaterial({ color: 0xff6a20 }), L.stove.x, HOLDY + 0.93, L.stove.z);
-  add(new THREE.CylinderGeometry(0.1, 0.1, 3.2, 6), lam(0x2a2a2a), L.stove.x + 0.3, HOLDY + 2.2, L.stove.z - 0.3);
-  // 宝箱（船内）
-  add(new THREE.BoxGeometry(1.1, 0.7, 0.8), lam(0x7a4a22), L.chest.x, HOLDY + 0.35, L.chest.z);
+  add(new THREE.CylinderGeometry(0.1, 0.1, 3.2, 6), lam(0x444455), L.stove.x + 0.3, HOLDY + 2.2, L.stove.z - 0.3);
+  add(new THREE.BoxGeometry(1.1, 0.7, 0.8), lam(0xc8783a), L.chest.x, HOLDY + 0.35, L.chest.z);
   add(new THREE.BoxGeometry(1.14, 0.1, 0.84), new THREE.MeshBasicMaterial({ color: 0xffd75a }), L.chest.x, HOLDY + 0.55, L.chest.z);
-  [[-0.6, 0.2], [0.8, -1.2]].forEach(([dx, dz]) => add(new THREE.CylinderGeometry(0.35, 0.35, 0.8, 8), lam(0x6a4a2a), L.chest.x * 0.4 + dx, HOLDY + 0.4, L.chest.z - 2 + dz));
-  // ランタン・船首像
-  [[L.qsx1 + 0.2, L.qz0 - 0.2], [0, L.bow + 1.6]].forEach(([lx, lz]) => { add(new THREE.SphereGeometry(0.2, 6, 5), lampMat, lx, DECKY + (lz > 0 ? L.qh : 0) + 1.2, lz); });
-  add(new THREE.SphereGeometry(0.32, 6, 5), lam(0xefe8d8), 0, DECKY + 0.5, L.bow + 0.2);
+  add(new THREE.CylinderGeometry(0.3, 0.24, 0.45, 8), lam(0x4a90e0), L.bucket.x, HOLDY + 0.25, L.bucket.z);
+  // 船室の中：ジャガイモのプランター（栽培）・ハンモック・ランプ
+  const plants = L.plant.map((p) => {
+    const pg = new THREE.Group(); pg.position.set(p.x, DECKY, p.z);
+    add(new THREE.BoxGeometry(1.1, 0.4, 0.9), lam(0xb0703a), 0, 0.2, 0, pg); add(new THREE.BoxGeometry(1.0, 0.06, 0.8), lam(0x6a4020), 0, 0.41, 0, pg);
+    const bush = new THREE.Group(); bush.position.y = 0.44; pg.add(bush);
+    [[-0.28, 0], [0.28, 0.1], [0, -0.2]].forEach(([x, z]) => { const lf = add(new THREE.IcosahedronGeometry(0.28, 0), lam(0x4ad060), x, 0.22, z, bush); lf.scale.set(1, 0.9, 1); });
+    const spuds = new THREE.Group(); spuds.position.y = 0.05; bush.add(spuds);
+    [[-0.3, 0.25], [0.2, -0.28], [0.34, 0.2]].forEach(([x, z]) => { const sp = add(new THREE.IcosahedronGeometry(0.15, 0), lam(0xe8b868), x, 0, z, spuds); sp.scale.set(1.1, 0.85, 1); });
+    g.add(pg); return { bush, spuds };
+  });
+  add(new THREE.BoxGeometry(1.7, 0.12, 0.6), lam(0xffe36a), 0, DECKY + 1.35, L.stern - 0.9);
+  add(new THREE.SphereGeometry(0.2, 6, 5), lampMat, 0, DECKY + L.qh - 0.5, (L.qz0 + L.stern) / 2);
+  // 大砲（スループ=左右1門 / 大型帆船=左右2門）
+  const cannons = L.cannons.map((c) => {
+    const cg = new THREE.Group(); cg.position.set(c.x, DECKY + 0.58, c.z); g.add(cg);
+    add(new THREE.BoxGeometry(0.95, 0.5, 0.95), lam(0x8a5a2a), 0, -0.3, 0, cg);
+    [-0.4, 0.4].forEach((dz) => { const w = add(new THREE.CylinderGeometry(0.28, 0.28, 0.12, 8), lam(0x4a3020), 0, -0.45, dz, cg); w.rotation.z = Math.PI / 2; });
+    const barrel = new THREE.Group(); cg.add(barrel);
+    const bar = add(new THREE.CylinderGeometry(0.24, 0.32, 1.6, 8), lam(0xff9a3a), 0.6, 0, 0, barrel); bar.rotation.z = Math.PI / 2;
+    add(new THREE.TorusGeometry(0.26, 0.05, 5, 8), lam(0xffe36a), 1.35, 0, 0, barrel).rotation.y = Math.PI / 2;
+    return { barrel, c, rec: 0 };
+  });
+  // 梯子（海から船へ戻る・両舷）
+  [-1, 1].forEach((sd) => {
+    const lz = L.lad.z, lx = sd * (hwAt(T, lz) + 0.14);
+    [-0.32, 0.32].forEach((dz) => add(new THREE.BoxGeometry(0.07, 3.3, 0.07), lam(0xc8783a), lx, 0.75, lz + dz));
+    for (let i = 0; i < 8; i++) add(new THREE.BoxGeometry(0.07, 0.07, 0.7), lam(0xe8b070), lx, -0.75 + i * 0.42, lz);
+  });
+  // 船首像・ランタン
+  add(new THREE.SphereGeometry(0.34, 8, 6), lam(0xffa6c8), 0, DECKY + 0.5, L.bow + 0.2);
+  [-0.12, 0.12].forEach((x) => add(new THREE.ConeGeometry(0.1, 0.2, 4), lam(0xff7aa8), x, DECKY + 0.88, L.bow + 0.2));
+  add(new THREE.SphereGeometry(0.2, 6, 5), lampMat, 0, DECKY + 1.2, L.bow + 1.6);
+  const holesG = new THREE.Group(); g.add(holesG);
   g.userData.shipId = 0;
-  return { g, T, L, wheel, anchorG, chain, sails, plate, anc: 1 };
+  return { g, T, L, wheel, anchorG, chain, sails, plate, anc: 1, doors, doorK: 0, plants, cannons, waterM, holesG, hoKey: '', sink: 0 };
 }
 function addShip(d) {
   if (SH[d.i]) return SH[d.i];
   const rig = buildShip(d.t); rig.d = d; rig.x = d.x; rig.z = d.z; rig.rot = d.r; rig.id = d.i;
-  rig.tag = label(d.o + ' の船', 5, 0.9, null, '#ffe9a0', 52); rig.tag.position.set(0, TYPES[d.t].mastH + 6, 0); rig.g.add(rig.tag);
+  rig.tag = label(d.o + ' の船', 5, 0.9, null, '#fff3a0', 52); rig.tag.position.set(0, TYPES[d.t].mastH + 6, 0); rig.g.add(rig.tag);
   scene.add(rig.g); SH[d.i] = rig; return rig;
 }
-function removeShip(id) { const s = SH[id]; if (!s) return; scene.remove(s.g); delete SH[id]; if (P.ship === s) { P.ship = null; P.helm = null; } }
+function removeShip(id) {
+  const s = SH[id]; if (!s) return;
+  scene.remove(s.g); delete SH[id];
+  if (P.ship === s) { P.x = P.wp.x; P.y = P.wp.y; P.z = P.wp.z; P.vy = 0; P.ship = null; P.helm = null; P.cn = null; $('cnhud').style.display = 'none'; P.swim = true; }
+}
+const _q = new THREE.Quaternion(), _vx = new THREE.Vector3(1, 0, 0), _vd = new THREE.Vector3();
+function updateRig(S, d, dt, t) {
+  S.doorK += ((d.dr ? 1 : 0) - S.doorK) * Math.min(1, dt * 4);
+  S.doors[0].rotation.y = -S.doorK * 1.5; S.doors[1].rotation.y = S.doorK * 1.5;
+  S.anc += ((d.an ? 1 : 0) - S.anc) * Math.min(1, dt * 1.4);
+  const ay = lerp(DECKY - 0.3, -5.5, S.anc); S.anchorG.position.y = ay;
+  const len = Math.max(0.05, DECKY - ay); S.chain.scale.y = len; S.chain.position.y = DECKY - len / 2;
+  S.wheel.rotation.z += ((-(d.tn || 0)) * 1.6 - S.wheel.rotation.z) * Math.min(1, dt * 4);
+  S.sails.forEach((s, i) => { s.rotation.y = (d.sa || 0) * 0.7 + Math.sin(t * 1.3 + i) * 0.03; s.scale.set(1 + Math.abs(d.sp) * 0.01, 1, 1 + Math.abs(d.sp) * 0.05); });
+  // 浸水
+  const wt = d.wt || 0;
+  S.waterM.visible = wt > 2; S.waterM.position.y = HOLDY + 0.05 + wt / 100 * (DECKY - HOLDY - 0.35);
+  const ho = d.ho || [], key = JSON.stringify(ho);
+  if (key !== S.hoKey) {
+    S.hoKey = key; while (S.holesG.children.length) S.holesG.remove(S.holesG.children[0]);
+    ho.forEach(([sd, z]) => {
+      const x = sd * (S.L.hh(z) + 0.03);
+      const m = new THREE.Mesh(new THREE.CircleGeometry(0.34, 10), new THREE.MeshBasicMaterial({ color: 0x1a0a10, side: THREE.DoubleSide })); m.position.set(x, HOLDY + 0.95, z); m.rotation.y = Math.PI / 2; S.holesG.add(m);
+      const lk = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.12, 0.9, 5), new THREE.MeshBasicMaterial({ color: 0x6adaff, transparent: true, opacity: 0.7 })); lk.position.set(x - sd * 0.4, HOLDY + 0.55, z); lk.rotation.z = sd * 1.1; S.holesG.add(lk);
+    });
+  }
+  // 栽培
+  S.plants.forEach((p, i) => {
+    const c = (d.cr || [])[i];
+    p.bush.visible = c !== undefined && c !== -1;
+    if (p.bush.visible) { const gr = c === 0 ? 1 : 0.25 + 0.75 * (1 - c / 75000); p.bush.scale.setScalar(gr); p.spuds.visible = c === 0; }
+  });
+  // 大砲
+  S.cannons.forEach((cn, i) => {
+    const st = (d.cn || [])[i]; if (!st) return;
+    const cp = Math.cos(st[1]);
+    _vd.set(cn.c.side * Math.cos(st[0]) * cp, Math.sin(st[1]), -Math.sin(st[0]) * cp).normalize();
+    cn.barrel.quaternion.setFromUnitVectors(_vx, _vd);
+    if (st[2] > 2.9) cn.rec = 0.35; cn.rec = Math.max(0, cn.rec - dt);
+    cn.barrel.position.x = -cn.rec * 0.9 * cn.c.side * 0 - cn.rec * 0.6 * _vd.x; cn.barrel.position.z = -cn.rec * 0.6 * _vd.z;
+  });
+}
 function updateShips(dt, t) {
   for (const id in SH) {
     const S = SH[id], d = S.d, k = Math.min(1, dt * 9);
     S.x += (d.x - S.x) * k; S.z += (d.z - S.z) * k; S.rot += angd(d.r, S.rot) * k;
     const sr = Math.sin(S.rot), cr = Math.cos(S.rot);
     const wf = wave(S.x - sr * 7, S.z - cr * 7, t), wb = wave(S.x + sr * 7, S.z + cr * 7, t), wr = wave(S.x + cr * 3, S.z - sr * 3, t), wl = wave(S.x - cr * 3, S.z + sr * 3, t);
-    S.g.position.set(S.x, 0.12 + wave(S.x, S.z, t) * 0.5, S.z);
-    S.g.rotation.set(Math.atan2(wf - wb, 14) * 0.9, S.rot, Math.atan2(wr - wl, 6) * 0.9);
+    if (d.sk) S.sink += dt;
+    S.g.position.set(S.x, 0.12 + wave(S.x, S.z, t) * 0.5 - S.sink * 1.4 - (d.wt || 0) * 0.004, S.z);
+    S.g.rotation.set(Math.atan2(wf - wb, 14) * 0.9 + S.sink * 0.05, S.rot, Math.atan2(wr - wl, 6) * 0.9 + S.sink * 0.14);
     S.g.updateMatrixWorld(true);
-    S.wheel.rotation.z += ((-(d.tn || 0)) * 1.6 - S.wheel.rotation.z) * Math.min(1, dt * 4);
-    S.anc += ((d.an ? 1 : 0) - S.anc) * Math.min(1, dt * 1.4);
-    const ay = lerp(DECKY - 0.3, -5.5, S.anc); S.anchorG.position.y = ay;
-    const len = Math.max(0.05, DECKY - ay); S.chest; S.chain.scale.y = len; S.chain.position.y = DECKY - len / 2;
-    S.sails.forEach((s, i) => { s.rotation.y = Math.sin(t * 1.3 + i) * 0.03; s.scale.set(1 + Math.abs(d.sp) * 0.01, 1, 1 + Math.abs(d.sp) * 0.05); });
+    updateRig(S, d, dt, t);
     S.plate.visible = true;
     S.tag.visible = P.ship !== S;
   }
 }
 
+// ---- AI 敵海賊船（ブタ海賊団・玉ねぎ弾）----
+const ES = {};
+function addEnemy(d) {
+  const rig = buildShip('galleon', { color: 0x5a3a8a, sailC: 0x2e2a3a, flag: 0x15151a, mark: 0xffa0c8 });
+  rig.x = d.x; rig.z = d.z; rig.rot = d.r; rig.d = d;
+  rig.tag = label('🏴‍☠️ ブタ海賊団', 5, 0.9, null, '#ffb0d0', 52); rig.tag.position.set(0, 22, 0); rig.g.add(rig.tag);
+  scene.add(rig.g); ES[d.i] = rig; return rig;
+}
+function removeEnemy(id) { const s = ES[id]; if (s) { scene.remove(s.g); delete ES[id]; } }
+function updateEnemyShips(dt, t) {
+  for (const id in ES) {
+    const S = ES[id], d = S.d, k = Math.min(1, dt * 6);
+    if (d.dd && !S.dead) { S.dead = true; S.sink = 0; } else if (!d.dd && S.dead) { S.dead = false; S.sink = 0; S.x = d.x; S.z = d.z; }
+    if (S.dead) { S.sink += dt; S.g.visible = S.sink < 7; } else S.g.visible = true;
+    S.x += (d.x - S.x) * k; S.z += (d.z - S.z) * k; S.rot += angd(d.r, S.rot) * k;
+    S.g.position.set(S.x, 0.12 + wave(S.x, S.z, t) * 0.5 - (S.dead ? S.sink * 1.6 : 0), S.z);
+    S.g.rotation.set(Math.sin(t + S.x) * 0.03 + (S.dead ? S.sink * 0.06 : 0), S.rot, Math.sin(t * 0.8 + S.z) * 0.04 + (S.dead ? S.sink * 0.16 : 0));
+    S.g.updateMatrixWorld(true);
+    S.sails.forEach((s, i) => { s.rotation.y = Math.sin(t * 1.1 + i) * 0.1; });
+    S.wheel.rotation.z += ((-(d.tn || 0)) * 1.6 - S.wheel.rotation.z) * Math.min(1, dt * 4);
+    S.doors.forEach((pv) => { pv.rotation.y = 0; });
+    S.anchorG.position.y = DECKY - 0.3;
+    S.tag.visible = !S.dead;
+  }
+}
+
+// ---- パーティクル（ポップな着弾エフェクト）----
+const PARTS = [];
+const partMats = [0xff5fa8, 0xffd23a, 0x3ac8ff, 0x7aff7a, 0xff9a3a, 0xc08aff].map((c) => new THREE.MeshBasicMaterial({ color: c }));
+const partGeo = new THREE.IcosahedronGeometry(1, 0);
+function spawnPart(x, y, z, vx, vy, vz, mi, size, life, grav) {
+  if (PARTS.length > 340) return;
+  const m = new THREE.Mesh(partGeo, partMats[mi % partMats.length]); m.position.set(x, y, z); m.scale.setScalar(size); scene.add(m);
+  PARTS.push({ m, vx, vy, vz, life, max: life, grav: grav == null ? 14 : grav, size });
+}
+function popText(x, y, z, text, col) {
+  const s = label(text, 4.2, 1.2, null, col || '#ffe36a', 80); s.position.set(x, y, z); scene.add(s);
+  PARTS.push({ m: s, vx: 0, vy: 3, vz: 0, life: 1.0, max: 1.0, grav: 0, size: 1, sprite: true });
+}
+function popFx(x, y, z, big, from) {
+  const n = big ? 34 : 22;
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * 6.28, e = Math.random() * 1.2, sp = (big ? 9 : 6) * (0.4 + Math.random());
+    spawnPart(x, y, z, Math.cos(a) * sp * Math.cos(e), Math.sin(e) * sp + 4, Math.sin(a) * sp * Math.cos(e), i, (0.12 + Math.random() * 0.2) * (big ? 1.4 : 1), 1.2 + Math.random() * 0.6);
+  }
+  for (let i = 0; i < 8; i++) spawnPart(x, y, z, (Math.random() - 0.5) * 5, 2 + Math.random() * 4, (Math.random() - 0.5) * 5, 1, 0.3 + Math.random() * 0.25, 1.1, 12);
+  popText(x, y + 1.6, z, from === 'e' ? 'ドカーン!' : ['ポテーン!', 'ボフッ!', 'ポンッ!', 'ベチャッ!'][Math.floor(Math.random() * 4)], from === 'e' ? '#ff9ab8' : '#ffe36a');
+}
+function splashPop(x, z) { for (let i = 0; i < 14; i++) { const a = Math.random() * 6.28, sp = 2 + Math.random() * 4; spawnPart(x, 0.2, z, Math.cos(a) * sp, 4 + Math.random() * 4, Math.sin(a) * sp, 2, 0.12 + Math.random() * 0.15, 1.0); } }
+function updateParts(dt) {
+  for (let i = PARTS.length - 1; i >= 0; i--) {
+    const p = PARTS[i]; p.life -= dt;
+    if (p.life <= 0) { scene.remove(p.m); if (p.sprite) { p.m.material.map.dispose(); p.m.material.dispose(); } PARTS.splice(i, 1); continue; }
+    p.vy -= p.grav * dt; p.m.position.x += p.vx * dt; p.m.position.y += p.vy * dt; p.m.position.z += p.vz * dt;
+    if (p.sprite) p.m.material.opacity = Math.min(1, p.life / 0.4); else p.m.scale.setScalar(p.size * (0.4 + 0.6 * p.life / p.max));
+  }
+}
+// ---- ジャガイモ砲弾（と、敵の玉ねぎ弾）----
+const BLV = {};
+const potatoGeo = new THREE.IcosahedronGeometry(0.4, 0), potatoMat = M(0xd9a55a), onionMat = M(0xb44fd0);
+function syncBalls(list, now) {
+  const seen = {};
+  list.forEach((b) => {
+    seen[b[0]] = 1; let v = BLV[b[0]];
+    if (!v) { const m = new THREE.Mesh(potatoGeo, b[4] ? onionMat : potatoMat); m.scale.set(1.15, 0.85, 1); scene.add(m); v = BLV[b[0]] = { m, vx: 0, vy: 0, vz: 0, t: now, tx: b[1], ty: b[2], tz: b[3] }; m.position.set(b[1], b[2], b[3]); }
+    else { const dtt = Math.max(0.03, (now - v.t) / 1000); v.vx = (b[1] - v.tx) / dtt; v.vy = (b[2] - v.ty) / dtt; v.vz = (b[3] - v.tz) / dtt; v.tx = b[1]; v.ty = b[2]; v.tz = b[3]; v.t = now; v.m.position.set(b[1], b[2], b[3]); }
+  });
+  for (const id in BLV) if (!seen[id]) { scene.remove(BLV[id].m); delete BLV[id]; }
+}
+function updateBallViews(dt) {
+  for (const id in BLV) { const v = BLV[id]; v.vy -= 14 * dt; v.m.position.x += v.vx * dt; v.m.position.y += v.vy * dt; v.m.position.z += v.vz * dt; v.m.rotation.x += dt * 9; v.m.rotation.z += dt * 6; }
+}
+// ---- クラーケンの触手 ----
+const KRV = {};
+function buildTentacle() {
+  const root = new THREE.Group(); root.rotation.order = 'YXZ';
+  const cA = M(0xc050e8), cB = M(0xff7ad0), segs = [];
+  let parent = root;
+  for (let k = 0; k < 7; k++) {
+    const len = 2.4, r0 = 1.05 - k * 0.12, r1 = Math.max(0.15, r0 - 0.12);
+    const geo = new THREE.CylinderGeometry(r1, r0, len, 7); geo.translate(0, len / 2, 0);
+    const seg = new THREE.Group(); seg.add(new THREE.Mesh(geo, k % 2 ? cA : cB)); seg.position.y = k === 0 ? 0 : len; parent.add(seg); segs.push(seg); parent = seg;
+  }
+  const tip = new THREE.Mesh(new THREE.SphereGeometry(0.28, 6, 5), M(0xffe36a)); tip.position.y = 2.4; parent.add(tip);
+  scene.add(root); return { root, segs, slam: 0, rise: 0, dead: 0 };
+}
+function syncKraken(list) {
+  const seen = {};
+  list.forEach((d) => { seen[d.i] = 1; let k = KRV[d.i]; if (!k) { k = KRV[d.i] = buildTentacle(); k.x = d.x; k.z = d.z; } k.d = d; });
+  for (const id in KRV) if (!seen[id]) { scene.remove(KRV[id].root); delete KRV[id]; }
+}
+function updateKrakenViews(dt, t) {
+  let near = false;
+  for (const id in KRV) {
+    const k = KRV[id], d = k.d, f = Math.min(1, dt * 3);
+    k.x += (d.x - k.x) * f; k.z += (d.z - k.z) * f;
+    if (d.hp <= 0) k.dead += dt; else k.rise = Math.min(1, k.rise + dt * 0.8);
+    const lift = (k.dead > 0 ? Math.max(0, 1 - k.dead / 1.8) : k.rise);
+    k.root.position.set(k.x, wave(k.x, k.z, t) * 0.5 - 16 + lift * 16, k.z);
+    k.slam = Math.max(0, k.slam - dt);
+    const toS = Math.atan2(-(P.wp.x - k.x), -(P.wp.z - k.z));
+    k.root.rotation.y = toS;
+    k.segs.forEach((sg, j) => { sg.rotation.x = Math.sin(t * 1.7 + j * 0.55 + k.x) * 0.16 + (j < 3 ? -0.18 : 0.1) - k.slam * (j < 4 ? 0.45 : 0); sg.rotation.z = Math.cos(t * 1.3 + j * 0.4) * 0.1; });
+    if (Math.hypot(P.wp.x - k.x, P.wp.z - k.z) < 120) near = true;
+  }
+  return near;
+}
+// ---- 雨・稲妻・畑の実り ----
+const RAIN_N = 700, rainBase = [];
+for (let i = 0; i < RAIN_N; i++) rainBase.push([(Math.random() - 0.5) * 80, Math.random() * 45, (Math.random() - 0.5) * 80]);
+const rainGeo = new THREE.BufferGeometry(); rainGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(RAIN_N * 6), 3));
+const rain = new THREE.LineSegments(rainGeo, new THREE.LineBasicMaterial({ color: 0xcfe8ff, transparent: true, opacity: 0.4, fog: false })); rain.frustumCulled = false; rain.visible = false; scene.add(rain);
+let lightningT = 0, nextBolt = 6;
+function updateWorldFx(dt, t) {
+  updateEnemyShips(dt, t); updateBallViews(dt); updateParts(dt);
+  const near = updateKrakenViews(dt, t);
+  if (started && near) { const w = $('shipwarn'); if (!w.dataset.k) w.dataset.k = '1'; }
+  if (STORM > 0.15 && !inDungeon) {
+    rain.visible = true; rain.material.opacity = 0.15 + STORM * 0.4;
+    const a = rainGeo.attributes.position.array, cx = camera.position.x, cy = camera.position.y, cz = camera.position.z;
+    for (let i = 0; i < RAIN_N; i++) {
+      const b = rainBase[i]; b[1] -= 40 * dt; if (b[1] < 0) b[1] += 45;
+      const x = cx + b[0], y = cy - 12 + b[1], z = cz + b[2];
+      a[i * 6] = x; a[i * 6 + 1] = y; a[i * 6 + 2] = z; a[i * 6 + 3] = x - 0.25; a[i * 6 + 4] = y - 1.4; a[i * 6 + 5] = z;
+    }
+    rainGeo.attributes.position.needsUpdate = true;
+  } else rain.visible = false;
+  if (STORM > 0.55) { nextBolt -= dt; if (nextBolt < 0) { lightningT = 0.18; nextBolt = 3 + Math.random() * 9; } }
+  lightningT = Math.max(0, lightningT - dt);
+  FIELDV.forEach((v, id) => {
+    const ready = !FR.has(id);
+    v.spuds.forEach((s) => { s.visible = ready; });
+    const sc = ready ? 1 : 0.55; v.plants.forEach((p) => { p.scale.set(sc, sc * 0.8, sc); });
+  });
+}
 // =====================================================
 //  プレイヤー状態
 // =====================================================
 const P = { x: 0, y: 1.6, z: 40, vy: 0, yaw: Math.PI, pitch: 0, ship: null, lx: 0, ly: 0, lz: 0, helm: null, swim: false, hp: 200, maxhp: 200, tool: 1, onGround: true,
-  wp: new THREE.Vector3(0, 1.6, 40), lastRot: 0, dead: 0, moving: false, run: false, viewT: 1, viewTarget: 1 };
+  wp: new THREE.Vector3(0, 1.6, 40), lastRot: 0, dead: 0, moving: false, run: false, viewT: 1, viewTarget: 1, sa: 0, cn: null };
 const ME = { id: null, key: null, save: null, defs: null };
 const keys = {};
 let started = false, uiOpen = false, lastSend = 0, hpHurtT = 0;
-const me = makePirate({ coat: 0x8a2a2a, hat: 'none' }); scene.add(me);
+const me = makePirate({ coat: 0xff5a8a, hat: 'none' }); scene.add(me);
 const rp = {};   // remote players
 const viewTool = new THREE.Group(); camera.add(viewTool); viewTool.position.set(0.32, -0.3, -0.55);
 let viewToolKind = -1, viewTip = null;
@@ -758,6 +1104,7 @@ function viewDir(out) { return out.set(-Math.sin(P.yaw) * Math.cos(P.pitch), Mat
 function stopFishing() { FISH.st = 'idle'; bobber.visible = false; fishLine.visible = false; $('bite').style.display = 'none'; }
 function mouseAction() {
   if (!started || uiOpen || P.dead || P.helm || DIG.on) return;
+  if (P.cn) { socket.emit('cfire', { sid: P.cn.sid, idx: P.cn.idx }); return; }
   if (P.tool === 1) {
     me.userData.atk = 0.35; attack();
   } else if (P.tool === 2) {
@@ -840,7 +1187,7 @@ function updateEnemies(dt) {
     e.g.children[0].material.color.set(e.hit > 0 ? 0xff6a6a : 0xd8d4c4);
   }
 }
-function hurt(n) { P.hp -= n; hpHurtT = 0.3; if (P.hp <= 0 && !P.dead) { P.hp = 0; P.dead = 2.5; $('death').style.display = 'flex'; if (FISH.st !== 'idle') stopFishing(); } }
+function hurt(n) { P.hp -= n; hpHurtT = 0.3; if (P.hp <= 0 && !P.dead) { P.hp = 0; P.dead = 2.5; leaveCannon(); $('death').style.display = 'flex'; if (FISH.st !== 'idle') stopFishing(); } }
 
 // =====================================================
 //  入力
@@ -861,13 +1208,18 @@ addEventListener('keydown', (e) => {
   if (e.code === 'Digit2') P.tool = 2;
   if (e.code === 'Digit0') { P.tool = 0; stopFishing(); }
   if (e.code === 'KeyE') interact();
-  if (e.code === 'Space') { if (P.helm) leaveHelm(); else spaceAction = true; }
+  if (e.code === 'Space') { if (P.helm) leaveHelm(); else if (P.cn) leaveCannon(); else spaceAction = true; }
 });
 addEventListener('keyup', (e) => { keys[e.code] = false; });
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
 let spaceAction = false;
 addEventListener('mousemove', (e) => {
   if (document.pointerLockElement !== $('c') || uiOpen || P.dead) return;
+  if (P.cn && P.ship) {
+    const c = P.ship.L.cannons[P.cn.idx];
+    P.cn.cy = clamp(P.cn.cy - e.movementX * 0.0022 * c.side, -0.6, 0.6); P.cn.cp = clamp(P.cn.cp - e.movementY * 0.0018, -0.08, 0.55);
+    return;
+  }
   P.yaw -= e.movementX * 0.0023; P.pitch = clamp(P.pitch - e.movementY * 0.0023, -1.4, 1.4);
 });
 $('c').addEventListener('mousedown', (e) => {
@@ -882,44 +1234,95 @@ $('c').addEventListener('mousedown', (e) => {
 const socket = io();
 let myId = null, lastSnapHour = 7;
 function toast(t, ms) { const d = document.createElement('div'); d.textContent = t; $('toast').appendChild(d); setTimeout(() => d.remove(), ms || 3800); while ($('toast').children.length > 5) $('toast').firstChild.remove(); }
+let TEAMS = [], myTeam = 0;
 socket.on('init', (m) => {
   ME.id = myId = m.id; ME.key = m.key; ME.save = m.save; ME.defs = m.defs; DAY_SEC = m.dayLen; hourBase = m.hour; hourStamp = performance.now();
   localStorage.setItem('pp_key', m.key);
   m.ships.forEach(addShip);
   setHat(me, ME.save.hat); me.userData.hatSet = ME.save.hat;
-  started = true; $('start').style.display = 'none'; $('c').requestPointerLock();
-  toast('ようこそ！ 港湾事務所で船を借りて、大海原へ出航しよう');
+  TEAMS = m.teams || [];
+  $('start').style.display = 'none'; $('lobby').style.display = 'flex'; renderTeams();
   refreshHud();
 });
+function renderTeams() {
+  myTeam = 0; TEAMS.forEach((t) => { if (t.members.some((m) => m.id === myId)) myTeam = t.id; });
+  const el = $('teamlist');
+  el.innerHTML = TEAMS.length ? '' : '<div class="t">まだチームがありません。「チームを作る」か、ひとりで出航しよう。</div>';
+  const cap = ME.defs ? ME.defs.teamCap : 3;
+  TEAMS.forEach((t) => {
+    const full = t.members.length >= cap, mine = t.id === myTeam;
+    el.insertAdjacentHTML('beforeend', '<div class="t"><div><b>🐷 ' + t.name + '</b> ' + (mine ? '（あなたのチーム）' : '') + '<br><span class="sub">' + t.members.map((m) => m.n).join(' / ') + '</span></div><div>' + (mine || myTeam ? '' : '<button data-join="' + t.id + '"' + (full ? ' disabled' : '') + '>参加 ' + t.members.length + '/' + cap + '</button>') + '</div></div>');
+  });
+  el.querySelectorAll('button[data-join]').forEach((b) => { b.onclick = () => socket.emit('tjoin', { id: +b.dataset.join }); });
+  $('tcreate').disabled = !!myTeam; $('tleave').disabled = !myTeam;
+  const th = $('teamhud'), mine = TEAMS.find((t) => t.id === myTeam);
+  if (mine && started) { th.style.display = 'block'; th.innerHTML = '🐷 <b>' + mine.name + '</b><br>' + mine.members.map((m) => (m.id === myId ? '★ ' : '・') + m.n).join('<br>'); } else th.style.display = 'none';
+}
+socket.on('teams', (t) => { TEAMS = t; renderTeams(); });
+$('tcreate').onclick = () => socket.emit('tcreate', { name: (($('name').value || '').trim() || 'ブタ') + 'のチーム' });
+$('tleave').onclick = () => socket.emit('tleave');
+$('sail').onclick = () => {
+  started = true; $('lobby').style.display = 'none'; $('c').requestPointerLock(); renderTeams();
+  toast('ようこそ！ 港湾事務所で船を借りて出航しよう。遠い島のジャガイモ畑で収穫して、砲弾にしよう！');
+};
 socket.on('save', (s) => { ME.save = s; refreshHud(); if (panel) renderPanel(); });
 socket.on('msg', (t) => toast(t));
+socket.on('hurt', (m) => { hurt(m.n || 10); SHAKE = 0.5; });
 socket.on('heal', (m) => { P.hp = Math.min(P.maxhp, P.hp + m.amt); toast(m.n + 'を食べた！ HP +' + m.amt); });
 socket.on('catch', (m) => { toast('🎣 ' + ME.defs.items[m.id].n + ' を釣り上げた！'); });
 socket.on('gachaRes', (r) => { lastGacha = r; if (panel && panel.kind === 'gacha') renderPanel(); });
 let lastGacha = [];
+let SHAKE = 0;
+socket.on('fx', (f) => {
+  const d = Math.hypot(f.x - P.wp.x, f.z - P.wp.z);
+  switch (f.k) {
+    case 'pop': popFx(f.x, f.y, f.z, f.big, f.f); if (d < 60) SHAKE = Math.max(SHAKE, 0.25); break;
+    case 'splash': splashPop(f.x, f.z); break;
+    case 'shoot': for (let i = 0; i < 8; i++) spawnPart(f.x, f.y, f.z, (f.dx || 0) * 6 + (Math.random() - 0.5) * 3, 1 + Math.random() * 3, (f.dz || 0) * 6 + (Math.random() - 0.5) * 3, i, 0.14 + Math.random() * 0.12, 0.7, 4); popText(f.x, f.y + 1.2, f.z, f.f === 'e' ? 'ボン!' : 'ポンッ!', f.f === 'e' ? '#ff9ab8' : '#fff'); if (d < 50) SHAKE = Math.max(SHAKE, 0.2); break;
+    case 'hit': popFx(f.x, f.y, f.z, 1, 'e'); for (let i = 0; i < 8; i++) spawnPart(f.x, f.y, f.z, (Math.random() - 0.5) * 8, 3 + Math.random() * 5, (Math.random() - 0.5) * 8, 4, 0.2, 1.4, 14); if (d < 80) SHAKE = Math.max(SHAKE, 0.45); break;
+    case 'sink': for (let i = 0; i < 7; i++) setTimeout(() => popFx(f.x + (Math.random() - 0.5) * 14, 2 + Math.random() * 3, f.z + (Math.random() - 0.5) * 16, 1, 'p'), i * 320); break;
+    case 'slam': { splashPop(f.x, f.z); splashPop(f.x + 2, f.z + 1); const k = KRV[f.id]; if (k) k.slam = 0.7; if (d < 70) SHAKE = Math.max(SHAKE, 0.4); break; }
+  }
+});
 socket.on('snap', (s) => {
   hourBase = s.h; hourStamp = performance.now();
+  WIND.dir = s.wd; WIND.spd = s.ws; STORM_T = s.sm;
   const seen = {};
   s.ships.forEach((d) => { seen[d.i] = 1; const S = SH[d.i]; if (S) S.d = d; else addShip(d); });
   for (const id in SH) if (!seen[id]) removeShip(id);
+  if (P.ship && P.ship.d.sk) {
+    P.x = P.wp.x; P.y = P.wp.y; P.z = P.wp.z; P.vy = 0; P.ship = null; P.helm = null; P.cn = null; P.swim = true; $('cnhud').style.display = 'none';
+    toast('🌊 船が沈んだ！ 泳いで近くの島を目指そう');
+  }
+  const es = {};
+  s.en.forEach((d) => { es[d.i] = 1; const E = ES[d.i]; if (E) E.d = d; else addEnemy(d); });
+  for (const id in ES) if (!es[id]) removeEnemy(id);
+  syncKraken(s.kr); syncBalls(s.bl, performance.now());
+  FR.clear(); s.fr.forEach((id) => FR.add(id));
   const ps = {};
   s.players.forEach((p) => {
     if (p.i === myId) return; ps[p.i] = 1;
     let r = rp[p.i];
-    if (!r) { let h = 0; for (const ch of p.i) h = (h * 31 + ch.charCodeAt(0)) | 0; const col = [0x8a2a2a, 0x2a5a8a, 0x3a7a3a, 0x7a5a2a, 0x6a3a8a, 0x2a7a7a][Math.abs(h) % 6]; r = rp[p.i] = { g: makePirate({ coat: col, hat: p.h }), hat: p.h, lx: p.lx, ly: p.ly, lz: p.lz }; r.g.add(nameTag(p.n)); scene.add(r.g); }
-    r.d = p;
+    if (!r) {
+      let h = 0; for (const ch of p.i) h = (h * 31 + ch.charCodeAt(0)) | 0;
+      const col = [0xff5a8a, 0x4aa0ff, 0x3ac880, 0xffb030, 0xb06aff, 0x2ac8c8][Math.abs(h) % 6], pig = [0xffa6c8, 0xffc0a0, 0xf4b0e0, 0xffd0e0][Math.abs(h >> 3) % 4];
+      r = rp[p.i] = { g: makePirate({ coat: col, skin: pig, hat: p.h }), hat: p.h, lx: p.lx, ly: p.ly, lz: p.lz, tm: p.tm };
+      r.g.add(nameTag(p.n, p.tm && p.tm === myTeam ? '#8aff9a' : '#fff')); scene.add(r.g);
+    }
+    r.d = p; r.tm = p.tm;
   });
   for (const id in rp) if (!ps[id]) { scene.remove(rp[id].g); delete rp[id]; }
 });
 $('go').onclick = () => {
-  const name = $('name').value.trim() || '名無しの海賊'; localStorage.setItem('pp_name', name);
+  const name = $('name').value.trim() || 'ブタ海賊'; localStorage.setItem('pp_name', name);
   let key = localStorage.getItem('pp_key'); if (!key) { key = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2); localStorage.setItem('pp_key', key); }
   socket.emit('join', { key, name });
 };
-$('name').value = localStorage.getItem('pp_name') || '';
+$('name').value = localStorage.getItem('pp_name') || '';$('name').value = localStorage.getItem('pp_name') || '';
 function sendState(t) {
   if (t - lastSend < 0.066) return; lastSend = t;
-  socket.emit('pl', { x: P.wp.x, y: P.wp.y, z: P.wp.z, r: P.yaw, s: P.ship ? P.ship.id : 0, lx: P.lx, ly: P.ly, lz: P.lz, t: P.tool, w: P.swim ? 1 : 0, m: P.moving ? 1 : 0, a: me.userData.atk > 0 ? 1 : 0 });
+  socket.emit('pl', { x: P.wp.x, y: P.wp.y, z: P.wp.z, r: P.yaw, s: P.ship ? P.ship.id : 0, lx: P.lx, ly: P.ly, lz: P.lz, t: P.tool, w: P.swim ? 1 : 0, m: P.moving ? 1 : 0, a: me.userData.atk > 0 ? 1 : 0, c: P.cn ? 1 : 0 });
+  if (P.cn) socket.emit('caim', { sid: P.cn.sid, idx: P.cn.idx, ya: P.cn.cy, pi: P.cn.cp });
 }
 
 // =====================================================
@@ -936,18 +1339,35 @@ function nearestInter() {
     return best;
   }
   if (P.helm) { return { kind: 'leaveHelm', label: '舵を離れる（Space）' }; }
+  if (P.cn) return { kind: 'leaveCannon', label: '大砲から離れる（Space / E）' };
   if (P.ship) {
     const S = P.ship, L = S.L;
+    const dop = !!S.d.dr, fl = (S.d.wt || 0) >= 30;
     const pts = [
-      { kind: 'helm', label: '舵をとる', x: 0, z: L.standZ, y: DECKY + L.qh, r: 1.9 },
-      { kind: 'anchor', label: S.d.an ? '錨を上げる' : '錨を下ろす', x: L.winch.x, z: L.winch.z, y: DECKY + L.qh, r: 1.9 },
+      { kind: 'helm', label: '舵をとる（W/S帆 A/D舵 Q/R帆の向き）', x: 0, z: L.standZ, y: DECKY + L.qh, r: 1.9 },
+      { kind: 'anchor', label: S.d.an ? '⚓ 錨を上げる' : '⚓ 錨を下ろす', x: L.winch.x, z: L.winch.z, y: DECKY + L.qh, r: 1.9 },
       { kind: 'stove', label: '台所で調理する', x: L.stove.x, z: L.stove.z, y: HOLDY, r: 2.3 },
-      { kind: 'chest', label: '宝箱を開く（船の保管庫）', x: L.chest.x, z: L.chest.z, y: HOLDY, r: 2.1 }
+      { kind: 'chest', label: '宝箱を開く（船の保管庫）', x: L.chest.x, z: L.chest.z, y: HOLDY, r: 2.1 },
+      { kind: 'door', label: dop ? '🚪 船室のドアを閉める（防水）' : '🚪 船室のドアを開ける', x: 0, z: L.qz0 - 0.9, y: DECKY, r: 2.1 },
+      { kind: 'door', label: dop ? '🚪 船室のドアを閉める（防水）' : '🚪 船室のドアを開ける', x: 0, z: L.qz0 + 1.0, y: DECKY, r: 1.6 },
+      { kind: 'bail', label: '🪣 水を汲み出す（Eを連打／長押し）', x: L.bucket.x, z: L.bucket.z, y: HOLDY, r: 1.9 }
     ];
-    for (const p of pts) { if (Math.abs(P.ly - p.y) > 1.7) continue; const d = Math.hypot(P.lx - p.x, P.lz - p.z); consider({ kind: p.kind, label: p.label, d, r: p.r }); }
+    L.cannons.forEach((c) => pts.push({ kind: 'cannon', idx: c.idx, label: '大砲を使う（ジャガイモ砲弾 所持 ' + ((ME.save && ME.save.inv.potato) || 0) + '）', x: c.x - c.side * 0.7, z: c.z, y: DECKY, r: 2.0 }));
+    L.plant.forEach((p, i) => {
+      const c = (S.d.cr || [])[i];
+      const lab = c === -1 ? '🌱 ジャガイモを植える（増やす）' : c === 0 ? '🥔 収穫する（ジャガイモ×3）' : '🌱 成長中… 残り ' + Math.ceil((c || 0) / 1000) + '秒' + (fl && dop ? '（浸水で停滞）' : '');
+      pts.push({ kind: c === undefined || c > 0 ? 'wait' : 'crop', k: i, label: lab, x: p.x, z: p.z, y: DECKY, r: 1.7 });
+    });
+    (S.d.ho || []).forEach(([sd, z], i) => pts.push({ kind: 'patch', k: i, label: '🔨 穴をふさぐ（板×1 所持 ' + ((ME.save && ME.save.inv.plank) || 0) + '）', x: sd * L.hh(z), z, y: HOLDY, r: 2.0 }));
+    for (const p of pts) { if (Math.abs(P.ly - p.y) > 1.7) continue; const d = Math.hypot(P.lx - p.x, P.lz - p.z); consider({ kind: p.kind, label: p.label, d, r: p.r, k: p.k, idx: p.idx }); }
     return best;
   }
-  for (const it of INTER) { if (Math.abs(P.y - it.pos.y) > 3.5) continue; const d = Math.hypot(P.x - it.pos.x, P.z - it.pos.z); consider({ kind: it.kind, label: it.label, d, r: it.r }); }
+  for (const it of INTER) {
+    if (Math.abs(P.y - it.pos.y) > 3.5) continue;
+    if (it.kind === 'field' && FR.has(it.fid)) continue;
+    const d = Math.hypot(P.x - it.pos.x, P.z - it.pos.z); consider({ kind: it.kind, label: it.label, d, r: it.r, fid: it.fid });
+  }
+  if (P.swim) for (const id in SH) { const S = SH[id]; tv.copy(P.wp); S.g.worldToLocal(tv); const hw = hwAt(S.T, tv.z); if (Math.abs(tv.z - S.L.lad.z) < 2.6 && Math.abs(Math.abs(tv.x) - (hw + 0.4)) < 2.8) consider({ kind: 'ladder', label: '🪜 梯子で船に登る（Space）', d: 0.5, r: 9 }); }
   const mp = activeMap();
   if (mp && mp.kind === 'dig' && Math.hypot(P.x - mp.x, P.z - mp.z) < 3.6) consider({ kind: 'dig', label: '宝を掘る', d: 0.5, r: 9 });
   return best;
@@ -960,6 +1380,14 @@ function interact() {
     case 'leaveHelm': leaveHelm(); break;
     case 'anchor': socket.emit('anchor', { sid: P.ship.id }); break;
     case 'dig': startDig(); break;
+    case 'door': socket.emit('door', { sid: P.ship.id }); break;
+    case 'cannon': enterCannon(it.idx); break;
+    case 'leaveCannon': leaveCannon(); break;
+    case 'crop': socket.emit('crop', { sid: P.ship.id, k: it.k }); break;
+    case 'patch': socket.emit('patch', { sid: P.ship.id, k: it.k }); break;
+    case 'bail': socket.emit('bail', { sid: P.ship.id }); break;
+    case 'field': socket.emit('harvest', { id: it.fid }); break;
+    case 'ladder': climbOut(); break;
     case 'dEnter': enterDungeon(); break;
     case 'dExit': exitDungeon(); break;
     case 'dChest': dunChestOpen = true; DUNST.chestMesh.visible = false; socket.emit('act', { a: 'dchest' }); break;
@@ -968,8 +1396,18 @@ function interact() {
 function enterHelm() {
   const S = P.ship; if (!S) return;
   if (S.d.hm) return toast('すでに誰かが舵をとっています');
-  P.helm = S.id; P.lx = 0; P.lz = S.L.standZ; P.ly = DECKY + S.L.qh; P.vy = 0; stopFishing();
-  socket.emit('helm', { sid: S.id, on: true }); toast('舵をとった！ W/S 帆の操作・A/D 舵取り・Space で離れる');
+  P.helm = S.id; P.lx = 0; P.lz = S.L.standZ; P.ly = DECKY + S.L.qh; P.vy = 0; P.sa = S.d.sa || 0; stopFishing();
+  socket.emit('helm', { sid: S.id, on: true }); toast('舵をとった！ W/S 帆を張る・A/D 舵取り・Q/R 帆の向き（追い風に合わせよう）・Space で離れる');
+}
+function enterCannon(idx) {
+  const S = P.ship; if (!S) return;
+  const c = S.L.cannons[idx]; if (!c) return;
+  P.cn = { sid: S.id, idx, cy: 0, cp: 0.12 }; P.lx = c.x - c.side * 1.0; P.lz = c.z; P.ly = DECKY; P.vy = 0; stopFishing();
+  socket.emit('cn', { sid: S.id, idx, on: 1 }); $('cnhud').style.display = 'block'; if (P.viewTarget > 0.5) toggleView();
+}
+function leaveCannon() {
+  if (!P.cn) return;
+  socket.emit('cn', { sid: P.cn.sid, idx: P.cn.idx, on: 0 }); P.cn = null; $('cnhud').style.display = 'none';
 }
 function leaveHelm() { if (!P.helm) return; socket.emit('helm', { sid: P.helm, on: false }); socket.emit('steer', { sid: P.helm, thr: 0, turn: 0 }); P.helm = null; }
 function enterDungeon() {
@@ -1048,37 +1486,48 @@ function refreshHud() {
 // =====================================================
 //  マップ
 // =====================================================
-const WM = document.createElement('canvas'); WM.width = WM.height = 512;
+const WMR = 1900;
+const WM = document.createElement('canvas'); WM.width = WM.height = 1024;
 {
-  const x = WM.getContext('2d'), img = x.createImageData(512, 512), sc = 1800 / 512;
-  for (let j = 0; j < 512; j++) for (let i = 0; i < 512; i++) {
-    const h = heightAt((i - 256) * sc, (j - 256) * sc), o = (j * 512 + i) * 4;
+  const x = WM.getContext('2d'), img = x.createImageData(1024, 1024), sc = WMR * 2 / 1024;
+  for (let j = 0; j < 1024; j++) for (let i = 0; i < 1024; i++) {
+    const h = heightAt((i - 512) * sc, (j - 512) * sc), o = (j * 1024 + i) * 4;
     let r, g, b;
-    if (h < -2.5) { r = 10; g = 36; b = 72; } else if (h < -0.2) { r = 24; g = 90; b = 140; } else if (h < 1) { r = 220; g = 200; b = 140; }
-    else if (h < 14) { r = 80; g = 130; b = 60; } else if (h < 30) { r = 120; g = 118; b = 110; } else { r = 230; g = 232; b = 235; }
+    if (h < -2.5) { r = 24; g = 100; b = 190; } else if (h < -0.2) { r = 70; g = 200; b = 240; } else if (h < 1) { r = 255; g = 235; b = 160; }
+    else if (h < 8) { r = 110; g = 220; b = 90; } else if (h < 18) { r = 80; g = 180; b = 70; } else { r = 200; g = 170; b = 230; }
     img.data[o] = r; img.data[o + 1] = g; img.data[o + 2] = b; img.data[o + 3] = 255;
   }
   x.putImageData(img, 0, 0);
 }
+
 const mctx = $('minic').getContext('2d');
 function mark(ctx, sx, sy, col, r) { ctx.fillStyle = col; ctx.beginPath(); ctx.arc(sx, sy, r, 0, 6.283); ctx.fill(); }
 function drawMini() {
   mctx.clearRect(0, 0, 180, 180);
   if (inDungeon) { mctx.fillStyle = '#111'; mctx.fillRect(0, 0, 180, 180); mctx.fillStyle = '#9fe0ff'; mctx.font = '16px sans-serif'; mctx.textAlign = 'center'; mctx.fillText('ダンジョン', 90, 94); return; }
-  const view = 300, sc = 1800 / 512, half = view / sc, cx = (P.wp.x + 900) / sc, cz = (P.wp.z + 900) / sc;
+  const view = 300, sc = WMR * 2 / 1024, half = view / sc, cx = (P.wp.x + WMR) / sc, cz = (P.wp.z + WMR) / sc;
   mctx.drawImage(WM, cx - half, cz - half, half * 2, half * 2, 0, 0, 180, 180);
   const tx = (x) => 90 + (x - P.wp.x) / view * 90, tz = (z) => 90 + (z - P.wp.z) / view * 90;
-  for (const id in SH) mark(mctx, tx(SH[id].x), tz(SH[id].z), '#ffd23f', 4);
-  for (const id in rp) if (rp[id].d) mark(mctx, tx(rp[id].d.x), tz(rp[id].d.z), '#ff8ad0', 3);
+  mctx.lineWidth = 2; mctx.strokeStyle = 'rgba(190,80,255,0.8)';
+  KZONES.forEach((k) => { mctx.beginPath(); mctx.arc(tx(k.x), tz(k.z), k.r / view * 90, 0, 6.283); mctx.stroke(); });
+  FIELDS.forEach((f) => { if (!FR.has(f.id)) mark(mctx, tx(f.x), tz(f.z), '#fff04a', 2.5); });
+  for (const id in SH) mark(mctx, tx(SH[id].x), tz(SH[id].z), SH[id].d.tm && SH[id].d.tm === myTeam ? '#5aff9a' : '#ffd23f', 4);
+  for (const id in ES) if (!ES[id].dead) { mctx.fillStyle = '#ff3a4a'; mctx.fillRect(tx(ES[id].x) - 3.5, tz(ES[id].z) - 3.5, 7, 7); }
+  for (const id in KRV) if (KRV[id].d.hp > 0) mark(mctx, tx(KRV[id].x), tz(KRV[id].z), '#d070ff', 3);
+  for (const id in rp) if (rp[id].d) mark(mctx, tx(rp[id].d.x), tz(rp[id].d.z), rp[id].tm && rp[id].tm === myTeam ? '#5aff9a' : '#ff8ad0', 3);
   const mp = activeMap();
   if (mp) { let sx = tx(mp.x), sy = tz(mp.z); const d = Math.hypot(sx - 90, sy - 90); if (d > 82) { sx = 90 + (sx - 90) / d * 82; sy = 90 + (sy - 90) / d * 82; } mark(mctx, sx, sy, '#ff3030', 5); }
+  // 風向き（ミニマップ上の矢印）
+  mctx.save(); mctx.translate(90, 90); mctx.rotate(-WIND.dir * -1 + Math.PI); mctx.restore();
   mctx.save(); mctx.translate(90, 90); mctx.rotate(-P.yaw); mctx.fillStyle = '#5aff7a'; mctx.beginPath(); mctx.moveTo(0, -7); mctx.lineTo(5, 6); mctx.lineTo(-5, 6); mctx.fill(); mctx.restore();
 }
 function drawBigMap() {
   const cv = $('bigmap'); if (!cv) return; const x = cv.getContext('2d'); x.drawImage(WM, 0, 0, 520, 520);
-  const s = 520 / 1800, tx = (v) => (v + 900) * s;
+  const s = 520 / (WMR * 2), tx = (v) => (v + WMR) * s;
   ISLETS.forEach((I) => { x.fillStyle = '#fff'; x.font = '11px sans-serif'; x.textAlign = 'center'; x.fillText(I.name, tx(I.x), tx(I.z) - 14); });
   x.fillStyle = '#fff'; x.fillText('ポートタウン', tx(0), tx(0) - 40);
+  x.strokeStyle = '#d070ff'; x.lineWidth = 2; KZONES.forEach((k) => { x.beginPath(); x.arc(tx(k.x), tx(k.z), k.r * s, 0, 6.283); x.stroke(); x.fillStyle = '#e8b0ff'; x.fillText('🐙 ' + k.name, tx(k.x), tx(k.z)); });
+  FIELDS.forEach((f) => mark(x, tx(f.x), tx(f.z), '#fff04a', 3));
   for (const id in SH) mark(x, tx(SH[id].x), tx(SH[id].z), '#ffd23f', 4);
   const mp = activeMap(); if (mp) { mark(x, tx(mp.x), tx(mp.z), '#ff3030', 6); x.fillStyle = '#ff9a9a'; x.fillText('✕', tx(mp.x), tx(mp.z) - 8); }
   if (!inDungeon) mark(x, tx(P.wp.x), tx(P.wp.z), '#5aff7a', 5);
@@ -1097,7 +1546,7 @@ function tryBoard() {
     const S = SH[id]; tv.copy(P.wp); S.g.worldToLocal(tv);
     const hw = hwAt(S.T, tv.z);
     if (hw > 0.5 && tv.z < S.L.stern + 0.3 && tv.z > S.L.bow - 0.3 && Math.abs(tv.x) < hw + 0.6 && Math.abs(tv.y - DECKY) < 1.5) {
-      P.ship = S; P.lx = clamp(tv.x, -(hw - 0.4), hw - 0.4); P.lz = clamp(tv.z, S.L.bow + 0.8, S.L.stern - 0.5); P.ly = Math.max(DECKY, tv.y); P.vy = 0; P.lastRot = S.rot; return true;
+      P.ship = S; P.lx = clamp(tv.x, -(hw - 0.4), hw - 0.4); P.lz = Math.min(clamp(tv.z, S.L.bow + 0.8, S.L.stern - 0.5), S.L.qs0 - 0.3); P.ly = Math.max(DECKY, tv.y); P.vy = 0; P.lastRot = S.rot; return true;
     }
   }
   return false;
@@ -1120,8 +1569,9 @@ function updatePlayer(dt, t) {
   if (uiOpen || P.dead > 0 || DIG.on) { ix = iz = 0; }
   P.hp = Math.min(P.maxhp, P.hp + dt * 0.35); hpHurtT = Math.max(0, hpHurtT - dt);
   if (P.helm) {
-    const key = iz + ',' + ix;
-    if (key !== lastSteer || t - sendSteerT > 0.5) { lastSteer = key; sendSteerT = t; socket.emit('steer', { sid: P.helm, thr: iz, turn: -ix }); }
+    if (keys.KeyQ) P.sa = clamp(P.sa - dt * 0.9, -1, 1); if (keys.KeyR) P.sa = clamp(P.sa + dt * 0.9, -1, 1);
+    const key = iz + ',' + ix + ',' + Math.round(P.sa * 20);
+    if (key !== lastSteer || t - sendSteerT > 0.5) { lastSteer = key; sendSteerT = t; socket.emit('steer', { sid: P.helm, thr: iz, turn: -ix, sa: P.sa }); }
     // A=左(+) なので turn は ix の符号を反転: A(ix=-1) → turn=+1 (左旋回)
     ix = iz = 0;
   }
@@ -1130,7 +1580,8 @@ function updatePlayer(dt, t) {
   const len = Math.hypot(ix, iz) || 1;
   const mvx = (-Math.sin(P.yaw) * iz + Math.cos(P.yaw) * ix) / len, mvz = (-Math.cos(P.yaw) * iz - Math.sin(P.yaw) * ix) / len;
   P.moving = (ix || iz) !== 0;
-  const jump = (keys.Space && P.onGround && !P.helm && !uiOpen && P.dead <= 0);
+  const jump = (keys.Space && P.onGround && !P.helm && !P.cn && !uiOpen && P.dead <= 0);
+  if (keys.KeyE && P.ship && curInter && curInter.kind === 'bail' && t - (P.bailT || 0) > 0.32) { P.bailT = t; socket.emit('bail', { sid: P.ship.id }); }
   if (inDungeon) {
     const nx = P.x + mvx * sp * dt * 0.85, nz = P.z + mvz * sp * dt * 0.85;
     if (!dwall(nx, P.z, 0.42)) P.x = nx; if (!dwall(P.x, nz, 0.42)) P.z = nz;
@@ -1139,10 +1590,14 @@ function updatePlayer(dt, t) {
   }
   if (P.ship) {
     const S = P.ship, c = Math.cos(S.rot), s = Math.sin(S.rot);
-    P.yaw += angd(S.rot, P.lastRot); P.lastRot = S.rot;
-    if (!P.helm) {
-      const lvx = mvx * c - mvz * s, lvz = mvx * s + mvz * c, step = sp * dt * (P.ly < DECKY - 0.9 ? 0.8 : 1);
-      const tryp = (nx, nz) => { const r = shipSurface(S.T, S.d.an, nx, nz, P.ly); if (r === 'off') return 'off'; if (typeof r === 'number' && r - P.ly <= 0.75) { P.lx = nx; P.lz = nz; return 'ok'; } return null; };
+    if (P.cn) {
+      const cc = S.L.cannons[P.cn.idx], cs = Math.cos(S.rot), sn = Math.sin(S.rot), cpp = Math.cos(P.cn.cp);
+      const dlx = cc.side * Math.cos(P.cn.cy) * cpp, dlz = -Math.sin(P.cn.cy) * cpp;
+      P.yaw = Math.atan2(-(dlx * cs + dlz * sn), -(-dlx * sn + dlz * cs)); P.pitch = Math.asin(clamp(Math.sin(P.cn.cp), -1, 1)); P.lastRot = S.rot;
+    } else { P.yaw += angd(S.rot, P.lastRot); P.lastRot = S.rot; }
+    if (!P.helm && !P.cn) {
+      const lvx = mvx * c - mvz * s, lvz = mvx * s + mvz * c, step = sp * dt * (P.ly < DECKY - 0.9 ? (S.d.wt > 35 ? 0.6 : 0.8) : 1);
+      const tryp = (nx, nz) => { const r = shipSurface(S.T, S.d.an, nx, nz, P.ly, S.d.dr); if (r === 'off') return 'off'; if (typeof r === 'number' && r - P.ly <= 0.75) { P.lx = nx; P.lz = nz; return 'ok'; } return null; };
       if (P.moving) {
         let r = tryp(P.lx + lvx * step, P.lz + lvz * step);
         if (!r) r = tryp(P.lx + lvx * step, P.lz); if (!r) r = tryp(P.lx, P.lz + lvz * step);
@@ -1152,7 +1607,12 @@ function updatePlayer(dt, t) {
           leaveShipTo(ox, oz); return updateWorldPlayer(dt, t, mvx, mvz, sp, false);
         }
       }
-      let g = shipSurface(S.T, S.d.an, P.lx, P.lz, P.ly); if (typeof g !== 'number') g = Math.max(HOLDY, Math.min(P.ly, DECKY));
+      if (jump && P.ly < DECKY + 0.4 && P.ly > DECKY - 0.5 && P.lz < S.L.qs0 && Math.abs(P.lx) > hwAt(S.T, P.lz) - 1.25) {
+        const sd = Math.sign(P.lx || 1);
+        leaveShipTo(sd * (hwAt(S.T, P.lz) + 1.7), P.lz); P.y += 0.3; toast('🌊 ざぶーん！ 海に飛び込んだ（梯子から戻れる）');
+        return updateWorldPlayer(dt, t, mvx, mvz, sp, false);
+      }
+      let g = shipSurface(S.T, S.d.an, P.lx, P.lz, P.ly, S.d.dr); if (typeof g !== 'number') g = Math.max(HOLDY, Math.min(P.ly, DECKY));
       if (jump) { P.vy = 6.2; P.onGround = false; }
       if (P.vy > 0 || P.ly > g + 0.02) { P.vy -= 20 * dt; P.ly += P.vy * dt; if (P.ly <= g) { P.ly = g; P.vy = 0; P.onGround = true; } else P.onGround = false; }
       else { P.ly = g; P.vy = 0; P.onGround = true; }
@@ -1185,18 +1645,20 @@ function updateWorldPlayer(dt, t, mvx, mvz, sp, jump) {
 function S_after_board() { P.swim = false; P.ship.g.localToWorld(P.wp.set(P.lx, P.ly, P.lz)); }
 function climbOut() {
   for (const id in SH) {
-    const S = SH[id]; tv.copy(P.wp); S.g.worldToLocal(tv); const hw = hwAt(S.T, tv.z);
-    if (tv.z < S.L.stern + 1.6 && tv.z > S.L.bow - 1.6 && Math.abs(tv.x) < Math.max(hw, 1) + 2.8) {
-      P.ship = S; P.lx = clamp(tv.x, -(hw - 0.5), hw - 0.5); P.lz = clamp(tv.z, S.L.bow + 1, S.L.stern - 0.6); P.ly = DECKY; P.vy = 0; P.lastRot = S.rot; P.swim = false; toast('船によじ登った'); return;
+    const S = SH[id]; tv.copy(P.wp); S.g.worldToLocal(tv); const hw = hwAt(S.T, tv.z), L = S.L;
+    if (Math.abs(tv.z - L.lad.z) < 2.6 && Math.abs(Math.abs(tv.x) - (hw + 0.4)) < 2.8) {
+      const sd = Math.sign(tv.x || 1);
+      P.ship = S; P.lx = sd * (hw - 0.9); P.lz = L.lad.z; P.ly = DECKY; P.vy = 0; P.lastRot = S.rot; P.swim = false; toast('🪜 梯子を登って船に戻った'); return;
     }
   }
   for (let k = 0; k < 8; k++) {
     const a = k * Math.PI / 4, x = P.x + Math.cos(a) * 1.7, z = P.z + Math.sin(a) * 1.7, g = wprobe(x, z, 2.0);
     if (g !== null && g > -0.4 && g < 2.7) { P.x = x; P.z = z; P.y = g; P.vy = 0; P.swim = false; return; }
   }
+  for (const id in SH) { const S = SH[id]; if (Math.hypot(S.x - P.x, S.z - P.z) < 40) return toast('船の側面の「梯子」に近づいて Space で登れる'); }
 }
 function respawn() {
-  P.dead = 0; $('death').style.display = 'none'; leaveHelm(); P.ship = null; inDungeon = false; torchLight.intensity = 0; stopFishing();
+  P.dead = 0; $('death').style.display = 'none'; leaveHelm(); leaveCannon(); P.ship = null; inDungeon = false; torchLight.intensity = 0; stopFishing();
   P.x = 0; P.z = 38; P.y = 1.6; P.vy = 0; P.hp = P.maxhp; P.yaw = Math.PI; socket.emit('act', { a: 'died' });
 }
 
@@ -1210,10 +1672,11 @@ function updateCamera(dt) {
   const dist = 4.4 * P.viewT;
   camera.position.copy(eye).addScaledVector(f, -dist).addScaledVector(rgt, 0.5 * P.viewT); camera.position.y += 0.3 * P.viewT;
   camera.rotation.set(P.pitch, P.yaw, 0);
-  me.visible = P.viewT > 0.3; viewTool.visible = P.viewT < 0.3 && P.tool > 0;
+  if (SHAKE > 0.01) { camera.position.x += (Math.random() - 0.5) * SHAKE; camera.position.y += (Math.random() - 0.5) * SHAKE; SHAKE *= 0.9; }
+  me.visible = P.viewT > 0.3 && !P.cn; viewTool.visible = P.viewT < 0.3 && P.tool > 0;
   me.position.copy(P.wp); me.rotation.y = P.yaw;
   setTool(me, P.tool); setViewTool(P.tool);
-  animPirate(me, dt, P.moving && !P.helm, P.run);
+  animPirate(me, dt, P.moving && !P.helm && !P.cn, P.run);
   if (P.swim) me.position.y -= 0.25;
 }
 function updateRemotes(dt) {
@@ -1236,13 +1699,22 @@ function updateHud(dt) {
   const pr = $('prompt');
   if (curInter) { pr.style.display = 'block'; pr.textContent = '[E] ' + curInter.label; } else pr.style.display = 'none';
   const si = $('shipinfo');
-  if (P.ship && !inDungeon) { const d = P.ship.d; si.textContent = '⛵ ' + TYPES[d.t].name + '　' + (d.an ? '⚓錨: 下ろしている' : '⚓錨: 上げている') + (P.helm ? '　速度 ' + Math.abs(d.sp * 1.94).toFixed(1) + ' kt' : ''); } else si.textContent = '';
-  $('tool').textContent = '[' + (P.tool === 1 ? '1 曲刀' : P.tool === 2 ? '2 釣り竿' : '素手') + ']　1:剣  2:釣竿  0:素手';
+  if (P.ship && !inDungeon) { const d = P.ship.d; si.textContent = '⛵ ' + TYPES[d.t].name + '　' + (d.an ? '⚓錨: 下ろしている' : '⚓錨: 上げている') + '　速度 ' + Math.abs(d.sp * 1.94).toFixed(1) + ' kt　💧浸水 ' + (d.wt || 0) + '%　穴 ' + (d.ho || []).length + '　🚪' + (d.dr ? '開' : '閉'); } else si.textContent = '';
+  $('tool').textContent = '[' + (P.tool === 1 ? '1 曲刀' : P.tool === 2 ? '2 釣り竿' : '素手') + ']　🥔 ' + ((ME.save && ME.save.inv.potato) || 0) + '　🔨 ' + ((ME.save && ME.save.inv.plank) || 0) + '　1:剣  2:釣竿  0:素手';
   const q = $('quest'), mp = activeMap();
   if (mp && !inDungeon) {
     const dx = mp.x - P.wp.x, dz = mp.z - P.wp.z, ang = Math.atan2(dx, -dz) - (Math.PI * 2 - P.yaw) * 0 + P.yaw;
     q.innerHTML = '🗺 ' + mp.name + '<br>' + mp.isl + (mp.kind === 'dungeon' ? '（洞窟の宝）' : '（宝を掘る）') + '<br><span id="arrow" style="transform:rotate(' + (ang * 180 / Math.PI) + 'deg)">⬆</span> ' + Math.round(Math.hypot(dx, dz)) + ' m';
   } else q.innerHTML = '';
+  // 風・嵐・警告
+  $('windarrow').style.transform = 'rotate(' + (-angd(WIND.dir, P.yaw) * 180 / Math.PI) + 'deg)';
+  $('windtxt').textContent = (WIND.spd * 6).toFixed(1) + ' m/s' + (STORM > 0.3 ? '  ⛈ 嵐！' : '');
+  if (P.helm && P.ship) { const ideal = clamp(angd(WIND.dir, P.ship.rot) / 1.4, -1, 1), diff = Math.abs(P.sa - ideal); $('sailguide').textContent = '帆の向き ' + (diff < 0.25 ? '◎ ばっちり' : diff < 0.55 ? '○ もう少し' : '△ Q/Rで調整') + '（追い風ほど速い）'; } else $('sailguide').textContent = '';
+  const sw = $('shipwarn'); let warn = '';
+  if (P.ship && !inDungeon) { const w = P.ship.d.wt || 0; if (w >= 75) warn = '⚠ 沈没寸前！ 水を汲み出せ！ (' + w + '%)'; else if (w >= 30 || (P.ship.d.ho || []).length) warn = '💧 浸水中！ 穴をふさいで水を汲み出そう (' + w + '%)'; }
+  if (!warn && !inDungeon) { const kz = KZONES.find((k) => Math.hypot(P.wp.x - k.x, P.wp.z - k.z) < k.r); if (kz) warn = '🐙 危険海域「' + kz.name + '」！ クラーケンに注意'; }
+  sw.style.display = warn ? 'block' : 'none'; sw.textContent = warn;
+  if (P.cn && P.ship) { const st = (P.ship.d.cn || [])[P.cn.idx]; $('cnhud').textContent = '🥔 大砲: マウスで照準 / クリックで発射 / Space・E で離れる　' + (st && st[2] > 0 ? '装填中 ' + st[2].toFixed(1) + 's' : '発射OK') + '　弾 ' + ((ME.save && ME.save.inv.potato) || 0); }
   miniT += dt; if (miniT > 0.15) { miniT = 0; drawMini(); if (panel && panel.kind === 'map') drawBigMap(); }
 }
 function updateBeacon(t) {
@@ -1260,6 +1732,8 @@ let lastT = performance.now();
 function loop(now) {
   requestAnimationFrame(loop);
   const dt = Math.min(0.05, (now - lastT) / 1000); lastT = now; const t = now / 1000;
+  STORM += (STORM_T - STORM) * Math.min(1, dt * 0.7);
+  updateWorldFx(dt, t);
   if (started) {
     updateShips(dt, t);
     updatePlayer(dt, t);
@@ -1288,6 +1762,7 @@ function loop(now) {
     sky.visible = false; sea.visible = false; stars.visible = false; sunMesh.visible = false; moonMesh.visible = false;
   } else { sky.visible = true; sea.visible = true; stars.visible = true; torchLight.intensity = 0; }
   const hour = curHour(); updateSky(hour);
+  if (lightningT > 0) hemi.intensity += 1.8 * lightningT / 0.18;
   if (inDungeon) { hemi.intensity = 0.55; sunL.intensity = 0; moonL.intensity = 0; }
   if (!inDungeon) updateSea(t);
   clouds.forEach((c, i) => { c.position.x += dt * (1.2 + (i % 3) * 0.5); if (c.position.x > 1300) c.position.x = -1300; });
