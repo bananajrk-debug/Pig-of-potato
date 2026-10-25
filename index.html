@@ -100,7 +100,7 @@ button:disabled{opacity:.4;cursor:default}
 const $ = (id) => document.getElementById(id);
 
 // =====================================================
-//  共通: 地形 (server.js と同じ式)
+//  共通: 地形
 // =====================================================
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -147,7 +147,6 @@ const WIND = { dir: 0, spd: 1 };
 const wave = (x, z, t) => (0.26 * Math.sin(x * 0.05 + t * 0.8) + 0.2 * Math.sin(z * 0.062 + t * 1.05 + 1.3) + 0.1 * Math.sin((x + z) * 0.12 + t * 1.6)) * (1 + 2.2 * STORM);
 const DUNGEON_ENTRANCE = { x: ISLETS[0].x + 26, z: ISLETS[0].z + 28 };
 const KZONES = [{ name: '嵐の渦潮', x: -1150, z: -1000, r: 260 }, { name: '大渦の海', x: 1050, z: 1150, r: 240 }];
-// ジャガイモ畑（server.js と同じ式）
 const FIELDS = [];
 {
   let seed = 7771;
@@ -166,8 +165,7 @@ const FIELDS = [];
     }
   });
 }
-const FR = new Set();   // まだ育っていない畑のID（サーバーから）
-
+const FR = new Set();
 const ROAD = [[0, 14], [-8, -2], [10, -16], [-12, -30], [8, -44], [-6, -60], [4, -74]];
 function roadDist(x, z) {
   let best = 1e9;
@@ -180,12 +178,12 @@ function roadDist(x, z) {
 }
 
 // =====================================================
-//  船の形状・レイアウト
+//  船の形状・レイアウト（横幅を広げ、謎の板を削除）
 // =====================================================
 const DECKY = 1.8, HOLDY = -0.4;
 const TYPES = {
-  sloop: { name: 'スループ', hull: [[6.5, 1.9], [4.5, 2.3], [0.5, 2.5], [-4, 2.2], [-7, 1.3], [-9.6, 0.12]], qlen: 3.2, qh: 2.4, masts: [-6.0], mastH: 9, color: 0xff7a59, sailC: 0xfff4d8, cz: [-3.4], crops: 2 },
-  galleon: { name: '大型帆船', hull: [[12.8, 3.0], [10, 3.5], [5, 3.8], [-3, 3.8], [-9, 3.0], [-13, 1.5], [-16, 0.15]], qlen: 5.6, qh: 2.6, masts: [-3.5, -9.5], mastH: 15, color: 0x3a9cff, sailC: 0xffffff, cz: [-3, -8], crops: 4 }
+  sloop: { name: 'スループ', hull: [[7.0, 3.2], [4.8, 3.7], [0.5, 3.9], [-4, 3.6], [-7.5, 2.2], [-10.2, 0.25]], qlen: 3.4, qh: 2.4, masts: [-6.0], mastH: 9, color: 0xff7a59, sailC: 0xfff4d8, cz: [-3.4], crops: 2 },
+  galleon: { name: '大型帆船', hull: [[13.5, 4.8], [10.5, 5.4], [5, 5.8], [-3, 5.8], [-9.5, 4.8], [-13.5, 2.5], [-17, 0.3]], qlen: 5.8, qh: 2.6, masts: [-3.5, -9.5], mastH: 15, color: 0x3a9cff, sailC: 0xffffff, cz: [-3, -8], crops: 4 }
 };
 function hwAt(T, z) {
   const H = T.hull;
@@ -199,12 +197,12 @@ function hwAt(T, z) {
 function layoutOf(T) {
   const L = {};
   L.stern = T.hull[0][0]; L.bow = T.hull[T.hull.length - 1][0]; L.qh = T.qh;
-  L.qz0 = L.stern - T.qlen;                       // 船室（舵の下）の正面の壁
-  L.qs1 = L.qz0; L.qs0 = L.qz0 - T.qh / 0.55;     // 両サイドの階段（舵の甲板へ）
+  L.qz0 = L.stern - T.qlen;
+  L.qs1 = L.qz0; L.qs0 = L.qz0 - T.qh / 0.55;
   const hq = hwAt(T, (L.qs0 + L.qs1) / 2);
   L.sw = hq > 3 ? 1.15 : 0.95; L.sxo = hq - 0.3; L.sxi = L.sxo - L.sw;
-  L.dxo = Math.min(1.1, L.sxi - 0.2);             // 2枚ドアの間口（半幅）
-  L.ra1 = L.qs0 - 0.9; L.ra0 = L.ra1 - 2.8; L.rax = 0.65;   // 船倉への階段
+  L.dxo = Math.min(1.1, L.sxi - 0.2);
+  L.ra1 = L.qs0 - 0.9; L.ra0 = L.ra1 - 2.8; L.rax = 0.65;
   L.wheelZ = L.stern - 1.7; L.standZ = L.stern - 0.85;
   L.winch = { x: hwAt(T, L.stern - 1.2) - 0.75, z: L.stern - 1.2 };
   L.hh = (z) => 0.85 * hwAt(T, z) - 0.35;
@@ -219,33 +217,34 @@ function layoutOf(T) {
   return L;
 }
 for (const k in TYPES) TYPES[k].L = layoutOf(TYPES[k]);
-// 船内での歩行可能面: 数値=床の高さ / null=壁 / 'off'=船外へ
+
+// 船の当たり判定（細分化し、外壁や水・外からの貫通を完全にガード）
 function shipSurface(T, anch, lx, lz, fy, dopen) {
   const L = T.L, hw = hwAt(T, lz);
-  const inHold = fy < DECKY - 0.9;
+  const inHold = fy < DECKY - 0.85;
   if (!inHold) {
-    if (lz > L.stern - 0.25 || lz < L.bow + 0.5 || Math.abs(lx) > hw - 0.25 || hw < 0.4) return anch ? 'off' : null;
+    if (lz > L.stern + 0.1 || lz < L.bow - 0.1 || Math.abs(lx) > hw + 0.02 || hw < 0.2) return anch ? 'off' : null;
   } else {
     const h = L.hh(lz);
-    if (h < 0.5 || Math.abs(lx) > h || lz > L.stern - 0.6 || lz < L.bow + 1) return null;
-    if (Math.abs(lx - L.stove.x) < 0.5 && Math.abs(lz - L.stove.z) < 0.65) return null;
-    if (Math.abs(lx - L.chest.x) < 0.55 && Math.abs(lz - L.chest.z) < 0.4) return null;
+    if (h < 0.3 || Math.abs(lx) > h + 0.02 || lz > L.stern - 0.3 || lz < L.bow + 0.5) return null;
+    if (Math.abs(lx - L.stove.x) < 0.45 && Math.abs(lz - L.stove.z) < 0.6) return null;
+    if (Math.abs(lx - L.chest.x) < 0.5 && Math.abs(lz - L.chest.z) < 0.35) return null;
   }
   if (Math.abs(lx) <= L.rax && lz >= L.ra0 && lz <= L.ra1) return HOLDY + (DECKY - HOLDY) * (lz - L.ra0) / (L.ra1 - L.ra0);
   if (!inHold) {
-    for (const m of T.masts) if (Math.hypot(lx, lz - m) < 0.7 && fy < DECKY + 1.2) return null;
-    for (const c of L.cannons) if (Math.hypot(lx - c.x, lz - c.z) < 0.6 && fy < DECKY + 0.5) return null;
-    // 両サイドの階段（船尾楼＝舵の甲板へ）
+    for (const m of T.masts) if (Math.hypot(lx, lz - m) < 0.6 && fy < DECKY + 1.2) return null;
+    for (const c of L.cannons) if (Math.hypot(lx - c.x, lz - c.z) < 0.55 && fy < DECKY + 0.5) return null;
     if (lz >= L.qs0 && lz <= L.qs1 && Math.abs(lx) >= L.sxi && Math.abs(lx) <= L.sxo + 0.3) return DECKY + L.qh * (lz - L.qs0) / (L.qs1 - L.qs0);
     if (lz >= L.qz0) {
-      if (fy > DECKY + L.qh * 0.55) return DECKY + L.qh;            // 舵の甲板（船室の屋根）
-      if (lz < L.qz0 + 0.45 && !(dopen && Math.abs(lx) < L.dxo)) return null;   // 船室の正面の壁（ドアの所だけ通れる）
-      return DECKY;                                                  // 船室の中
+      if (fy > DECKY + L.qh * 0.55) return DECKY + L.qh;
+      if (lz < L.qz0 + 0.45 && !(dopen && Math.abs(lx) < L.dxo)) return null;
+      return DECKY;
     }
     return DECKY;
   }
   return HOLDY;
 }
+
 // =====================================================
 //  レンダラ / シーン / ライト / 空
 // =====================================================
@@ -421,7 +420,7 @@ terrainMesh(0, 0, 330, 165, true);
 ISLETS.forEach((I) => terrainMesh(I.x, I.z, Math.ceil(I.r * 3.4), Math.ceil(I.r * 3.4 / 2.4), false));
 
 // =====================================================
-//  ポートタウン（港・広場・違法建築風の山の街）
+//  ポートタウン
 // =====================================================
 const R = rng(20241023);
 const rects = [];
@@ -475,7 +474,6 @@ for (let i = 0; i < 2600 && placed < 190; i++) {
   if (Math.abs(x) < 46 && z > 4) continue;
   if (building(x, z)) placed++;
 }
-// 港: 岸壁・桟橋・倉庫
 box(0, 0.5, 55, 80, 2.2, 12, 0x7d7a73, { solid: true });
 for (let x = -38; x <= 38; x += 4) { box(x, 1.75, 61.3, 0.5, 0.3, 0.5, 0x4a3a2a); if (x % 8 === 0) lamp(x, 2.6, 60.6); }
 [-14, 14].forEach((px) => {
@@ -501,8 +499,7 @@ for (let i = 0; i < 34; i++) {
   const s = 0.7 + R() * 0.7;
   box(x, 1.6 + s / 2, z, s, s, s, R() < 0.5 ? 0x8a6a3a : 0x6a4a2a, { solid: true, ry: R() * 3 });
 }
-// 広場の屋台とNPC
-const INTER = [];      // 固定インタラクト
+const INTER = [];
 const npcs = [];
 function stall(x, z, col, text, hat, kind, coat) {
   box(x, 2.15, z, 6, 1.1, 1.6, 0x5a3d28, { solid: true });
@@ -515,7 +512,6 @@ function stall(x, z, col, text, hat, kind, coat) {
 }
 stall(-20, 24, 0x3a6ac8, 'ショップ', 'bandana', 'shop', 0x3a6a4a);
 stall(20, 24, 0xc89b2b, '質 屋', 'tricorn', 'pawn', 0x6a3a3a);
-// ガチャ
 {
   const g = new THREE.Group(); g.position.set(0, 1.6, 22);
   const m1 = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.7, 2.2, 8), new THREE.MeshLambertMaterial({ color: 0x8a2a2a, flatShading: true })); m1.position.y = 1.1; g.add(m1);
@@ -526,7 +522,6 @@ stall(20, 24, 0xc89b2b, '質 屋', 'tricorn', 'pawn', 0x6a3a3a);
   INTER.push({ kind: 'gacha', pos: new THREE.Vector3(0, 1.6, 25), r: 3.4, label: 'ガチャ' });
 }
 var gachaOrb;
-// 港湾事務所（船を呼ぶ）
 {
   const x = 0, z = 45;
   box(x, 3.0, z, 5, 2.8, 3.6, 0x7a5a3a, { solid: true });
@@ -537,7 +532,6 @@ var gachaOrb;
   box(x + 3.6, 5, z, 0.12, 7, 0.12, 0x3a2a1c); box(x + 4.4, 7.5, z, 1.6, 1.0, 0.04, 0x111111);
   INTER.push({ kind: 'harbor', pos: new THREE.Vector3(x, 1.6, z + 4.6), r: 3.6, label: '港湾事務所' });
 }
-// 街灯
 [[-10, 20], [10, 20], [-10, 40], [10, 40], [-28, 28], [28, 28]].forEach(([x, z]) => { box(x, 3.4, z, 0.2, 3.6, 0.2, 0x2a2a2a); lamp(x, 5.4, z); });
 
 // 木々
@@ -569,7 +563,8 @@ var gachaOrb;
   trunkIM.count = nt; coneIM.count = nc; blobIM.count = nbl;
   [trunkIM, coneIM, blobIM].forEach((m) => { m.frustumCulled = false; if (m.instanceColor) m.instanceColor.needsUpdate = true; m.instanceMatrix.needsUpdate = true; scene.add(m); });
 }
-// ---- 民族風の家・トーテム・ジャガイモ畑（遠くの島々）----
+
+// 民族風の家・トーテム・ジャガイモ畑
 const FIELDV = [];
 {
   const thatch = M(0xe8b84a), wallM = M(0xe89a6a), dark = new THREE.MeshBasicMaterial({ color: 0x2a1a14 });
@@ -613,6 +608,7 @@ const FIELDV = [];
     if (R() < 0.7) totem(f.x + Math.cos(a + 4) * 11, f.z + Math.sin(a + 4) * 11);
   });
 }
+
 // ドクロ島のダンジョン入口
 const DENT = { x: DUNGEON_ENTRANCE.x, z: DUNGEON_ENTRANCE.z, y: heightAt(DUNGEON_ENTRANCE.x, DUNGEON_ENTRANCE.z) };
 {
@@ -633,7 +629,6 @@ boxIM.count = nb; boxIM.instanceMatrix.needsUpdate = true; if (boxIM.instanceCol
 winIM.count = nw; winIM.instanceMatrix.needsUpdate = true; if (winIM.instanceColor) winIM.instanceColor.needsUpdate = true;
 lampIM.count = nl; lampIM.instanceMatrix.needsUpdate = true;
 
-// 宝の地図ビーコン
 const beacon = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 140, 8, 1, true), new THREE.MeshBasicMaterial({ color: 0xffd75a, transparent: true, opacity: 0.35, depthWrite: false, side: THREE.DoubleSide }));
 beacon.visible = false; scene.add(beacon);
 const xmark = new THREE.Mesh(new THREE.RingGeometry(0.8, 1.2, 4), new THREE.MeshBasicMaterial({ color: 0xff3030, side: THREE.DoubleSide }));
@@ -667,7 +662,6 @@ const dgroup = new THREE.Group(); scene.add(dgroup);
   const W = DUN[0].length * TS, Hh = DUN.length * TS;
   const fl = new THREE.Mesh(new THREE.PlaneGeometry(W, Hh), new THREE.MeshLambertMaterial({ color: 0x3a3732 })); fl.rotation.x = -Math.PI / 2; fl.position.set(DX0 + W / 2, 0, DZ0 + Hh / 2); dgroup.add(fl);
   const ce = new THREE.Mesh(new THREE.PlaneGeometry(W, Hh), new THREE.MeshLambertMaterial({ color: 0x2a2824 })); ce.rotation.x = Math.PI / 2; ce.position.set(DX0 + W / 2, 4.2, DZ0 + Hh / 2); dgroup.add(ce);
-  // 宝箱・出口
   const chest = new THREE.Group();
   const cb = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.8, 0.9), new THREE.MeshLambertMaterial({ color: 0x7a4a22, flatShading: true })); cb.position.y = 0.4; chest.add(cb);
   const cl = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 1.4, 8, 1, false, 0, Math.PI), new THREE.MeshLambertMaterial({ color: 0x8a5a2a })); cl.rotation.z = Math.PI / 2; cl.rotation.y = Math.PI / 2; cl.position.y = 0.85; chest.add(cl);
@@ -677,7 +671,6 @@ const dgroup = new THREE.Group(); scene.add(dgroup);
   const lb = label('出口', 2, 0.6, null, '#9fe0ff', 70); lb.position.set(DUNST.sx, 3.4, DUNST.sz + 1.2); dgroup.add(lb);
   for (let k = 0; k < 14; k++) { const f = DUNST.free[Math.floor(R() * DUNST.free.length)]; const m = new THREE.Mesh(new THREE.SphereGeometry(0.16, 6, 5), lampMat); m.position.set(DX0 + (f[0] + 0.5) * TS, 3.2, DZ0 + (f[1] + 0.5) * TS); dgroup.add(m); }
 }
-// BFS で敵の配置場所を決める
 const dunDist = {};
 {
   const q = [[Math.floor((DUNST.sx - DX0) / TS), Math.floor((DUNST.sz - DZ0) / TS)]]; dunDist[q[0]] = 0;
@@ -686,7 +679,7 @@ const dunDist = {};
 dgroup.visible = true;
 
 // =====================================================
-//  プレイヤーモデル / 道具 / 帽子
+//  プレイヤーモデル
 // =====================================================
 function M(c) { return new THREE.MeshLambertMaterial({ color: c, flatShading: true }); }
 function setHat(g, id) {
@@ -750,7 +743,7 @@ function animPirate(g, dt, moving, run) {
 function nameTag(text, col) { const s = label(text, 2.4, 0.5, null, col || '#fff', 56); s.position.y = 2.55; return s; }
 
 // =====================================================
-//  船
+//  船の構築（帆を前に向ける、階段横の板を排除、幅拡張）
 // =====================================================
 const SH = {};
 function shapeFrom(zs, wf) {
@@ -778,22 +771,22 @@ function buildShip(type, style) {
   const ci = pos.length / 3; pos.push(0, 0.7, H[0][0]); for (let k = 0; k < K - 1; k++) idx.push(ci, k, k + 1);
   const hg = new THREE.BufferGeometry(); hg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); hg.setIndex(idx); hg.computeVertexNormals();
   add(hg, lam(hullC, true), 0, 0, 0);
-  // 甲板（船倉への階段の穴あき）
+
   const zsAll = H.map((h) => h[0]);
   const dsh = shapeFrom(zsAll, (z) => hwAt(T, z) - 0.03);
   const hole = new THREE.Path(); hole.moveTo(-L.rax, -L.ra0); hole.lineTo(L.rax, -L.ra0); hole.lineTo(L.rax, -L.ra1); hole.lineTo(-L.rax, -L.ra1); hole.lineTo(-L.rax, -L.ra0); dsh.holes.push(hole);
   const dg = new THREE.ShapeGeometry(dsh); dg.rotateX(-Math.PI / 2); add(dg, lam(0xffd08a, true), 0, DECKY, 0);
-  // 船倉の床・浸水
+
   const fgeo = new THREE.ShapeGeometry(shapeFrom(zsAll, (z) => Math.max(0.05, L.hh(z) + 0.1))); fgeo.rotateX(-Math.PI / 2); add(fgeo, lam(0xc89a68, true), 0, HOLDY, 0);
   const waterM = add(fgeo.clone(), new THREE.MeshBasicMaterial({ color: 0x3ac8ff, transparent: true, opacity: 0.6, side: THREE.DoubleSide, depthWrite: false }), 0, HOLDY + 0.05, 0); waterM.visible = false;
-  // 船尾楼 = 舵の甲板（屋根）と、その下の船室
+
   const zq = []; for (let i = 0; i <= 8; i++) zq.push(L.stern - (L.stern - L.qz0) * i / 8);
   const qg = new THREE.ExtrudeGeometry(shapeFrom(zq, (z) => hwAt(T, z) - 0.04), { depth: 0.28, bevelEnabled: false }); qg.rotateX(-Math.PI / 2);
   add(qg, lam(0xffe0a0), 0, DECKY + L.qh - 0.28, 0);
   const cabM = lam(0xff9ec0, true);
   add(wallStrip(T, DECKY, DECKY + L.qh - 0.1, L.qz0, L.stern, 0.03), cabM, 0, 0, 0);
   add(new THREE.BoxGeometry(hwAt(T, L.stern - 0.05) * 2, L.qh, 0.15), cabM, 0, DECKY + L.qh / 2, L.stern - 0.06);
-  // 正面の壁と2枚のドア
+
   const fwz = L.qz0, hwF = hwAt(T, fwz) - 0.04;
   [-1, 1].forEach((sd) => { const wd = hwF - L.dxo; add(new THREE.BoxGeometry(wd, L.qh - 0.28, 0.16), cabM, sd * (L.dxo + wd / 2), DECKY + (L.qh - 0.28) / 2, fwz); });
   add(new THREE.BoxGeometry(L.dxo * 2 + 0.1, 0.5, 0.18), lam(0xc8783a), 0, DECKY + L.qh - 0.55, fwz);
@@ -803,15 +796,16 @@ function buildShip(type, style) {
     add(new THREE.BoxGeometry(0.08, 0.08, 0.1), lam(0xffd23a), -sd * (L.dxo - 0.12), (L.qh - 0.85) / 2, 0.06, pv);
     g.add(pv); return pv;
   });
-  // 両サイドの階段（舵の甲板へ）
+
+  // 階段（謎の板を完全に排除し、きれいに階段のみ構築）
   const nSt = 5, stLen = (L.qs1 - L.qs0) / nSt;
   [-1, 1].forEach((sd) => {
     for (let i = 0; i < nSt; i++) { const top = L.qh * (i + 1) / nSt; add(new THREE.BoxGeometry(L.sw, top, stLen + 0.02), lam(i % 2 ? 0xffc870 : 0xffb050), sd * (L.sxi + L.sw / 2), DECKY + top / 2, L.qs0 + stLen * (i + 0.5)); }
-    add(new THREE.BoxGeometry(0.08, L.qh + 0.7, L.qs1 - L.qs0), lam(0xc8783a), sd * (L.sxi - 0.05), DECKY + (L.qh + 0.7) / 2 - 0.1, (L.qs0 + L.qs1) / 2).rotation.x = 0;
   });
-  // 船倉への階段
+
   for (let i = 0; i < 6; i++) { const top = (DECKY - HOLDY) * (i + 1) / 6, len = (L.ra1 - L.ra0) / 6; add(new THREE.BoxGeometry(L.rax * 2, top, len), lam(0xe8b070), 0, HOLDY + top / 2, L.ra0 + len * (i + 0.5)); }
-  // マスト・帆（帆は向きを変えられる）
+  
+  // マスト・帆（帆の向きを前に変更：マストより前方 (+z側) に配置）
   const sails = [];
   T.masts.forEach((mz, i) => {
     add(new THREE.CylinderGeometry(0.17, 0.26, T.mastH + 2.4, 6), lam(0x8a5a2a), 0, DECKY + T.mastH / 2 - 0.2, mz);
@@ -820,32 +814,32 @@ function buildShip(type, style) {
     for (let k = 0; k < sp.count; k++) { const x = sp.getX(k), y = sp.getY(k); sp.setZ(k, (1 - Math.pow(x / (sw / 2), 2)) * 0.5 * (1 - Math.pow(y / (sh / 2), 2) * 0.3)); }
     sg.computeVertexNormals();
     const grp = new THREE.Group(); grp.position.set(0, 0, mz); g.add(grp);
-    add(sg, lam(sailC, true), 0, sy, -0.15, grp);
-    if (!style.plain) add(new THREE.CircleGeometry(sw * 0.17, 12), new THREE.MeshBasicMaterial({ color: style.mark || 0xffc83a, side: THREE.DoubleSide }), 0, sy + 0.2, 0.42, grp);
-    add(new THREE.BoxGeometry(sw + 0.5, 0.15, 0.15), lam(0x8a5a2a), 0, sy + sh / 2, -0.1, grp);
+    add(sg, lam(sailC, true), 0, sy, 0.15, grp); // 帆を前方に配置
+    if (!style.plain) add(new THREE.CircleGeometry(sw * 0.17, 12), new THREE.MeshBasicMaterial({ color: style.mark || 0xffc83a, side: THREE.DoubleSide }), 0, sy + 0.2, -0.42, grp);
+    add(new THREE.BoxGeometry(sw + 0.5, 0.15, 0.15), lam(0x8a5a2a), 0, sy + sh / 2, 0.1, grp);
     sails.push(grp);
     if (i === 0) { add(new THREE.PlaneGeometry(1.6, 1.0), new THREE.MeshLambertMaterial({ color: style.flag || 0xff5fa8, side: THREE.DoubleSide }), 0.8, DECKY + T.mastH + 1.6, mz); add(new THREE.CircleGeometry(0.28, 10), new THREE.MeshBasicMaterial({ color: 0xffe36a, side: THREE.DoubleSide }), 0.8, DECKY + T.mastH + 1.6, mz + 0.02); }
   });
-  // 舵輪（舵の甲板）
+
   const wheel = new THREE.Group(); wheel.position.set(0, DECKY + L.qh + 1.05, L.wheelZ); g.add(wheel);
   add(new THREE.TorusGeometry(0.55, 0.07, 6, 14), lam(0xc8783a), 0, 0, 0, wheel);
   for (let k = 0; k < 4; k++) { const sp = add(new THREE.BoxGeometry(1.5, 0.07, 0.07), lam(0xc8783a), 0, 0, 0, wheel); sp.rotation.z = k * Math.PI / 4; }
   add(new THREE.BoxGeometry(0.3, 1.0, 0.3), lam(0x8a5a2a), 0, DECKY + L.qh + 0.5, L.wheelZ - 0.2);
-  // 錨（巻き上げ機＋錨本体）
+
   add(new THREE.BoxGeometry(0.7, 0.6, 0.7), lam(0x555566), L.winch.x, DECKY + L.qh + 0.3, L.winch.z);
   add(new THREE.CylinderGeometry(0.18, 0.18, 0.9, 6), lam(0xaaaabb), L.winch.x, DECKY + L.qh + 0.75, L.winch.z).rotation.z = Math.PI / 2;
   const anchorG = new THREE.Group(); const ax = hwAt(T, L.stern - 2.5) + 0.25; anchorG.position.set(ax, DECKY - 0.3, L.stern - 2.5); g.add(anchorG);
   add(new THREE.BoxGeometry(0.16, 1.4, 0.16), lam(0x333344), 0, 0, 0, anchorG); add(new THREE.BoxGeometry(1.1, 0.16, 0.16), lam(0x333344), 0, 0.5, 0, anchorG);
   add(new THREE.BoxGeometry(0.9, 0.14, 0.3), lam(0x333344), 0, -0.65, 0, anchorG);
   const chain = add(new THREE.CylinderGeometry(0.04, 0.04, 1, 4), lam(0x777788), ax, DECKY, L.stern - 2.5);
-  // 台所・宝箱・水汲みバケツ（船倉）
+
   add(new THREE.BoxGeometry(1.0, 0.9, 1.2), lam(0x666677), L.stove.x, HOLDY + 0.45, L.stove.z);
   const plate = add(new THREE.BoxGeometry(0.8, 0.06, 0.9), new THREE.MeshBasicMaterial({ color: 0xff6a20 }), L.stove.x, HOLDY + 0.93, L.stove.z);
   add(new THREE.CylinderGeometry(0.1, 0.1, 3.2, 6), lam(0x444455), L.stove.x + 0.3, HOLDY + 2.2, L.stove.z - 0.3);
   add(new THREE.BoxGeometry(1.1, 0.7, 0.8), lam(0xc8783a), L.chest.x, HOLDY + 0.35, L.chest.z);
   add(new THREE.BoxGeometry(1.14, 0.1, 0.84), new THREE.MeshBasicMaterial({ color: 0xffd75a }), L.chest.x, HOLDY + 0.55, L.chest.z);
   add(new THREE.CylinderGeometry(0.3, 0.24, 0.45, 8), lam(0x4a90e0), L.bucket.x, HOLDY + 0.25, L.bucket.z);
-  // 船室の中：ジャガイモのプランター（栽培）・ハンモック・ランプ
+
   const plants = L.plant.map((p) => {
     const pg = new THREE.Group(); pg.position.set(p.x, DECKY, p.z);
     add(new THREE.BoxGeometry(1.1, 0.4, 0.9), lam(0xb0703a), 0, 0.2, 0, pg); add(new THREE.BoxGeometry(1.0, 0.06, 0.8), lam(0x6a4020), 0, 0.41, 0, pg);
@@ -857,7 +851,7 @@ function buildShip(type, style) {
   });
   add(new THREE.BoxGeometry(1.7, 0.12, 0.6), lam(0xffe36a), 0, DECKY + 1.35, L.stern - 0.9);
   add(new THREE.SphereGeometry(0.2, 6, 5), lampMat, 0, DECKY + L.qh - 0.5, (L.qz0 + L.stern) / 2);
-  // 大砲（スループ=左右1門 / 大型帆船=左右2門）
+
   const cannons = L.cannons.map((c) => {
     const cg = new THREE.Group(); cg.position.set(c.x, DECKY + 0.58, c.z); g.add(cg);
     add(new THREE.BoxGeometry(0.95, 0.5, 0.95), lam(0x8a5a2a), 0, -0.3, 0, cg);
@@ -867,13 +861,13 @@ function buildShip(type, style) {
     add(new THREE.TorusGeometry(0.26, 0.05, 5, 8), lam(0xffe36a), 1.35, 0, 0, barrel).rotation.y = Math.PI / 2;
     return { barrel, c, rec: 0 };
   });
-  // 梯子（海から船へ戻る・両舷）
+
   [-1, 1].forEach((sd) => {
     const lz = L.lad.z, lx = sd * (hwAt(T, lz) + 0.14);
     [-0.32, 0.32].forEach((dz) => add(new THREE.BoxGeometry(0.07, 3.3, 0.07), lam(0xc8783a), lx, 0.75, lz + dz));
     for (let i = 0; i < 8; i++) add(new THREE.BoxGeometry(0.07, 0.07, 0.7), lam(0xe8b070), lx, -0.75 + i * 0.42, lz);
   });
-  // 船首像・ランタン
+
   add(new THREE.SphereGeometry(0.34, 8, 6), lam(0xffa6c8), 0, DECKY + 0.5, L.bow + 0.2);
   [-0.12, 0.12].forEach((x) => add(new THREE.ConeGeometry(0.1, 0.2, 4), lam(0xff7aa8), x, DECKY + 0.88, L.bow + 0.2));
   add(new THREE.SphereGeometry(0.2, 6, 5), lampMat, 0, DECKY + 1.2, L.bow + 1.6);
@@ -892,7 +886,7 @@ function removeShip(id) {
   scene.remove(s.g); delete SH[id];
   if (P.ship === s) { P.x = P.wp.x; P.y = P.wp.y; P.z = P.wp.z; P.vy = 0; P.ship = null; P.helm = null; P.cn = null; $('cnhud').style.display = 'none'; P.swim = true; }
 }
-const _q = new THREE.Quaternion(), _vx = new THREE.Vector3(1, 0, 0), _vd = new THREE.Vector3();
+const _vx = new THREE.Vector3(1, 0, 0), _vd = new THREE.Vector3();
 function updateRig(S, d, dt, t) {
   S.doorK += ((d.dr ? 1 : 0) - S.doorK) * Math.min(1, dt * 4);
   S.doors[0].rotation.y = -S.doorK * 1.5; S.doors[1].rotation.y = S.doorK * 1.5;
@@ -901,7 +895,6 @@ function updateRig(S, d, dt, t) {
   const len = Math.max(0.05, DECKY - ay); S.chain.scale.y = len; S.chain.position.y = DECKY - len / 2;
   S.wheel.rotation.z += ((-(d.tn || 0)) * 1.6 - S.wheel.rotation.z) * Math.min(1, dt * 4);
   S.sails.forEach((s, i) => { s.rotation.y = (d.sa || 0) * 0.7 + Math.sin(t * 1.3 + i) * 0.03; s.scale.set(1 + Math.abs(d.sp) * 0.01, 1, 1 + Math.abs(d.sp) * 0.05); });
-  // 浸水
   const wt = d.wt || 0;
   S.waterM.visible = wt > 2; S.waterM.position.y = HOLDY + 0.05 + wt / 100 * (DECKY - HOLDY - 0.35);
   const ho = d.ho || [], key = JSON.stringify(ho);
@@ -913,13 +906,11 @@ function updateRig(S, d, dt, t) {
       const lk = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.12, 0.9, 5), new THREE.MeshBasicMaterial({ color: 0x6adaff, transparent: true, opacity: 0.7 })); lk.position.set(x - sd * 0.4, HOLDY + 0.55, z); lk.rotation.z = sd * 1.1; S.holesG.add(lk);
     });
   }
-  // 栽培
   S.plants.forEach((p, i) => {
     const c = (d.cr || [])[i];
     p.bush.visible = c !== undefined && c !== -1;
     if (p.bush.visible) { const gr = c === 0 ? 1 : 0.25 + 0.75 * (1 - c / 75000); p.bush.scale.setScalar(gr); p.spuds.visible = c === 0; }
   });
-  // 大砲
   S.cannons.forEach((cn, i) => {
     const st = (d.cn || [])[i]; if (!st) return;
     const cp = Math.cos(st[1]);
@@ -945,7 +936,7 @@ function updateShips(dt, t) {
   }
 }
 
-// ---- AI 敵海賊船（ブタ海賊団・玉ねぎ弾）----
+// ---- AI 敵海賊船 ----
 const ES = {};
 function addEnemy(d) {
   const rig = buildShip('galleon', { color: 0x5a3a8a, sailC: 0x2e2a3a, flag: 0x15151a, mark: 0xffa0c8 });
@@ -971,7 +962,7 @@ function updateEnemyShips(dt, t) {
   }
 }
 
-// ---- パーティクル（ポップな着弾エフェクト）----
+// ---- パーティクル ----
 const PARTS = [];
 const partMats = [0xff5fa8, 0xffd23a, 0x3ac8ff, 0x7aff7a, 0xff9a3a, 0xc08aff].map((c) => new THREE.MeshBasicMaterial({ color: c }));
 const partGeo = new THREE.IcosahedronGeometry(1, 0);
@@ -1002,7 +993,6 @@ function updateParts(dt) {
     if (p.sprite) p.m.material.opacity = Math.min(1, p.life / 0.4); else p.m.scale.setScalar(p.size * (0.4 + 0.6 * p.life / p.max));
   }
 }
-// ---- ジャガイモ砲弾（と、敵の玉ねぎ弾）----
 const BLV = {};
 const potatoGeo = new THREE.IcosahedronGeometry(0.4, 0), potatoMat = M(0xd9a55a), onionMat = M(0xb44fd0);
 function syncBalls(list, now) {
@@ -1017,7 +1007,8 @@ function syncBalls(list, now) {
 function updateBallViews(dt) {
   for (const id in BLV) { const v = BLV[id]; v.vy -= 14 * dt; v.m.position.x += v.vx * dt; v.m.position.y += v.vy * dt; v.m.position.z += v.vz * dt; v.m.rotation.x += dt * 9; v.m.rotation.z += dt * 6; }
 }
-// ---- クラーケンの触手 ----
+
+// ---- クラーケン ----
 const KRV = {};
 function buildTentacle() {
   const root = new THREE.Group(); root.rotation.order = 'YXZ';
@@ -1052,7 +1043,7 @@ function updateKrakenViews(dt, t) {
   }
   return near;
 }
-// ---- 雨・稲妻・畑の実り ----
+
 const RAIN_N = 700, rainBase = [];
 for (let i = 0; i < RAIN_N; i++) rainBase.push([(Math.random() - 0.5) * 80, Math.random() * 45, (Math.random() - 0.5) * 80]);
 const rainGeo = new THREE.BufferGeometry(); rainGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(RAIN_N * 6), 3));
@@ -1080,6 +1071,7 @@ function updateWorldFx(dt, t) {
     const sc = ready ? 1 : 0.55; v.plants.forEach((p) => { p.scale.set(sc, sc * 0.8, sc); });
   });
 }
+
 // =====================================================
 //  プレイヤー状態
 // =====================================================
@@ -1089,12 +1081,11 @@ const ME = { id: null, key: null, save: null, defs: null };
 const keys = {};
 let started = false, uiOpen = false, lastSend = 0, hpHurtT = 0;
 const me = makePirate({ coat: 0xff5a8a, hat: 'none' }); scene.add(me);
-const rp = {};   // remote players
+const rp = {};
 const viewTool = new THREE.Group(); camera.add(viewTool); viewTool.position.set(0.32, -0.3, -0.55);
 let viewToolKind = -1, viewTip = null;
 function setViewTool(k) { if (k === viewToolKind) return; viewToolKind = k; while (viewTool.children.length) viewTool.remove(viewTool.children[0]); viewTip = null; if (k > 0) { const t = makeTool(k); viewTool.add(t); viewTip = t.userData.tip || null; viewTool.rotation.x = 0.25; } }
 
-// ---- 釣り ----
 const FISH = { st: 'idle', t: 0, wait: 0, pos: new THREE.Vector3() };
 const bobber = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 6), new THREE.MeshBasicMaterial({ color: 0xff4a3a })); bobber.visible = false; scene.add(bobber);
 const lineGeo = new THREE.BufferGeometry(); lineGeo.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, 0, 0, 0], 3));
@@ -1135,7 +1126,6 @@ function updateFishing(dt, t) {
 }
 const viewT = () => P.viewT;
 
-// ---- 掘る ----
 const DIG = { on: false, t: 0 };
 function startDig() { DIG.on = true; DIG.t = 0; $('bar').style.display = 'block'; toast('⛏ 掘っている…'); }
 function updateDig(dt) {
@@ -1144,7 +1134,6 @@ function updateDig(dt) {
   if (DIG.t >= 3) { DIG.on = false; $('bar').style.display = 'none'; socket.emit('act', { a: 'dig' }); }
 }
 
-// ---- ダンジョン敵 ----
 const enemies = [];
 let dunChestOpen = false;
 function spawnEnemies() {
@@ -1232,7 +1221,7 @@ $('c').addEventListener('mousedown', (e) => {
 //  通信
 // =====================================================
 const socket = io();
-let myId = null, lastSnapHour = 7;
+let myId = null;
 function toast(t, ms) { const d = document.createElement('div'); d.textContent = t; $('toast').appendChild(d); setTimeout(() => d.remove(), ms || 3800); while ($('toast').children.length > 5) $('toast').firstChild.remove(); }
 let TEAMS = [], myTeam = 0;
 socket.on('init', (m) => {
@@ -1318,7 +1307,7 @@ $('go').onclick = () => {
   let key = localStorage.getItem('pp_key'); if (!key) { key = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2); localStorage.setItem('pp_key', key); }
   socket.emit('join', { key, name });
 };
-$('name').value = localStorage.getItem('pp_name') || '';$('name').value = localStorage.getItem('pp_name') || '';
+$('name').value = localStorage.getItem('pp_name') || '';
 function sendState(t) {
   if (t - lastSend < 0.066) return; lastSend = t;
   socket.emit('pl', { x: P.wp.x, y: P.wp.y, z: P.wp.z, r: P.yaw, s: P.ship ? P.ship.id : 0, lx: P.lx, ly: P.ly, lz: P.lz, t: P.tool, w: P.swim ? 1 : 0, m: P.moving ? 1 : 0, a: me.userData.atk > 0 ? 1 : 0, c: P.cn ? 1 : 0 });
@@ -1476,16 +1465,12 @@ $('panel').addEventListener('click', (e) => {
   if (a === 'hat') return socket.emit('act', { a: 'hat', id });
   socket.emit('act', { a, id, n: b.dataset.n ? +b.dataset.n : 1, all: !!b.dataset.all });
 });
-$('c').addEventListener('click', () => {});
 function refreshHud() {
   if (!ME.save) return;
   $('gold').textContent = '💰 ' + ME.save.gold + ' G';
   const h = ME.save.hat; if (me.userData.hatSet !== h) { me.userData.hatSet = h; setHat(me, h); }
 }
 
-// =====================================================
-//  マップ
-// =====================================================
 const WMR = 1900;
 const WM = document.createElement('canvas'); WM.width = WM.height = 1024;
 {
@@ -1517,7 +1502,6 @@ function drawMini() {
   for (const id in rp) if (rp[id].d) mark(mctx, tx(rp[id].d.x), tz(rp[id].d.z), rp[id].tm && rp[id].tm === myTeam ? '#5aff9a' : '#ff8ad0', 3);
   const mp = activeMap();
   if (mp) { let sx = tx(mp.x), sy = tz(mp.z); const d = Math.hypot(sx - 90, sy - 90); if (d > 82) { sx = 90 + (sx - 90) / d * 82; sy = 90 + (sy - 90) / d * 82; } mark(mctx, sx, sy, '#ff3030', 5); }
-  // 風向き（ミニマップ上の矢印）
   mctx.save(); mctx.translate(90, 90); mctx.rotate(-WIND.dir * -1 + Math.PI); mctx.restore();
   mctx.save(); mctx.translate(90, 90); mctx.rotate(-P.yaw); mctx.fillStyle = '#5aff7a'; mctx.beginPath(); mctx.moveTo(0, -7); mctx.lineTo(5, 6); mctx.lineTo(-5, 6); mctx.fill(); mctx.restore();
 }
@@ -1572,7 +1556,6 @@ function updatePlayer(dt, t) {
     if (keys.KeyQ) P.sa = clamp(P.sa - dt * 0.9, -1, 1); if (keys.KeyR) P.sa = clamp(P.sa + dt * 0.9, -1, 1);
     const key = iz + ',' + ix + ',' + Math.round(P.sa * 20);
     if (key !== lastSteer || t - sendSteerT > 0.5) { lastSteer = key; sendSteerT = t; socket.emit('steer', { sid: P.helm, thr: iz, turn: -ix, sa: P.sa }); }
-    // A=左(+) なので turn は ix の符号を反転: A(ix=-1) → turn=+1 (左旋回)
     ix = iz = 0;
   }
   P.run = !!keys.ShiftLeft || !!keys.ShiftRight;
@@ -1699,14 +1682,13 @@ function updateHud(dt) {
   const pr = $('prompt');
   if (curInter) { pr.style.display = 'block'; pr.textContent = '[E] ' + curInter.label; } else pr.style.display = 'none';
   const si = $('shipinfo');
-  if (P.ship && !inDungeon) { const d = P.ship.d; si.textContent = '⛵ ' + TYPES[d.t].name + '　' + (d.an ? '⚓錨: 下ろしている' : '⚓錨: 上げている') + '　速度 ' + Math.abs(d.sp * 1.94).toFixed(1) + ' kt　💧浸水 ' + (d.wt || 0) + '%　穴 ' + (d.ho || []).length + '　🚪' + (d.dr ? '開' : '閉'); } else si.textContent = '';
-  $('tool').textContent = '[' + (P.tool === 1 ? '1 曲刀' : P.tool === 2 ? '2 釣り竿' : '素手') + ']　🥔 ' + ((ME.save && ME.save.inv.potato) || 0) + '　🔨 ' + ((ME.save && ME.save.inv.plank) || 0) + '　1:剣  2:釣竿  0:素手';
+  if (P.ship && !inDungeon) { const d = P.ship.d; si.textContent = '⛵ ' + TYPES[d.t].name + ' ' + (d.an ? '⚓錨: 下ろしている' : '⚓錨: 上げている') + ' 速度 ' + Math.abs(d.sp * 1.94).toFixed(1) + ' kt 💧浸水 ' + (d.wt || 0) + '% 穴 ' + (d.ho || []).length + ' 🚪' + (d.dr ? '開' : '閉'); } else si.textContent = '';
+  $('tool').textContent = '[' + (P.tool === 1 ? '1 曲刀' : P.tool === 2 ? '2 釣り竿' : '素手') + '] 🥔 ' + ((ME.save && ME.save.inv.potato) || 0) + ' 🔨 ' + ((ME.save && ME.save.inv.plank) || 0) + ' 1:剣  2:釣竿  0:素手';
   const q = $('quest'), mp = activeMap();
   if (mp && !inDungeon) {
     const dx = mp.x - P.wp.x, dz = mp.z - P.wp.z, ang = Math.atan2(dx, -dz) - (Math.PI * 2 - P.yaw) * 0 + P.yaw;
     q.innerHTML = '🗺 ' + mp.name + '<br>' + mp.isl + (mp.kind === 'dungeon' ? '（洞窟の宝）' : '（宝を掘る）') + '<br><span id="arrow" style="transform:rotate(' + (ang * 180 / Math.PI) + 'deg)">⬆</span> ' + Math.round(Math.hypot(dx, dz)) + ' m';
   } else q.innerHTML = '';
-  // 風・嵐・警告
   $('windarrow').style.transform = 'rotate(' + (-angd(WIND.dir, P.yaw) * 180 / Math.PI) + 'deg)';
   $('windtxt').textContent = (WIND.spd * 6).toFixed(1) + ' m/s' + (STORM > 0.3 ? '  ⛈ 嵐！' : '');
   if (P.helm && P.ship) { const ideal = clamp(angd(WIND.dir, P.ship.rot) / 1.4, -1, 1), diff = Math.abs(P.sa - ideal); $('sailguide').textContent = '帆の向き ' + (diff < 0.25 ? '◎ ばっちり' : diff < 0.55 ? '○ もう少し' : '△ Q/Rで調整') + '（追い風ほど速い）'; } else $('sailguide').textContent = '';
@@ -1714,7 +1696,7 @@ function updateHud(dt) {
   if (P.ship && !inDungeon) { const w = P.ship.d.wt || 0; if (w >= 75) warn = '⚠ 沈没寸前！ 水を汲み出せ！ (' + w + '%)'; else if (w >= 30 || (P.ship.d.ho || []).length) warn = '💧 浸水中！ 穴をふさいで水を汲み出そう (' + w + '%)'; }
   if (!warn && !inDungeon) { const kz = KZONES.find((k) => Math.hypot(P.wp.x - k.x, P.wp.z - k.z) < k.r); if (kz) warn = '🐙 危険海域「' + kz.name + '」！ クラーケンに注意'; }
   sw.style.display = warn ? 'block' : 'none'; sw.textContent = warn;
-  if (P.cn && P.ship) { const st = (P.ship.d.cn || [])[P.cn.idx]; $('cnhud').textContent = '🥔 大砲: マウスで照準 / クリックで発射 / Space・E で離れる　' + (st && st[2] > 0 ? '装填中 ' + st[2].toFixed(1) + 's' : '発射OK') + '　弾 ' + ((ME.save && ME.save.inv.potato) || 0); }
+  if (P.cn && P.ship) { const st = (P.ship.d.cn || [])[P.cn.idx]; $('cnhud').textContent = '🥔 大砲: マウスで照準 / クリックで発射 / Space・E で離れる ' + (st && st[2] > 0 ? '装填中 ' + st[2].toFixed(1) + 's' : '発射OK') + ' 弾 ' + ((ME.save && ME.save.inv.potato) || 0); }
   miniT += dt; if (miniT > 0.15) { miniT = 0; drawMini(); if (panel && panel.kind === 'map') drawBigMap(); }
 }
 function updateBeacon(t) {
@@ -1745,7 +1727,6 @@ function loop(now) {
     updateBeacon(t);
     updateHud(dt);
     sendState(t);
-    // 船内ライト
     const S = P.ship;
     if (S && !inDungeon) {
       if (holdLight.parent !== S.g) { S.g.add(holdLight); S.g.add(deckLantern); }
@@ -1767,7 +1748,6 @@ function loop(now) {
   if (!inDungeon) updateSea(t);
   clouds.forEach((c, i) => { c.position.x += dt * (1.2 + (i % 3) * 0.5); if (c.position.x > 1300) c.position.x = -1300; });
   if (gachaOrb) { gachaOrb.rotation.y = t; gachaOrb.position.y = 3.0 + Math.sin(t * 2) * 0.15; }
-  if (!started || true) { npcs.forEach((n, i) => { n.userData.larm.rotation.x = Math.sin(t * 1.5 + i) * 0.1; }); }
   renderer.render(scene, camera);
 }
 requestAnimationFrame(loop);
