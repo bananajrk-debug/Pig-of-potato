@@ -178,7 +178,7 @@ function roadDist(x, z) {
 }
 
 // =====================================================
-//  船の形状・レイアウト（横幅を広げ、謎の板を削除）
+//  船の形状・レイアウト
 // =====================================================
 const DECKY = 1.8, HOLDY = -0.4;
 const TYPES = {
@@ -218,15 +218,15 @@ function layoutOf(T) {
 }
 for (const k in TYPES) TYPES[k].L = layoutOf(TYPES[k]);
 
-// 船の当たり判定（細分化し、外壁や水・外からの貫通を完全にガード）
+// 船の当たり判定・貫通防止（後方の隙間や床抜けを完全ガード）
 function shipSurface(T, anch, lx, lz, fy, dopen) {
   const L = T.L, hw = hwAt(T, lz);
   const inHold = fy < DECKY - 0.85;
   if (!inHold) {
-    if (lz > L.stern + 0.1 || lz < L.bow - 0.1 || Math.abs(lx) > hw + 0.02 || hw < 0.2) return anch ? 'off' : null;
+    if (lz > L.stern + 0.1 || lz < L.bow - 0.1 || Math.abs(lx) > hw + 0.05 || hw < 0.2) return anch ? 'off' : null;
   } else {
     const h = L.hh(lz);
-    if (h < 0.3 || Math.abs(lx) > h + 0.02 || lz > L.stern - 0.3 || lz < L.bow + 0.5) return null;
+    if (h < 0.3 || Math.abs(lx) > h + 0.05 || lz > L.stern - 0.2 || lz < L.bow + 0.5) return null;
     if (Math.abs(lx - L.stove.x) < 0.45 && Math.abs(lz - L.stove.z) < 0.6) return null;
     if (Math.abs(lx - L.chest.x) < 0.5 && Math.abs(lz - L.chest.z) < 0.35) return null;
   }
@@ -743,7 +743,7 @@ function animPirate(g, dt, moving, run) {
 function nameTag(text, col) { const s = label(text, 2.4, 0.5, null, col || '#fff', 56); s.position.y = 2.55; return s; }
 
 // =====================================================
-//  船の構築（帆を前に向ける、階段横の板を排除、幅拡張）
+//  船の構築（後方の穴を完全に塞ぎ、帆を前に向け、幅を拡張）
 // =====================================================
 const SH = {};
 function shapeFrom(zs, wf) {
@@ -777,15 +777,18 @@ function buildShip(type, style) {
   const hole = new THREE.Path(); hole.moveTo(-L.rax, -L.ra0); hole.lineTo(L.rax, -L.ra0); hole.lineTo(L.rax, -L.ra1); hole.lineTo(-L.rax, -L.ra1); hole.lineTo(-L.rax, -L.ra0); dsh.holes.push(hole);
   const dg = new THREE.ShapeGeometry(dsh); dg.rotateX(-Math.PI / 2); add(dg, lam(0xffd08a, true), 0, DECKY, 0);
 
+  // 船内および後方の穴塞ぎ用フロア（隙間を完全にカバー）
   const fgeo = new THREE.ShapeGeometry(shapeFrom(zsAll, (z) => Math.max(0.05, L.hh(z) + 0.1))); fgeo.rotateX(-Math.PI / 2); add(fgeo, lam(0xc89a68, true), 0, HOLDY, 0);
   const waterM = add(fgeo.clone(), new THREE.MeshBasicMaterial({ color: 0x3ac8ff, transparent: true, opacity: 0.6, side: THREE.DoubleSide, depthWrite: false }), 0, HOLDY + 0.05, 0); waterM.visible = false;
 
   const zq = []; for (let i = 0; i <= 8; i++) zq.push(L.stern - (L.stern - L.qz0) * i / 8);
   const qg = new THREE.ExtrudeGeometry(shapeFrom(zq, (z) => hwAt(T, z) - 0.04), { depth: 0.28, bevelEnabled: false }); qg.rotateX(-Math.PI / 2);
   add(qg, lam(0xffe0a0), 0, DECKY + L.qh - 0.28, 0);
+  
+  // 後方キャビンの壁面（隙間・穴を塞ぐための背面パネルを確実に配置）
   const cabM = lam(0xff9ec0, true);
   add(wallStrip(T, DECKY, DECKY + L.qh - 0.1, L.qz0, L.stern, 0.03), cabM, 0, 0, 0);
-  add(new THREE.BoxGeometry(hwAt(T, L.stern - 0.05) * 2, L.qh, 0.15), cabM, 0, DECKY + L.qh / 2, L.stern - 0.06);
+  add(new THREE.BoxGeometry(hwAt(T, L.stern - 0.05) * 2.02, L.qh + 0.1, 0.2), cabM, 0, DECKY + L.qh / 2, L.stern - 0.04);
 
   const fwz = L.qz0, hwF = hwAt(T, fwz) - 0.04;
   [-1, 1].forEach((sd) => { const wd = hwF - L.dxo; add(new THREE.BoxGeometry(wd, L.qh - 0.28, 0.16), cabM, sd * (L.dxo + wd / 2), DECKY + (L.qh - 0.28) / 2, fwz); });
@@ -797,7 +800,7 @@ function buildShip(type, style) {
     g.add(pv); return pv;
   });
 
-  // 階段（謎の板を完全に排除し、きれいに階段のみ構築）
+  // 階段（謎の板を排除し、階段のみ）
   const nSt = 5, stLen = (L.qs1 - L.qs0) / nSt;
   [-1, 1].forEach((sd) => {
     for (let i = 0; i < nSt; i++) { const top = L.qh * (i + 1) / nSt; add(new THREE.BoxGeometry(L.sw, top, stLen + 0.02), lam(i % 2 ? 0xffc870 : 0xffb050), sd * (L.sxi + L.sw / 2), DECKY + top / 2, L.qs0 + stLen * (i + 0.5)); }
@@ -805,7 +808,7 @@ function buildShip(type, style) {
 
   for (let i = 0; i < 6; i++) { const top = (DECKY - HOLDY) * (i + 1) / 6, len = (L.ra1 - L.ra0) / 6; add(new THREE.BoxGeometry(L.rax * 2, top, len), lam(0xe8b070), 0, HOLDY + top / 2, L.ra0 + len * (i + 0.5)); }
   
-  // マスト・帆（帆の向きを前に変更：マストより前方 (+z側) に配置）
+  // マスト・帆（帆を前方に配置）
   const sails = [];
   T.masts.forEach((mz, i) => {
     add(new THREE.CylinderGeometry(0.17, 0.26, T.mastH + 2.4, 6), lam(0x8a5a2a), 0, DECKY + T.mastH / 2 - 0.2, mz);
@@ -814,7 +817,7 @@ function buildShip(type, style) {
     for (let k = 0; k < sp.count; k++) { const x = sp.getX(k), y = sp.getY(k); sp.setZ(k, (1 - Math.pow(x / (sw / 2), 2)) * 0.5 * (1 - Math.pow(y / (sh / 2), 2) * 0.3)); }
     sg.computeVertexNormals();
     const grp = new THREE.Group(); grp.position.set(0, 0, mz); g.add(grp);
-    add(sg, lam(sailC, true), 0, sy, 0.15, grp); // 帆を前方に配置
+    add(sg, lam(sailC, true), 0, sy, 0.15, grp);
     if (!style.plain) add(new THREE.CircleGeometry(sw * 0.17, 12), new THREE.MeshBasicMaterial({ color: style.mark || 0xffc83a, side: THREE.DoubleSide }), 0, sy + 0.2, -0.42, grp);
     add(new THREE.BoxGeometry(sw + 0.5, 0.15, 0.15), lam(0x8a5a2a), 0, sy + sh / 2, 0.1, grp);
     sails.push(grp);
