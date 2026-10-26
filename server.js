@@ -284,7 +284,7 @@ function spawnShip(p, type) {
     delete SHIPS[mine.i];
   }
   for (const slot of SLOTS) {
-    const x = slot.s === 0 ? 0 : slot.s * (12 - T.maxhw - 0.3), z = slot.z;
+    const x = slot.s === 0 ? 0 : slot.s * (12 - T.maxhw), z = slot.z;   // 船体の最も太い所が桟橋の縁にぴったり接する位置
     const ok = Object.values(SHIPS).every((s) => Math.hypot(s.x - x, s.z - z) > TYPES[s.t].r + T.r - 4);
     if (ok) {
       const s = Object.assign({ i: shipSeq++, t: type, x, z, r: Math.PI, sp: 0, an: true, hm: 0, owner: p.id, o: p.name, tn: 0, tm: p.team || 0 }, newShipState(type));
