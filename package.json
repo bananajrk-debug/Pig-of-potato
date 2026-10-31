@@ -1,20 +1,17 @@
 {
   "name": "pachit-monster",
-  "version": "1.0.0",
-  "description": "パチットモンスター 〜風林火山〜 ガチャで編成する3対3じゃんけんバトル",
+  "version": "3.0.0",
+  "description": "パチットモンスター 〜風林火山〜 5桁パスワードのロビーで集まり、平原でパチモンを集めて3対3じゃんけんバトルで対戦するマルチプレイブラウザゲーム",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
-    "dependencies": {
-    "express": "^4.21.2",
-    "socket.io": "^4.7.5"
-  }
   },
   "engines": {
     "node": ">=18"
   },
   "dependencies": {
-    "express": "^4.21.2"
+    "express": "^4.21.2",
+    "socket.io": "^4.8.1"
   },
   "license": "MIT"
 }
