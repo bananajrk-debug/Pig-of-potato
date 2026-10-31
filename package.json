@@ -1,7 +1,7 @@
 {
-  "name": "pachit-monster",
-  "version": "3.0.0",
-  "description": "パチットモンスター 〜風林火山〜 5桁パスワードのロビーで集まり、平原でパチモンを集めて3対3じゃんけんバトルで対戦するマルチプレイブラウザゲーム",
+  "name": "destroy-or-avoid",
+  "version": "7.1.0",
+  "description": "Destroy or Avoid - online realtime action social-deduction game (asymmetric Skeld-style map + iPad keyboard support edition)",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
@@ -10,8 +10,7 @@
     "node": ">=18"
   },
   "dependencies": {
-    "express": "^4.21.2",
-    "socket.io": "^4.8.1"
-  },
-  "license": "MIT"
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5"
+  }
 }
