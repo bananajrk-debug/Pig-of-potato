@@ -21,7 +21,9 @@ app.use((req, res) => res.status(404).send('Not Found'));
 /* =========================================================
    定数
 ========================================================= */
-const EXPLORE_MS = 5 * 60 * 1000;
+const EXPLORE_MS = 3 * 60 * 1000;
+const CHEST_COUNT = 5;
+const BALL_DROP_RATE = 0.10;
 const SELECT_MS = 30 * 1000;
 const TURN_MS = 60 * 1000;
 const SWITCH_MS = 30 * 1000;
@@ -156,6 +158,23 @@ function drawOne(exclude = [], ssrRate = 5) {
 }
 const totalStat = c => c.hp + c.atk + c.def + c.spd;
 
+/* 個体値：技の手の組み合わせとステータスが個体ごとにランダム */
+function rollInstance(c) {
+  const hands = ['g', 'c', 'p'];
+  let hs = [pick(hands), pick(hands), pick(hands)];
+  if (hs[0] === hs[1] && hs[1] === hs[2] && Math.random() < .7) hs[2] = pick(hands.filter(h => h !== hs[0]));
+  const k = () => rnd(.85, 1.15);
+  const mk = [k(), k(), k(), k()];
+  const avg = mk.reduce((a, b) => a + b, 0) / 4;
+  const stars = clamp(Math.round((avg - .85) / .3 * 4) + 1, 1, 5);
+  return {
+    uid: 'u' + Math.random().toString(36).slice(2, 10), id: c.id, hands: hs,
+    hp: Math.round(c.hp * mk[0]), atk: Math.round(c.atk * mk[1]), def: Math.round(c.def * mk[2]), spd: Math.round(c.spd * mk[3]), stars
+  };
+}
+const instPower = e => e.hp + e.atk * 2 + e.def * 2 + e.spd;
+const starStr = n => '★'.repeat(n) + '☆'.repeat(5 - n);
+
 /* =========================================================
    ルーム管理
 ========================================================= */
@@ -184,7 +203,7 @@ function newPlayer(socket, name, room) {
     id: socket.id, name, color, x: WORLD.w / 2, y: WORLD.h / 2, dx: 0, dy: 1, sw: 0, stun: false,
     lastSword: 0, lastThrow: 0,
     inv: { balls: 6, items: { power: 1, guard: 1, heal: 1 } },
-    party: [], team: null, selected: false, rescued: 0,
+    party: [], team: null, selected: false, rescued: 0, ready: false,
     stats: { caught: 0, defeated: 0, chests: 0 }, battle: null
   };
 }
@@ -213,6 +232,7 @@ function leaveRoom(socket) {
     if (p.battle && !p.battle.over) battleForfeit(p.battle, p.id);
   }
   if (room.phase === 'select' && [...room.players.values()].every(q => q.selected)) finishSelect(room);
+  if (room.phase === 'explore') { io.to(code).emit('readyStatus', readyPayload(room)); checkAllReady(room); }
   if (room.phase === 'battle') checkAllBattles(room);
   broadcastLobby(room);
 }
@@ -242,12 +262,16 @@ function genWorld(room) {
   room.obs = obs;
   room.chests = chests;
   let guard = 0;
-  while (chests.length < 30 && guard++ < 2000) {
-    const x = rnd(80, WORLD.w - 80), y = rnd(80, WORLD.h - 80);
+  const goldIdx = Math.floor(Math.random() * CHEST_COUNT);
+  while (chests.length < CHEST_COUNT && guard++ < 5000) {
+    const x = rnd(120, WORLD.w - 120), y = rnd(120, WORLD.h - 120);
     if (nearCenter(x, y)) continue;
     if (obs.some(o => Math.hypot(x - o.x, y - o.y) < o.r * o.s + 50)) continue;
-    if (chests.some(c => Math.hypot(x - c.x, y - c.y) < 140)) continue;
-    chests.push({ id: chests.length, x: Math.round(x), y: Math.round(y), open: false, gold: Math.random() < .15 });
+    if (chests.some(c => Math.hypot(x - c.x, y - c.y) < (guard < 3000 ? 600 : 200))) continue;
+    chests.push({ id: chests.length, x: Math.round(x), y: Math.round(y), open: false, gold: chests.length === goldIdx });
+  }
+  while (chests.length < CHEST_COUNT) {
+    chests.push({ id: chests.length, x: Math.round(rnd(200, WORLD.w - 200)), y: Math.round(rnd(200, WORLD.h - 200)), open: false, gold: false });
   }
   room.mons = [];
   room.balls = [];
@@ -308,13 +332,14 @@ function startGame(room) {
     p.y = WORLD.h / 2 + Math.sin(a) * (ps.length > 1 ? 70 : 0);
     p.dx = 0; p.dy = 1; p.sw = 0; p.stun = false;
     p.inv = { balls: 6, items: { power: 1, guard: 1, heal: 1 } };
-    p.party = []; p.team = null; p.selected = false; p.rescued = 0; p.battle = null;
+    p.party = []; p.team = null; p.selected = false; p.rescued = 0; p.battle = null; p.ready = false;
     p.stats = { caught: 0, defeated: 0, chests: 0 };
   });
   const n = monCap(room);
   for (let i = 0; i < n; i++) spawnMon(room, 380);
   room.endAt = Date.now() + EXPLORE_MS;
   const players = ps.map(p => ({ id: p.id, name: p.name, color: p.color }));
+  io.to(room.code).emit('readyStatus', readyPayload(room));
   for (const p of ps) {
     io.to(p.id).emit('gameStart', {
       world: WORLD, obs: room.obs, chests: room.chests, you: { x: p.x, y: p.y },
@@ -351,33 +376,38 @@ function defeatMon(room, m, p) {
     m.state = 'f'; m.faintT = 8; m.kx *= .3; m.ky *= .3;
     fx(room, [{ k: 'pop', x: m.x, y: m.y - 46, s: '気絶！ボールで確定GET', col: '#ffd166', z: 14 }]);
   }
-  if (Math.random() < .35) giveRandom(room, p, m.x, m.y, false, false);
+  if (Math.random() < BALL_DROP_RATE) {
+    p.inv.balls++;
+    sendInv(p);
+    fx(room, [{ k: 'pop', x: m.x, y: m.y - 62, s: 'パチボール +1', col: '#ff8fab', z: 15 }]);
+    toastTo(p.id, '✨ パチボールを拾った！（+1）', 'item');
+  }
 }
 
 function giveMon(room, p, c, msg) {
-  p.party.push({ uid: 'u' + Math.random().toString(36).slice(2, 9), id: c.id });
+  const inst = rollInstance(c);
+  p.party.push(inst);
   p.stats.caught++;
   sendInv(p);
-  toastTo(p.id, msg || `🎉 ${c.em} ${c.name}（${c.rar}）をゲットした！`, c.rar === 'SSR' ? 'get ssr' : 'get');
+  toastTo(p.id, (msg || `🎉 ${c.name}（${c.rar}）をゲットした！`) + `　個体値 ${starStr(inst.stars)}`, c.rar === 'SSR' ? 'get ssr' : 'get');
   if (RAR_RANK[c.rar] >= 2) {
     for (const q of room.players.values()) if (q.id !== p.id) toastTo(q.id, `📣 ${p.name} が ${c.rar} ${c.em}${c.name} をゲット！`, 'item');
   }
 }
 
-function giveRandom(room, p, x, y, fromChest, gold) {
-  const r = Math.random();
-  let text;
-  if (r < .4) {
-    const n = gold ? 3 : 1 + Math.floor(Math.random() * (fromChest ? 3 : 2));
-    p.inv.balls += n; text = `パチボール ×${n}`;
-  } else {
-    const k = r < .62 ? 'heal' : r < .81 ? 'power' : 'guard';
-    const n = gold ? 2 : (Math.random() < .25 ? 2 : 1);
-    p.inv.items[k] += n; text = `${ITEMS[k].ic}${ITEMS[k].n} ×${n}`;
+function giveChest(room, p, c) {
+  const n = c.gold ? 4 : 2;
+  const got = { power: 0, guard: 0, heal: 0 };
+  for (let i = 0; i < n; i++) {
+    const r = Math.random();
+    const k = r < .4 ? 'heal' : r < .7 ? 'power' : 'guard';
+    got[k]++; p.inv.items[k]++;
   }
   sendInv(p);
-  fx(room, [{ k: 'pop', x, y: y - 40, s: text, col: '#7cf7ff', z: 15 }]);
-  toastTo(p.id, `${fromChest ? '📦 宝箱から' : '✨'} ${text} を手に入れた！`, 'item');
+  const text = Object.keys(got).filter(k => got[k]).map(k => `${ITEMS[k].ic}${ITEMS[k].n}×${got[k]}`).join(' ');
+  fx(room, [{ k: 'pop', x: c.x, y: c.y - 46, s: c.gold ? '金の宝箱！' : 'アイテムGET', col: '#7cf7ff', z: 15 }]);
+  toastTo(p.id, `📦 ${c.gold ? '金の宝箱' : '宝箱'}から ${text} を手に入れた！`, 'item');
+  for (const q of room.players.values()) if (q.id !== p.id) toastTo(q.id, `📦 ${p.name} が宝箱を開けた（残り ${room.chests.filter(x => !x.open).length}個）`, '');
 }
 
 function startCapture(m, ownerId) {
@@ -504,6 +534,18 @@ function tickRoom(room) {
   });
 }
 
+function readyPayload(room) {
+  const ps = [...room.players.values()];
+  return { ids: ps.filter(p => p.ready).map(p => p.id), total: ps.length };
+}
+function checkAllReady(room) {
+  if (room.phase !== 'explore' || room.players.size === 0) return;
+  if ([...room.players.values()].every(p => p.ready)) {
+    io.to(room.code).emit('toast', { text: '✅ 全員の準備OK！ 選択フェーズへ進みます', cls: 'get' });
+    endExplore(room);
+  }
+}
+
 function endExplore(room) {
   if (room.phase !== 'explore') return;
   clearTimeout(room.exploreTimer);
@@ -521,7 +563,7 @@ function startSelect(room) {
   for (const p of room.players.values()) {
     p.rescued = 0;
     while (p.party.length < 3) {
-      p.party.push({ uid: 'r' + Math.random().toString(36).slice(2, 9), id: drawOne([], 3).id });
+      p.party.push(rollInstance(drawOne([], 3)));
       p.rescued++;
     }
     p.selected = false; p.team = null;
@@ -532,10 +574,7 @@ function startSelect(room) {
 }
 
 function autoTeam(p) {
-  return p.party.slice().sort((a, b) => {
-    const ca = CHAR_MAP[a.id], cb = CHAR_MAP[b.id];
-    return RAR_RANK[cb.rar] - RAR_RANK[ca.rar] || totalStat(cb) - totalStat(ca);
-  }).slice(0, 3);
+  return p.party.slice().sort((a, b) => instPower(b) - instPower(a)).slice(0, 3);
 }
 
 function finishSelect(room) {
@@ -557,13 +596,20 @@ const stageMul = s => (s >= 0 ? 1 + .25 * s : 1 / (1 - .25 * s));
 const act = side => side.units[side.idx];
 const avail = u => [0, 1, 2].filter(i => i !== u.lastSlot);
 
-function makeUnit(id, sk) {
-  const c = CHAR_MAP[id];
+function makeUnit(inst, sk) {
+  const c = CHAR_MAP[inst.id];
   return {
-    id: c.id, name: c.name, rar: c.rar, hp: c.hp, maxHp: c.hp, atk: c.atk, def: c.def, spd: c.spd,
-    passive: c.passive, moves: c.moves, status: null, atkSt: 0, defSt: 0, lastSlot: null, flags: {}, fainted: false, sk
+    id: c.id, inst, name: c.name, rar: c.rar, hp: inst.hp, maxHp: inst.hp, atk: inst.atk, def: inst.def, spd: inst.spd,
+    passive: c.passive, moves: c.moves.map((m, i) => ({ ...m, hand: inst.hands[i] })),
+    status: null, atkSt: 0, defSt: 0, lastSlot: null, flags: {}, fainted: false, sk
   };
 }
+/* 相手側の技ロック・アイテム数は見せない */
+function maskSnap(snap, sk) {
+  const o = sk === 'a' ? 'b' : 'a';
+  return { [sk]: snap[sk], [o]: { idx: snap[o].idx, items: null, u: snap[o].u.map(u => ({ ...u, ls: null })) } };
+}
+function maskEvents(events, sk) { return events.map(e => (e.snap ? { ...e, snap: maskSnap(e.snap, sk) } : e)); }
 function snapB(B) {
   const f = s => ({
     idx: s.idx, items: { ...s.items },
@@ -831,12 +877,12 @@ let battleSeq = 1;
 function createBattle(room, p1, p2) {
   const mkSide = (p, sk) => ({
     pid: p.id, name: p.name, cpu: false, idx: 0,
-    units: p.team.map(e => makeUnit(e.id, sk)), items: { ...p.inv.items }
+    units: p.team.map(e => makeUnit(e, sk)), items: { ...p.inv.items }
   });
   const cpuSide = sk => {
     const ids = [];
     for (let i = 0; i < 3; i++) ids.push(drawOne(ids, 6).id);
-    return { pid: null, name: 'CPU 野良の将', cpu: true, idx: 0, units: shuffle(ids).map(id => makeUnit(id, sk)), items: { power: 1, guard: 1, heal: 2 } };
+    return { pid: null, name: 'CPU 野良の将', cpu: true, idx: 0, units: shuffle(ids).map(id => makeUnit(rollInstance(CHAR_MAP[id]), sk)), items: { power: 1, guard: 1, heal: 2 } };
   };
   const B = {
     id: battleSeq++, room, turn: 1, phase: 'choose', over: false, ev: [], timer: null,
@@ -846,12 +892,17 @@ function createBattle(room, p1, p2) {
   room.battles.push(B);
   p1.battle = B;
   if (p2) p2.battle = B;
-  const teams = { a: B.sides.a.units.map(u => u.id), b: B.sides.b.units.map(u => u.id) };
   const names = { a: B.sides.a.name, b: B.sides.b.name };
+  const colors = { a: p1.color, b: p2 ? p2.color : '#8b5cf6' };
   for (const sk of ['a', 'b']) {
     const s = B.sides[sk];
     if (s.cpu) continue;
-    io.to(s.pid).emit('battleStart', { me: sk, names, teams, snap: snapB(B), left: TURN_MS, cpu: !p2 });
+    const ok = sk === 'a' ? 'b' : 'a';
+    const teams = {
+      [sk]: s.units.map(u => u.inst),
+      [ok]: B.sides[ok].units.map(u => ({ id: u.id, hp: u.maxHp }))
+    };
+    io.to(s.pid).emit('battleStart', { me: sk, names, colors, teams, snap: maskSnap(snapB(B), sk), left: TURN_MS, cpu: !p2 });
   }
   startTurnTimer(B, TURN_MS + 6000);
 }
@@ -899,7 +950,7 @@ function resolveTurnB(B) {
   const needAny = !B.over && humanSides(B).some(sk => B.pending[sk]);
   if (!B.over && !needAny) B.turn++;
   for (const sk of humanSides(B)) {
-    io.to(B.sides[sk].pid).emit('turnResult', { events, needSwitch: !!B.pending[sk], left: needAny ? SWITCH_MS : TURN_MS });
+    io.to(B.sides[sk].pid).emit('turnResult', { events: maskEvents(events, sk), needSwitch: !!B.pending[sk], left: needAny ? SWITCH_MS : TURN_MS });
   }
   if (B.over) { finishBattle(B); return; }
   if (needAny) {
@@ -924,7 +975,7 @@ function applySwitch(B, sk, idx) {
     B.swq = [];
     ev(B, { t: 'sync' });
     B.turn++;
-    for (const s of humanSides(B)) io.to(B.sides[s].pid).emit('switchResult', { events: B.ev, left: TURN_MS });
+    for (const s of humanSides(B)) io.to(B.sides[s].pid).emit('switchResult', { events: maskEvents(B.ev, s), left: TURN_MS });
     startTurnTimer(B, TURN_MS + 4000);
   }
 }
@@ -944,7 +995,7 @@ function battleForfeit(B, leaverId) {
   B.ev = [];
   say(B, `${B.sides[lk].name} が退出したため、バトル終了！`, 'sys', 600);
   ev(B, { t: 'end', winner: wk, turn: B.turn, reason: 'left' });
-  if (!B.sides[wk].cpu) io.to(B.sides[wk].pid).emit('turnResult', { events: B.ev, needSwitch: false, left: 0 });
+  if (!B.sides[wk].cpu) io.to(B.sides[wk].pid).emit('turnResult', { events: maskEvents(B.ev, wk), needSwitch: false, left: 0 });
   finishBattle(B);
 }
 
@@ -1001,6 +1052,15 @@ io.on('connection', socket => {
     const { room } = ctxOf(socket);
     if (!room || room.hostId !== socket.id || room.phase !== 'lobby') return;
     startGame(room);
+  });
+
+  socket.on('ready', d => {
+    const { room, p } = ctxOf(socket);
+    if (!room || !p || room.phase !== 'explore') return;
+    p.ready = !!(d && d.on);
+    io.to(room.code).emit('readyStatus', readyPayload(room));
+    if (p.ready) socket.to(room.code).emit('toast', { text: `✅ ${p.name} が準備OK（${readyPayload(room).ids.length}/${room.players.size}）`, cls: '' });
+    checkAllReady(room);
   });
 
   socket.on('hostEndExplore', () => {
@@ -1064,8 +1124,7 @@ io.on('connection', socket => {
     p.stats.chests++;
     io.to(room.code).emit('chest', { id: c.id });
     fx(room, [{ k: 'burst', x: c.x, y: c.y - 12, col: '#ffd166', n: 20, sp: 180 }]);
-    giveRandom(room, p, c.x, c.y, true, c.gold);
-    if (c.gold) giveRandom(room, p, c.x, c.y - 18, true, false);
+    giveChest(room, p, c);
   });
 
   socket.on('selectTeam', d => {
@@ -1092,7 +1151,7 @@ io.on('connection', socket => {
     const u = act(B.sides[sk]);
     const move = Math.floor(num(d.move, -1));
     if (!avail(u).includes(move)) {
-      socket.emit('actionRejected', { msg: 'その技は今は使えません（連続使用不可）', snap: snapB(B) });
+      socket.emit('actionRejected', { msg: 'その技は今は使えません（連続使用不可）', snap: maskSnap(snapB(B), sk) });
       return;
     }
     let item = typeof d.item === 'string' && ITEMS[d.item] ? d.item : null;
