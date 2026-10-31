@@ -1,1179 +1,1316 @@
-'use strict';
-/* =========================================================
-   パチットモンスター 〜風林火山〜  マルチプレイサーバー
-   Express + Socket.io
-========================================================= */
 const express = require('express');
 const http = require('http');
 const path = require('path');
+const fs = require('fs');
 const { Server } = require('socket.io');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { pingInterval: 10000, pingTimeout: 20000 });
+const io = new Server(server);
 const PORT = process.env.PORT || 3000;
 
-app.disable('x-powered-by');
-app.get('/healthz', (req, res) => res.json({ status: 'ok', rooms: rooms.size, time: new Date().toISOString() }));
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
-app.use((req, res) => res.status(404).send('Not Found'));
+app.get('/healthz', (req, res) => res.send('ok'));
 
-/* =========================================================
-   定数
-========================================================= */
-const EXPLORE_MS = 3 * 60 * 1000;
-const CHEST_COUNT = 5;
-const BALL_DROP_RATE = 0.10;
-const SELECT_MS = 30 * 1000;
-const TURN_MS = 60 * 1000;
-const SWITCH_MS = 30 * 1000;
-const STORM_TURN = 30;
-const TICK_MS = 1000 / 15;
-const WORLD = { w: 3200, h: 2400 };
-const MAX_PLAYERS = 8;
-const PLAYER_COLORS = ['#4dc3ff', '#ff8a3d', '#3ee089', '#c77dff', '#ffd166', '#ff4d6d', '#7cf7ff', '#b6f26b'];
+// ---------- 定数 ----------
+const CELL = 50, COLS = 64, ROWS = 40;
+const W = COLS * CELL, H = ROWS * CELL;
+const TICK_RATE = 30;
+const GAME_MS = 10 * 60 * 1000;
+const SPEED = 250, GHOST_MULT = 1.5, PR = 16, REACH = 70;
+const MIN_PLAYERS = 2, MAX_PLAYERS = 10, MAX_IMP = 3;
+const KILL_RANGE = 95, REPORT_RANGE = 110, BTN_RANGE = 90;
+const KILL_CD = 20000, FIRST_KILL_CD = 15000;
+// 妨害: 「進捗妨害」は単体の独立した妨害 (進捗 -20% / 専用クールタイム30秒)
+//       暗闇・電気のショート・水の氾濫は別枠 (進捗は減らさない / 共通クールタイム30秒は妨害が終わってから開始 / 同時に1つまで / インポスターも解除できる)
+const SAB_CD = 30000, SAB_PCT = 20, PROG_CD = 30000;
+const DARK_MS = 15000;                       // 暗闇の長さ (15秒で自動的に視界が戻る)
+const SHORT_MS = 120000, SHORT_NEED = 5;     // 電気のショート: 2分以内に5か所直さないとクルー全滅
+const FLOOD_N = 3, BAIL_NEED = 30, FLOOD_MAX_MS = 150000; // 水の氾濫: 3か所。SPACE30回で1か所解消 (150秒で自然に引く)
+const WARP_CD = 6000, WARP_RANGE = 70;       // インポスター専用ワープ
+// 探偵: キルが起きると、探偵だけに被害者の直前5秒の移動軌跡が届く
+const TRAIL_MS = 5000, TRAIL_STEP = 100, MAX_DET = 2, DET_TRACE_MS = 45000;
+const SABS = { prog: { name: '進捗妨害', themes: null }, dark: { name: '暗闇', themes: null }, short: { name: '電気のショート', themes: ['space'] }, flood: { name: '水の氾濫', themes: ['island', 'sky'] } };
+const BTN_LOCK = 10000, FREEZE_MS = 3200;
+const DISCUSS_MS = process.env.DOA_TEST === '1' ? 4000 : 20000; // 自動テスト時だけ議論を短く
+const VOTE_MS = 30000, RESULT_MS = 9500, END_AUTO_MS = 25000;
+const ACTIVE_TASKS = 3, ACTION_MIN = 60;
+const MIN_MINI = { weld: 6000, seq: 1000, alt: 1200, space: 800, fire: 1800, vine: 2000, compass: 1500, wire: 1500 };
+const MINI_TIMEOUT = 90000;
+// ロビー: 正方形の床 (640x640) + 奥(上)の壁にクローゼット
+const LOBBY = { x0: 60, y0: 120, x1: 700, y1: 760 };
+const CLOSET = { x: 380, y: 92, range: 130 };
+const LOBBY_C = { x: (LOBBY.x0 + LOBBY.x1) / 2, y: (LOBBY.y0 + LOBBY.y1) / 2 + 40 };
+function lobbySpawn(i, n) {
+  const a = (i / Math.max(1, n)) * Math.PI * 2 + Math.random() * 0.3;
+  return { x: LOBBY_C.x + Math.cos(a) * 120, y: LOBBY_C.y + Math.sin(a) * 120 };
+}
 
-const rnd = (a, b) => a + Math.random() * (b - a);
-const pick = a => a[Math.floor(Math.random() * a.length)];
-const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-const num = (v, d = 0) => (typeof v === 'number' && isFinite(v) ? v : d);
-const shuffle = a => { const b = a.slice(); for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; } return b; };
+const cp = (c, r) => ({ x: c * CELL + CELL / 2, y: r * CELL + CELL / 2 });
+// 運搬アイテム (孤島サバイバル)
+// 運搬アイテム: 孤島 (薪など) + 宇宙船 (ヒューズなど)
+const ITEM_NAME = { wood: '薪', nut: '木の実', sos: 'SOS信号機', scrap: '漂流資材', fuse: 'ヒューズ', battery: 'バッテリー', core: 'プラズマコア', stone: '浮遊石', gear: '風車の歯車', seed: '天空の種' };
+const COLORS = ['#ff6b6b', '#4dabf7', '#51cf66', '#ffd43b', '#cc5de8', '#ff922b', '#22b8cf', '#f783ac', '#a9e34b', '#c08457'];
+const ACCS = ['', '🐥', '💩', '👑', '🎩', '😎', '🌸', '🔥', '🎀', '🍕'];
 
-/* =========================================================
-   ゲームデータ
-========================================================= */
-const STATUS = {
-  poison:   { n: '毒',   ic: '☠️', turns: 4, cls: 'st-poison', desc: 'ターン終了時に最大HPの8%ダメージ（4ターン）' },
-  burn:     { n: '火傷', ic: '🔥', turns: 3, cls: 'st-burn',   desc: 'ターン終了時に最大HPの6%ダメージ＋攻撃力↓（3ターン）' },
-  paralyze: { n: '麻痺', ic: '⚡', turns: 3, cls: 'st-para',   desc: '30%の確率で動けず、じゃんけんに自動で負ける（3ターン）' },
-  confuse:  { n: '混乱', ic: '💫', turns: 3, cls: 'st-conf',   desc: '40%の確率で出す手がランダムに変わる（3ターン）' }
-};
-const ITEMS = {
-  power: { n: '闘魂の札',   ic: '🗡️', type: '攻撃', desc: 'このターン与ダメージ1.5倍' },
-  guard: { n: '鉄壁の護符', ic: '🛡️', type: '防御', desc: 'このターン被ダメージ半減＋状態異常を防ぐ' },
-  heal:  { n: '仙桃',       ic: '🍑', type: '回復', desc: 'HPを40%回復し状態異常も治す' }
-};
-const HAND_E = { g: '👊', c: '✌️', p: '✋' };
-const BEATS = { g: 'c', c: 'p', p: 'g' };
-const judge = (a, b) => (a === b ? 0 : (BEATS[a] === b ? 1 : -1));
-const RAR_RANK = { N: 0, R: 1, SR: 2, SSR: 3 };
-
-const CHARS = [
-  { id: 'homura', name: 'ホムラ丸', title: '侵掠すること火の如し', rar: 'R', em: '🦊', el: '火', col: ['#ff5a1f', '#ffb347'],
-    hp: 110, atk: 34, def: 22, spd: 26, beh: 'aggr',
-    passive: { key: 'haisui', name: '背水の陣', desc: 'HPが1/3以下になると攻撃力が1.5倍' },
-    moves: [
-      { name: '紅蓮拳', hand: 'g', power: 40, status: { type: 'burn', chance: .3 }, desc: '30%で火傷' },
-      { name: '爆炎ストレート', hand: 'g', power: 58, recoil: .15, desc: '強力だが与ダメの15%反動' },
-      { name: '火の粉', hand: 'c', power: 25, status: { type: 'burn', chance: .6 }, desc: '60%で火傷' }
-    ] },
-  { id: 'kazakiri', name: 'カザキリ', title: '疾きこと風の如し', rar: 'R', em: '🦅', el: '風', col: ['#18c98f', '#7cf7ff'],
-    hp: 95, atk: 31, def: 19, spd: 40, beh: 'timid',
-    passive: { key: 'shippu', name: '疾風', desc: 'あいこの時でも与えるダメージが半減しない' },
-    moves: [
-      { name: '鎌鼬', hand: 'c', power: 22, hits: 2, desc: '2回連続で切り裂く' },
-      { name: '追い風', hand: 'p', power: 20, selfBuff: { atk: 1 }, desc: '自分の攻撃↑' },
-      { name: '疾風斬', hand: 'c', power: 38, crit: .3, desc: '急所率大幅アップ' }
-    ] },
-  { id: 'shinrin', name: 'シンリン', title: '徐かなること林の如し', rar: 'N', em: '🦌', el: '林', col: ['#2fae3a', '#b6f26b'],
-    hp: 130, atk: 25, def: 27, spd: 20, beh: 'calm',
-    passive: { key: 'regen', name: '森の恵み', desc: '毎ターン終了時にHPを6%回復' },
-    moves: [
-      { name: '葉隠れ', hand: 'p', power: 20, guard: .5, desc: 'このターンの被ダメ50%軽減' },
-      { name: '吸精の蔓', hand: 'p', power: 32, drain: .5, desc: '与ダメの50%を吸収' },
-      { name: '根張り', hand: 'g', power: 25, selfBuff: { def: 1 }, desc: '自分の防御↑' }
-    ] },
-  { id: 'ganzan', name: 'ガンザン', title: '動かざること山の如し', rar: 'SR', em: '🐢', el: '山', col: ['#8a6440', '#e0c08a'],
-    hp: 150, atk: 29, def: 34, spd: 12, beh: 'aggr',
-    passive: { key: 'teppeki', name: '岩の鎧', desc: '受けるダメージを常に15%カット' },
-    moves: [
-      { name: '岩砕き', hand: 'g', power: 42, foeDebuff: { def: -1 }, desc: '相手の防御↓' },
-      { name: '山崩し', hand: 'g', power: 62, desc: '山をも崩す重い一撃' },
-      { name: '不動の構え', hand: 'p', power: 12, guard: .7, counter: .5, desc: '被ダメ70%軽減・負けたら50%反射' }
-    ] },
-  { id: 'raijin', name: 'ライジン', title: '轟くこと雷の如し', rar: 'SR', em: '🐯', el: '雷', col: ['#ffb700', '#fff38a'],
-    hp: 100, atk: 36, def: 21, spd: 34, beh: 'aggr',
-    passive: { key: 'taiden', name: '帯電', desc: '攻撃を当てると20%で相手を麻痺させる' },
-    moves: [
-      { name: '雷鳴斬', hand: 'c', power: 40, status: { type: 'paralyze', chance: .3 }, desc: '30%で麻痺' },
-      { name: '迅雷掌', hand: 'p', power: 34, status: { type: 'paralyze', chance: .25 }, desc: '25%で麻痺' },
-      { name: '万雷', hand: 'g', power: 64, recoil: .2, desc: '超威力だが与ダメの20%反動' }
-    ] },
-  { id: 'dokuron', name: 'ドクロン', title: '蝕むこと毒の如し', rar: 'N', em: '🐍', el: '毒', col: ['#7b2cbf', '#d48bff'],
-    hp: 115, atk: 27, def: 24, spd: 27, beh: 'aggr',
-    passive: { key: 'dokutai', name: '毒の体', desc: '毒状態の相手へのダメージが1.3倍' },
-    moves: [
-      { name: '毒牙', hand: 'c', power: 30, status: { type: 'poison', chance: .7 }, desc: '70%で毒' },
-      { name: '蝕み', hand: 'c', power: 22, foeDebuff: { atk: -1 }, status: { type: 'poison', chance: .3 }, desc: '相手の攻撃↓・30%で毒' },
-      { name: 'ヘドロ波', hand: 'p', power: 36, status: { type: 'poison', chance: .4 }, desc: '40%で毒' }
-    ] },
-  { id: 'mizuchi', name: 'ミズチ', title: '流るること水の如し', rar: 'R', em: '🐲', el: '水', col: ['#1f6bff', '#6fd3ff'],
-    hp: 120, atk: 29, def: 26, spd: 29, beh: 'calm',
-    passive: { key: 'seiryu', name: '清流', desc: '状態異常の継続ターンが半分になる' },
-    moves: [
-      { name: '激流', hand: 'p', power: 46, desc: '激しい水流で押し流す' },
-      { name: '水鏡', hand: 'g', power: 15, counter: .6, desc: '負けた時、受けたダメージの60%を反射' },
-      { name: '霧隠れ', hand: 'c', power: 22, status: { type: 'confuse', chance: .5 }, desc: '50%で混乱' }
-    ] },
-  { id: 'tsukuyomi', name: 'ツクヨミ', title: '朧なること月の如し', rar: 'SSR', em: '🐇', el: '月', col: ['#8f7bff', '#f0ecff'],
-    hp: 115, atk: 38, def: 28, spd: 36, beh: 'timid',
-    passive: { key: 'mikiri', name: '見切り', desc: '25%の確率で相手の攻撃を完全回避' },
-    moves: [
-      { name: '月光', hand: 'p', power: 30, heal: .25, desc: '攻撃しつつ最大HPの25%回復' },
-      { name: '朧月', hand: 'c', power: 48, status: { type: 'confuse', chance: .3 }, desc: '30%で混乱' },
-      { name: '満月砕き', hand: 'g', power: 66, desc: '満月の力で粉砕する' }
-    ] },
-  { id: 'maneki', name: 'マネキネコ', title: '招くこと福の如し', rar: 'N', em: '🐱', el: '金', col: ['#ffb703', '#fff2b0'],
-    hp: 105, atk: 26, def: 22, spd: 31, beh: 'timid',
-    passive: { key: 'shofuku', name: '招福', desc: '急所率+20%' },
-    moves: [
-      { name: '小判投げ', hand: 'p', power: 32, crit: .2, desc: '急所率アップ' },
-      { name: '招き手', hand: 'p', power: 20, foeDebuff: { atk: -1 }, desc: '相手の攻撃↓' },
-      { name: '猫パンチ', hand: 'g', power: 38, desc: 'すばやい一撃' }
-    ] },
-  { id: 'shingen', name: 'シンゲン', title: '風林火山の大将', rar: 'SSR', em: '🦁', el: '将', col: ['#e0103a', '#ffd166'],
-    hp: 135, atk: 35, def: 30, spd: 28, beh: 'aggr',
-    passive: { key: 'furinkazan', name: '風林火山', desc: 'あらゆる状態異常にかからない' },
-    moves: [
-      { name: '疾風の号令', hand: 'c', power: 36, selfBuff: { atk: 1 }, desc: '攻撃しつつ自分の攻撃↑' },
-      { name: '静林の陣', hand: 'p', power: 20, guard: .5, heal: .15, desc: '被ダメ50%軽減・HP15%回復' },
-      { name: '侵掠如火', hand: 'g', power: 55, status: { type: 'burn', chance: .3 }, desc: '30%で火傷' }
-    ] }
+// ---------- タスクプール（全15個。位置はマップ生成時に決まる） ----------
+// kind: carry=運搬 / fire=火おこし(連打) / vine=蔓切り(長押し) / compass=方位合わせ(角度) / weld=ノコギリ(なぞり) / seq=番号入力 / alt=K・O交互 / space=SPACE連打
+const TASK_DEFS = [
+  { id: 1,  name: '薪を拠点へ運ぶ',           pct: 15, kind: 'carry',   item: 'wood',  icon: '🪵' },
+  { id: 2,  name: '木の実を拠点へ運ぶ',       pct: 10, kind: 'carry',   item: 'nut',   icon: '🌰' },
+  { id: 3,  name: 'SOS信号機を灯台に設置',    pct: 15, kind: 'carry',   item: 'sos',   icon: '📡' },
+  { id: 4,  name: '漂流資材で見張り台を補修', pct: 10, kind: 'carry',   item: 'scrap', icon: '🧰' },
+  { id: 5,  name: 'キャンプファイアの火おこし', pct: 10, kind: 'fire',  icon: '🔥' },
+  { id: 6,  name: '絡まった蔓を切り払う',     pct: 5,  kind: 'vine',    n: 4, icon: '🌿' },
+  { id: 7,  name: '茂みの道を切り開く',       pct: 5,  kind: 'vine',    n: 5, icon: '🎋' },
+  { id: 8,  name: '方位磁針の調整',           pct: 5,  kind: 'compass', n: 3, icon: '🧭' },
+  { id: 9,  name: '現在地の方角を測る',       pct: 5,  kind: 'compass', n: 2, icon: '🗺️' },
+  { id: 10, name: '丸太をノコギリで切る',     pct: 10, kind: 'weld',    icon: '🪚' },
+  { id: 11, name: '無線機の周波数合わせ',     pct: 5,  kind: 'seq',     n: 5, icon: '📻' },
+  { id: 12, name: '宝箱のダイヤル錠',         pct: 5,  kind: 'seq',     n: 6, icon: '🔐' },
+  { id: 13, name: '井戸のポンプを漕ぐ',       pct: 10, kind: 'alt',     n: 24, icon: '💧' },
+  { id: 14, name: '魚を釣り上げる',           pct: 5,  kind: 'space',   n: 8, icon: '🎣' },
+  { id: 15, name: 'ヤシの実を割る',           pct: 5,  kind: 'space',   n: 6, icon: '🥥' },
 ];
-const CHAR_MAP = Object.fromEntries(CHARS.map(c => [c.id, c]));
+TASK_DEFS.forEach(d => d.theme = 'island');
+// 宇宙船のタスク (id 101〜)
+const SPACE_TASKS = [
+  { id: 101, name: 'プラズマコアの搬入',   pct: 20, kind: 'carry', item: 'core',    icon: '⚛️' },
+  { id: 102, name: 'ヒューズの装着',       pct: 10, kind: 'carry', item: 'fuse',    icon: '🔌' },
+  { id: 103, name: '予備バッテリーの装着', pct: 10, kind: 'carry', item: 'battery', icon: '🔋' },
+  { id: 104, name: '外壁フレーム溶接',     pct: 10, kind: 'weld',  icon: '🔥' },
+  { id: 105, name: '駆動アームの溶接',     pct: 10, kind: 'weld',  icon: '🦾' },
+  { id: 106, name: '配電盤の番号入力',     pct: 5,  kind: 'seq',   n: 5, icon: '🔢' },
+  { id: 107, name: 'パスコード解除',       pct: 5,  kind: 'seq',   n: 6, icon: '🔐' },
+  { id: 108, name: '配線の接続コード入力', pct: 5,  kind: 'seq',   n: 5, icon: '🧵' },
+  { id: 109, name: '冷却ファンの回転',     pct: 5,  kind: 'alt',   n: 20, icon: '🌀' },
+  { id: 110, name: '発電機のクランク',     pct: 10, kind: 'alt',   n: 30, icon: '⚙️' },
+  { id: 111, name: 'ポンプの加圧',         pct: 5,  kind: 'alt',   n: 16, icon: '🛢️' },
+  { id: 112, name: 'コンテナの封印',       pct: 5,  kind: 'space', n: 6, icon: '📦' },
+  { id: 113, name: 'バルブの調整',         pct: 5,  kind: 'space', n: 8, icon: '🎛️' },
+  { id: 114, name: 'アンテナの調整',       pct: 5,  kind: 'space', n: 6, icon: '📡' },
+  { id: 115, name: '点火システムの調整',   pct: 5,  kind: 'space', n: 10, icon: '🚀' },
+];
+SPACE_TASKS.forEach(d => { d.theme = 'space'; TASK_DEFS.push(d); });
+// 空島のタスク (id 201〜)
+const SKY_TASKS = [
+  { id: 201, name: '浮遊石を広場へ運ぶ',     pct: 15, kind: 'carry',   item: 'stone', icon: '💎' },
+  { id: 202, name: '風車に歯車を取り付ける', pct: 15, kind: 'carry',   item: 'gear',  icon: '⚙️' },
+  { id: 203, name: '天空の種を庭に植える',   pct: 10, kind: 'carry',   item: 'seed',  icon: '🌱' },
+  { id: 204, name: '飛行船のロープを結ぶ',   pct: 5,  kind: 'vine',    n: 4, icon: '🪢' },
+  { id: 205, name: '風車の羽根を回す',       pct: 10, kind: 'alt',     n: 24, icon: '🌬️' },
+  { id: 206, name: '石板の暗号を解く',       pct: 5,  kind: 'seq',     n: 6, icon: '🗿' },
+  { id: 207, name: '天文台の星図を合わせる', pct: 5,  kind: 'compass', n: 3, icon: '🔭' },
+  { id: 208, name: '祠の聖火を灯す',         pct: 10, kind: 'fire',    icon: '🕯️' },
+  { id: 209, name: '鐘楼の鐘を鳴らす',       pct: 5,  kind: 'space',   n: 8, icon: '🔔' },
+  { id: 210, name: '泉の水を汲み上げる',     pct: 5,  kind: 'alt',     n: 16, icon: '💧' },
+  { id: 211, name: '雲の茨を払う',           pct: 5,  kind: 'vine',    n: 5, icon: '☁️' },
+  { id: 212, name: '浮遊石を削り出す',       pct: 10, kind: 'weld',    icon: '⛏️' },
+  { id: 213, name: '飛行船の暗証番号',       pct: 5,  kind: 'seq',     n: 5, icon: '🎈' },
+  { id: 214, name: '巣のヒナにエサをやる',   pct: 5,  kind: 'space',   n: 6, icon: '🐣' },
+  { id: 215, name: '風向きを読む',           pct: 5,  kind: 'compass', n: 2, icon: '🧭' },
+];
+SKY_TASKS.forEach(d => { d.theme = 'sky'; TASK_DEFS.push(d); });
+const tasksOf = (theme) => TASK_DEFS.filter(d => d.theme === theme);
+const defOf = (id) => TASK_DEFS.find(d => d.id === id);
 
-function rollRarity(ssrRate = 5) {
-  const r = Math.random() * 100;
-  if (r < ssrRate) return 'SSR';
-  if (r < ssrRate + 15) return 'SR';
-  if (r < ssrRate + 49) return 'R';
-  return 'N';
-}
-function drawOne(exclude = [], ssrRate = 5) {
-  const rar = rollRarity(ssrRate);
-  let pool = CHARS.filter(c => c.rar === rar && !exclude.includes(c.id));
-  if (!pool.length) pool = CHARS.filter(c => !exclude.includes(c.id));
-  if (!pool.length) pool = CHARS;
-  return pick(pool);
-}
-const totalStat = c => c.hp + c.atk + c.def + c.spd;
-
-/* 個体値：技の手の組み合わせとステータスが個体ごとにランダム */
-function rollInstance(c) {
-  const hands = ['g', 'c', 'p'];
-  let hs = [pick(hands), pick(hands), pick(hands)];
-  if (hs[0] === hs[1] && hs[1] === hs[2] && Math.random() < .7) hs[2] = pick(hands.filter(h => h !== hs[0]));
-  const k = () => rnd(.85, 1.15);
-  const mk = [k(), k(), k(), k()];
-  const avg = mk.reduce((a, b) => a + b, 0) / 4;
-  const stars = clamp(Math.round((avg - .85) / .3 * 4) + 1, 1, 5);
-  return {
-    uid: 'u' + Math.random().toString(36).slice(2, 10), id: c.id, hands: hs,
-    hp: Math.round(c.hp * mk[0]), atk: Math.round(c.atk * mk[1]), def: Math.round(c.def * mk[2]), spd: Math.round(c.spd * mk[3]), stars
+// <<GENMAP
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
   };
 }
-const instPower = e => e.hp + e.atk * 2 + e.def * 2 + e.spd;
-const starStr = n => '★'.repeat(n) + '☆'.repeat(5 - n);
 
-/* =========================================================
-   ルーム管理
-========================================================= */
+// ===== 孤島レイアウト (3種・どれも11部屋: 大2 中4 小5) =====
+// 部屋のテーマ番号 th (クライアントの THEMES と対応) とゾーン
+//  0 キャンプ(拠点)[camp] 1 大きな浜辺[beach] 2 深い森[forest] 3 竹林[forest] 4 滝つぼ[forest]
+//  5 難破船[beach] 6 灯台[beach] 7 岩場の入り江[beach] 8 マングローブ[forest] 9 見張り台[forest] 10 漂着物の浜[beach]
+// 大: camp, beach / 中: forest, bamboo, wreck, light / 小: falls, mangrove, tower, rocks, drift
+const ROOM_TH = { camp: 0, beach: 1, forest: 2, bamboo: 3, falls: 4, wreck: 5, light: 6, rocks: 7, mangrove: 8, tower: 9, drift: 10,
+  // 宇宙船の部屋 (クライアントの THEMES[20〜30])
+  cafeteria: 20, storage: 21, upperEngine: 22, lowerEngine: 23, reactor: 24, nav: 25, medbay: 26, security: 27, electrical: 28, o2: 29, comms: 30,
+  // 空島の部屋 (クライアントの THEMES[40〜50])
+  plaza: 40, garden: 41, windmill: 42, ruins: 43, crystal: 44, harbor: 45, shrine: 46, observatory: 47, nest: 48, spring: 49, bellTower: 50 };
+const LAYOUTS = [
+  {
+    theme: 'island', name: 'ヤシの入り江', desc: '拠点が北にある基本の島。南に大きな浜辺、西に灯台と難破船。',
+    rooms: {
+      camp:     { x: 22, y: 2,  w: 14, h: 10 }, // 【大】拠点 (集合の鐘)
+      beach:    { x: 28, y: 22, w: 12, h: 12 }, // 【大】大きな浜辺
+      wreck:    { x: 2,  y: 2,  w: 10, h: 8 },  // 【中】難破船
+      forest:   { x: 2,  y: 16, w: 9,  h: 9 },  // 【中】深い森
+      light:    { x: 2,  y: 29, w: 11, h: 9 },  // 【中】灯台
+      bamboo:   { x: 44, y: 10, w: 10, h: 10 }, // 【中】竹林
+      falls:    { x: 14, y: 11, w: 7,  h: 6 },  // 【小】滝つぼ (行き止まり)
+      mangrove: { x: 12, y: 20, w: 6,  h: 5 },  // 【小】マングローブ (行き止まり)
+      tower:    { x: 16, y: 27, w: 8,  h: 7 },  // 【小】見張り台 (袋小路)
+      rocks:    { x: 37, y: 2,  w: 7,  h: 6 },  // 【小】岩場の入り江
+      drift:    { x: 40, y: 28, w: 8,  h: 7 },  // 【小】漂着物の浜 (大きな浜辺と重ならないよう2マス右へ)
+    },
+    corridors: [
+      [[22, 5], [11, 5]], [[17, 5], [17, 11]], [[6, 9], [6, 16]], [[5, 24], [5, 29]], [[8, 21], [12, 21]],
+      [[11, 33], [28, 33]], [[20, 31], [20, 33]], [[30, 11], [30, 22]], [[36, 5], [44, 5], [44, 10]],
+      [[53, 15], [53, 30], [45, 30]], [[38, 30], [39, 30]],
+    ],
+    optional: [
+      [[20, 16], [20, 24]], [[18, 16], [18, 20]], [[30, 16], [37, 16], [37, 10]], [[49, 17], [49, 28]],
+      [[7, 17], [12, 17], [12, 15], [14, 15]], [[37, 28], [37, 33]],
+    ],
+    pillars: [[31, 26, 1, 4], [34, 29, 2, 2], [5, 18, 2, 2], [46, 14, 2, 1], [18, 30, 1, 2], [26, 8, 1, 2], [33, 8, 1, 2]],
+  },
+  {
+    theme: 'island', name: '双子の浜', desc: '拠点が島の真ん中。北東の灯台と南東の浜辺、2つの海岸を結ぶ環状ルート。',
+    rooms: {
+      camp:     { x: 25, y: 14, w: 14, h: 11 },
+      beach:    { x: 46, y: 27, w: 15, h: 11 },
+      wreck:    { x: 2,  y: 2,  w: 11, h: 9 },
+      forest:   { x: 4,  y: 16, w: 10, h: 10 },
+      light:    { x: 51, y: 2,  w: 11, h: 9 },
+      bamboo:   { x: 48, y: 14, w: 10, h: 9 },
+      falls:    { x: 17, y: 3,  w: 7,  h: 6 },
+      tower:    { x: 36, y: 3,  w: 7,  h: 6 },
+      mangrove: { x: 16, y: 30, w: 8,  h: 6 },
+      rocks:    { x: 2,  y: 31, w: 8,  h: 7 },
+      drift:    { x: 33, y: 31, w: 8,  h: 6 },
+    },
+    corridors: [
+      [[25, 19], [13, 19]], [[8, 16], [8, 10]], [[12, 5], [17, 5]], [[20, 8], [20, 12], [28, 12], [28, 14]],
+      [[36, 14], [36, 11], [39, 11], [39, 8]], [[42, 5], [51, 5]], [[55, 10], [55, 14]], [[48, 18], [38, 18]],
+      [[52, 22], [52, 27]], [[46, 33], [40, 33]], [[36, 31], [36, 24]], [[6, 25], [6, 31]], [[9, 33], [16, 33]],
+    ],
+    optional: [
+      [[23, 33], [33, 33]], [[23, 4], [36, 4]], [[28, 24], [28, 28], [20, 28], [20, 30]], [[60, 10], [60, 27]],
+      [[11, 16], [11, 12], [19, 12], [19, 9]],
+    ],
+    pillars: [[29, 16, 1, 2], [35, 22, 1, 2], [50, 31, 2, 2], [56, 29, 1, 3], [8, 20, 2, 2], [55, 5, 2, 1], [6, 5, 1, 2]],
+  },
+  {
+    theme: 'island', name: '霧の密林', desc: '西半分が深い森。道が細く曲がりくねり、見通しの悪い行き止まりが多い。',
+    rooms: {
+      camp:     { x: 25, y: 15, w: 14, h: 10 },
+      beach:    { x: 44, y: 27, w: 17, h: 11 },
+      forest:   { x: 3,  y: 14, w: 11, h: 11 },
+      bamboo:   { x: 22, y: 2,  w: 11, h: 9 },
+      wreck:    { x: 50, y: 3,  w: 11, h: 9 },
+      light:    { x: 20, y: 29, w: 11, h: 9 },
+      falls:    { x: 5,  y: 3,  w: 8,  h: 7 },
+      tower:    { x: 38, y: 3,  w: 7,  h: 6 },
+      mangrove: { x: 44, y: 15, w: 7,  h: 7 },
+      drift:    { x: 54, y: 16, w: 7,  h: 6 },
+      rocks:    { x: 4,  y: 30, w: 8,  h: 7 },
+    },
+    corridors: [
+      [[25, 20], [13, 20]], [[8, 14], [8, 9]], [[12, 6], [22, 6]], [[28, 10], [28, 15]], [[32, 5], [38, 5]],
+      [[44, 6], [50, 6]], [[57, 11], [57, 16]], [[57, 21], [57, 27]], [[44, 33], [30, 33]], [[20, 33], [11, 33]],
+      [[7, 30], [7, 24]], [[38, 18], [44, 18]],
+    ],
+    optional: [
+      [[50, 18], [54, 18]], [[30, 24], [30, 29]], [[41, 8], [41, 12], [47, 12], [47, 15]],
+      [[13, 23], [17, 23], [17, 31], [20, 31]], [[48, 21], [48, 27]],
+    ],
+    pillars: [[27, 6, 1, 1], [30, 4, 1, 2], [48, 31, 2, 2], [55, 34, 2, 1], [7, 18, 2, 2], [54, 6, 1, 2], [24, 32, 1, 1]],
+  },
+];
+
+// ===== 宇宙船レイアウト (船の形: 左が機関部、右端が艦橋。11部屋: 大2 中4 小5) =====
+LAYOUTS.push({
+  theme: 'space', name: '宇宙船', desc: 'SF風の宇宙船。左に2基のエンジンと原子炉、右端に操舵室。中央の食堂に緊急会議ボタン。',
+  hub: 'cafeteria', crates: ['storage', 'upperEngine', 'lowerEngine', 'comms'],
+  rooms: {
+    cafeteria:   { x: 24, y: 4,  w: 14, h: 10 }, // 【大】食堂 (緊急会議ボタン)
+    storage:     { x: 26, y: 24, w: 13, h: 11 }, // 【大】貯蔵庫
+    upperEngine: { x: 2,  y: 4,  w: 10, h: 8 },  // 【中】上部エンジン
+    lowerEngine: { x: 2,  y: 28, w: 10, h: 8 },  // 【中】下部エンジン
+    reactor:     { x: 2,  y: 15, w: 9,  h: 10 }, // 【中】原子炉
+    nav:         { x: 52, y: 14, w: 10, h: 11 }, // 【中】操舵室 (船首)
+    medbay:      { x: 15, y: 12, w: 7,  h: 6 },  // 【小】医務室
+    security:    { x: 14, y: 19, w: 6,  h: 5 },  // 【小】警備室
+    electrical:  { x: 15, y: 26, w: 8,  h: 5 },  // 【小】電気室 (袋小路)
+    o2:          { x: 42, y: 6,  w: 7,  h: 6 },  // 【小】酸素室
+    comms:       { x: 42, y: 28, w: 8,  h: 6 },  // 【小】通信室
+  },
+  corridors: [
+    [[24, 8], [12, 8]], [[6, 12], [6, 15]], [[6, 25], [6, 28]], [[12, 33], [26, 33]], [[18, 8], [18, 12]],
+    [[11, 21], [14, 21]], [[19, 30], [19, 33]], [[31, 14], [31, 24]], [[38, 8], [42, 8]],
+    [[48, 9], [55, 9], [55, 14]], [[56, 25], [56, 31], [50, 31]], [[42, 30], [39, 30]],
+  ],
+  optional: [[[17, 17], [17, 19]], [[39, 19], [52, 19]], [[23, 28], [26, 28]], [[50, 29], [53, 29], [53, 25]], [[8, 12], [8, 13], [12, 13], [12, 12]]],
+  pillars: [[27, 6, 1, 2], [34, 6, 1, 2], [27, 11, 1, 1], [35, 11, 1, 1], [29, 27, 2, 2], [34, 30, 2, 2], [8, 19, 2, 2], [57, 18, 2, 1], [4, 6, 2, 1], [4, 31, 2, 1]],
+  taskRooms: {
+    stations: { fuse: 'electrical', battery: 'lowerEngine', core: 'reactor' },
+    101: 'nav', 102: 'nav', 103: 'o2', 104: 'upperEngine', 105: 'storage', 106: 'electrical', 107: 'comms', 108: 'security',
+    109: 'medbay', 110: 'upperEngine', 111: 'o2', 112: 'storage', 113: 'reactor', 114: 'comms', 115: 'lowerEngine',
+  },
+});
+
+
+// ===== 宇宙船レイアウト 2〜3 (部屋の種類・タスク配置は宇宙船1と共通) =====
+const SPACE_TR = LAYOUTS[LAYOUTS.length - 1].taskRooms;
+LAYOUTS.push({
+  theme: 'space', name: '貨物船', desc: '横長の貨物船。中央の背骨通路で左の機関部と右の大型貨物室を結ぶ。上下に小部屋が並ぶ。',
+  hub: 'cafeteria', crates: ['storage', 'upperEngine', 'lowerEngine', 'comms'], taskRooms: SPACE_TR,
+  rooms: {
+    cafeteria:   { x: 25, y: 15, w: 14, h: 10 }, // 【大】食堂 (中央)
+    storage:     { x: 46, y: 15, w: 14, h: 11 }, // 【大】貨物室 (右)
+    upperEngine: { x: 3,  y: 3,  w: 10, h: 8 },  // 【中】
+    lowerEngine: { x: 3,  y: 29, w: 10, h: 8 },  // 【中】
+    reactor:     { x: 2,  y: 16, w: 9,  h: 8 },  // 【中】
+    nav:         { x: 50, y: 3,  w: 11, h: 9 },  // 【中】
+    medbay:      { x: 16, y: 4,  w: 7,  h: 6 },  // 【小】
+    security:    { x: 16, y: 30, w: 7,  h: 6 },  // 【小】
+    electrical:  { x: 34, y: 4,  w: 8,  h: 6 },  // 【小】
+    o2:          { x: 34, y: 31, w: 8,  h: 6 },  // 【小】
+    comms:       { x: 51, y: 30, w: 9,  h: 6 },  // 【小】
+  },
+  corridors: [
+    [[10, 20], [25, 20]], [[38, 20], [46, 20]], [[7, 10], [7, 16]], [[7, 23], [7, 29]], [[12, 6], [16, 6]], [[12, 32], [16, 32]],
+    [[19, 9], [19, 13], [28, 13], [28, 15]], [[19, 30], [19, 27], [28, 27], [28, 24]], [[37, 15], [37, 9]], [[37, 24], [37, 31]],
+    [[55, 15], [55, 11]], [[55, 25], [55, 30]], [[41, 6], [50, 6]],
+  ],
+  optional: [[[41, 33], [51, 33]], [[22, 5], [34, 5]], [[22, 34], [34, 34]], [[61, 11], [61, 30]]],
+  pillars: [[28, 17, 1, 2], [35, 17, 1, 2], [28, 22, 1, 1], [36, 22, 1, 1], [49, 18, 2, 2], [54, 21, 2, 2], [3, 19, 2, 2], [55, 6, 2, 1]],
+});
+LAYOUTS.push({
+  theme: 'space', name: '研究ステーション', desc: '環状の宇宙ステーション。中央ハブの食堂から4方向へ通路が伸び、外周をリング通路が一周する。',
+  hub: 'cafeteria', crates: ['storage', 'upperEngine', 'lowerEngine', 'reactor'], taskRooms: SPACE_TR,
+  rooms: {
+    cafeteria:   { x: 25, y: 14, w: 14, h: 11 }, // 【大】中央ハブ
+    storage:     { x: 24, y: 29, w: 15, h: 9 },  // 【大】
+    upperEngine: { x: 2,  y: 2,  w: 10, h: 9 },  // 【中】
+    lowerEngine: { x: 2,  y: 29, w: 10, h: 9 },  // 【中】
+    reactor:     { x: 52, y: 15, w: 10, h: 10 }, // 【中】
+    nav:         { x: 26, y: 2,  w: 12, h: 8 },  // 【中】
+    medbay:      { x: 14, y: 15, w: 7,  h: 6 },  // 【小】
+    security:    { x: 44, y: 4,  w: 7,  h: 6 },  // 【小】
+    electrical:  { x: 52, y: 30, w: 8,  h: 6 },  // 【小】
+    o2:          { x: 44, y: 30, w: 7,  h: 6 },  // 【小】
+    comms:       { x: 3,  y: 17, w: 7,  h: 6 },  // 【小】
+  },
+  corridors: [
+    [[11, 5], [26, 5]], [[37, 6], [44, 6]], [[48, 9], [48, 12], [56, 12], [56, 15]], [[56, 24], [56, 30]], [[52, 33], [49, 33]],
+    [[44, 33], [38, 33]], [[24, 33], [11, 33]], [[6, 29], [6, 22]], [[6, 17], [6, 10]],
+    [[31, 9], [31, 14]], [[33, 24], [33, 29]], [[20, 18], [25, 18]], [[9, 19], [14, 19]], [[38, 20], [52, 20]],
+  ],
+  optional: [[[46, 30], [46, 9]], [[17, 15], [17, 8], [11, 8]], [[60, 30], [60, 24]]],
+  pillars: [[28, 16, 1, 2], [36, 16, 1, 2], [28, 22, 1, 1], [36, 22, 1, 1], [27, 31, 2, 2], [34, 34, 2, 1], [56, 18, 2, 2], [30, 4, 1, 1]],
+});
+
+// ===== 空島レイアウト (雲海に浮かぶ島々を吊り橋で結ぶ。3種・どれも11部屋: 大2 中4 小5) =====
+// 部屋: 大=plaza(天空の広場)/garden(浮遊庭園)  中=windmill(風車の丘)/ruins(古代遺跡)/crystal(浮遊石の鉱床)/harbor(飛行船の港)
+//       小=shrine(風の祠)/observatory(天文台)/nest(巨鳥の巣)/spring(天空の泉)/bellTower(鐘楼)
+const SKY_TR = {
+  stations: { stone: 'crystal', gear: 'ruins', seed: 'nest' },
+  201: 'plaza', 202: 'windmill', 203: 'garden', 204: 'harbor', 205: 'windmill', 206: 'ruins', 207: 'observatory', 208: 'shrine',
+  209: 'bellTower', 210: 'spring', 211: 'garden', 212: 'crystal', 213: 'harbor', 214: 'nest', 215: 'spring',
+};
+const SKY_COMMON = { theme: 'sky', hub: 'plaza', crates: ['garden', 'crystal', 'ruins', 'harbor'], taskRooms: SKY_TR, warpRooms: ['windmill', 'ruins', 'garden', 'crystal', 'nest', 'spring'] };
+LAYOUTS.push({
+  ...SKY_COMMON, name: '雲上の広場', desc: '中央の天空広場から四方へ吊り橋が伸びる基本の空島。外周の島々も橋で一周できる。',
+  rooms: {
+    plaza: { x: 25, y: 14, w: 14, h: 11 }, garden: { x: 3, y: 26, w: 14, h: 11 },
+    windmill: { x: 3, y: 3, w: 10, h: 9 }, ruins: { x: 48, y: 3, w: 12, h: 9 }, crystal: { x: 50, y: 26, w: 11, h: 10 }, harbor: { x: 26, y: 30, w: 12, h: 8 },
+    shrine: { x: 29, y: 3, w: 7, h: 6 }, observatory: { x: 43, y: 15, w: 7, h: 6 }, nest: { x: 5, y: 16, w: 7, h: 6 }, spring: { x: 53, y: 16, w: 7, h: 6 }, bellTower: { x: 17, y: 18, w: 6, h: 6 },
+  },
+  corridors: [
+    [[32, 14], [32, 8]], [[29, 5], [12, 5]], [[35, 5], [48, 5]], [[8, 11], [8, 16]], [[8, 21], [8, 26]], [[11, 20], [17, 20]], [[22, 20], [25, 20]],
+    [[38, 17], [43, 17]], [[49, 18], [53, 18]], [[55, 11], [55, 16]], [[55, 21], [55, 26]], [[31, 24], [31, 30]], [[26, 33], [16, 33]], [[37, 32], [50, 32]],
+  ],
+  optional: [[[19, 23], [19, 28], [16, 28]], [[12, 9], [20, 9], [20, 18]], [[46, 15], [46, 9], [48, 9]], [[38, 23], [45, 23], [45, 28], [50, 28]]],
+  pillars: [[28, 16, 1, 1], [36, 16, 1, 1], [28, 22, 1, 1], [36, 22, 1, 1], [6, 29, 2, 2], [12, 33, 1, 1], [53, 29, 2, 2], [57, 32, 1, 1], [29, 35, 1, 1], [34, 35, 1, 1], [51, 6, 1, 1], [56, 6, 1, 1], [51, 9, 1, 1], [56, 9, 1, 1]],
+});
+LAYOUTS.push({
+  ...SKY_COMMON, name: '双子の浮遊大陸', desc: '左の大陸(庭園と風車)と右の大陸(遺跡と鉱床)を、中央広場を挟む長い吊り橋が結ぶ。',
+  rooms: {
+    plaza: { x: 25, y: 13, w: 14, h: 11 }, garden: { x: 2, y: 14, w: 13, h: 11 },
+    windmill: { x: 3, y: 2, w: 10, h: 8 }, harbor: { x: 3, y: 29, w: 11, h: 9 }, ruins: { x: 49, y: 2, w: 11, h: 9 }, crystal: { x: 50, y: 28, w: 11, h: 9 },
+    spring: { x: 50, y: 16, w: 8, h: 6 }, shrine: { x: 28, y: 2, w: 8, h: 6 }, observatory: { x: 28, y: 30, w: 8, h: 6 }, nest: { x: 16, y: 4, w: 7, h: 6 }, bellTower: { x: 40, y: 30, w: 6, h: 6 },
+  },
+  corridors: [
+    [[14, 18], [25, 18]], [[38, 18], [50, 18]], [[7, 9], [7, 14]], [[7, 24], [7, 29]], [[12, 6], [16, 6]], [[22, 5], [28, 5]], [[31, 7], [31, 13]],
+    [[35, 4], [49, 4]], [[54, 10], [54, 16]], [[54, 21], [54, 28]], [[33, 23], [33, 30]], [[35, 33], [40, 33]], [[45, 32], [50, 32]], [[13, 33], [28, 33]],
+  ],
+  optional: [[[12, 14], [12, 11], [19, 11], [19, 9]], [[61, 10], [61, 28]], [[37, 23], [42, 23], [42, 30]]],
+  pillars: [[28, 15, 1, 1], [36, 15, 1, 1], [28, 21, 1, 1], [36, 21, 1, 1], [5, 17, 2, 2], [10, 21, 1, 1], [53, 31, 2, 2], [52, 5, 1, 1], [56, 5, 1, 1], [52, 8, 1, 1], [56, 8, 1, 1], [6, 32, 1, 1], [10, 35, 1, 1]],
+});
+LAYOUTS.push({
+  ...SKY_COMMON, name: '天空の螺旋', desc: '島々が渦を巻くように連なる空島。外周の螺旋ルートは長く、近道の橋は少ない。',
+  rooms: {
+    plaza: { x: 25, y: 15, w: 14, h: 10 }, garden: { x: 46, y: 26, w: 15, h: 11 },
+    windmill: { x: 3, y: 3, w: 10, h: 8 }, ruins: { x: 3, y: 28, w: 11, h: 9 }, crystal: { x: 49, y: 3, w: 11, h: 9 }, harbor: { x: 22, y: 30, w: 12, h: 8 },
+    shrine: { x: 17, y: 4, w: 7, h: 6 }, observatory: { x: 34, y: 3, w: 7, h: 6 }, nest: { x: 4, y: 16, w: 7, h: 6 }, spring: { x: 52, y: 15, w: 7, h: 6 }, bellTower: { x: 38, y: 30, w: 6, h: 6 },
+  },
+  corridors: [
+    [[12, 6], [17, 6]], [[23, 6], [34, 6]], [[40, 5], [49, 5]], [[55, 11], [55, 15]], [[55, 20], [55, 26]], [[46, 33], [43, 33]], [[38, 33], [33, 33]],
+    [[22, 33], [13, 33]], [[7, 28], [7, 21]], [[7, 16], [7, 10]],
+    [[10, 19], [25, 19]], [[38, 18], [52, 18]], [[20, 9], [20, 13], [29, 13], [29, 15]], [[30, 24], [30, 30]],
+  ],
+  optional: [[[37, 8], [37, 15]], [[36, 24], [36, 28], [40, 28], [40, 30]], [[2, 10], [2, 28]], [[61, 11], [61, 26]]],
+  pillars: [[28, 17, 1, 1], [36, 17, 1, 1], [28, 23, 1, 1], [36, 23, 1, 1], [50, 29, 2, 2], [56, 33, 1, 1], [52, 6, 2, 2], [6, 31, 1, 1], [10, 34, 1, 1], [25, 34, 1, 1], [30, 35, 1, 1]],
+});
+
+// タスク・置き場をどの部屋に置くか (森ゾーン: forest/bamboo/falls/mangrove/tower)
+const TASK_ROOMS = {
+  stations: { wood: 'forest', nut: 'falls', sos: 'wreck', scrap: 'drift' }, // 拾う場所
+  1: 'camp', 2: 'camp',       // 薪・木の実は中央の拠点へ届ける
+  3: 'light', 4: 'tower',
+  5: 'forest', 6: 'forest', 7: 'bamboo', 8: 'tower', 9: 'mangrove', 10: 'bamboo', 13: 'falls',
+  11: 'wreck', 12: 'rocks', 14: 'rocks', 15: 'beach',
+};
+
+function genMap(layoutIdx, seedIn) {
+  const L = LAYOUTS[layoutIdx] || LAYOUTS[0];
+  const seed = seedIn != null ? seedIn : Math.floor(Math.random() * 2147483647);
+  const rng = mulberry32(seed);
+  const ri = (a, b) => a + Math.floor(rng() * (b - a + 1));
+  // プレビューと一致させるため反転はしない (通路と部屋サイズだけ毎試合少し変わる)
+  const tc = c => c, tr = r => r;
+  const trect = ([x, y, w, h]) => [x, y, w, h];
+
+  const g = Array.from({ length: ROWS }, () => Array(COLS).fill(true));
+  const wall = (c, r) => c < 0 || r < 0 || c >= COLS || r >= ROWS || g[r][c];
+  const carve = (c0, r0, c1, r1) => {
+    for (let r = Math.max(1, Math.min(r0, r1)); r <= Math.min(ROWS - 2, Math.max(r0, r1)); r++)
+      for (let c = Math.max(1, Math.min(c0, c1)); c <= Math.min(COLS - 2, Math.max(c0, c1)); c++) g[r][c] = false;
+  };
+  const carvePath = (pts) => {
+    for (let i = 0; i < pts.length - 1; i++) {
+      const a = [tc(pts[i][0]), tr(pts[i][1])], b = [tc(pts[i + 1][0]), tr(pts[i + 1][1])];
+      // 区間の向き(右→左/下→上)に関係なく、両端を1マスずつ広げて3マス幅で掘る (以前は逆向き区間の端が縮み、宇宙船右下が行き止まりになっていた)
+      carve(Math.min(a[0], b[0]) - 1, Math.min(a[1], b[1]) - 1, Math.max(a[0], b[0]) + 1, Math.max(a[1], b[1]) + 1);
+    }
+  };
+
+  // 部屋 (サイズを ±1 セル揺らして毎回少し違う形に)
+  const R = {};
+  for (const key in L.rooms) {
+    const o = L.rooms[key];
+    const fixed = key === (L.hub || 'camp');
+    const jx = fixed ? 0 : ri(-1, 0), jw = fixed ? 0 : ri(0, 1);
+    const jy = fixed ? 0 : ri(-1, 0), jh = fixed ? 0 : ri(0, 1);
+    const [x, y, w, h] = trect([o.x + jx, o.y + jy, o.w + jw - jx, o.h + jh - jy]);
+    R[key] = { key, x, y, w, h, th: ROOM_TH[key] };
+    carve(x, y, x + w - 1, y + h - 1);
+  }
+  for (const p of L.corridors) carvePath(p);
+  // 抜け道は 2〜4 本をランダムに開通
+  const opt = L.optional.slice().sort(() => rng() - 0.5).slice(0, ri(2, 4));
+  for (const p of opt) carvePath(p);
+
+  // 柱・仕切り
+  for (const pr of L.pillars) {
+    const [x, y, w, h] = trect(pr);
+    for (let r = y; r < y + h; r++) for (let c = x; c < x + w; c++) if (r > 0 && c > 0 && r < ROWS - 1 && c < COLS - 1) g[r][c] = true;
+  }
+  // 大部屋にランダムな木箱 (1x1) を少し
+  for (const key of (L.crates || ['beach', 'forest', 'light', 'drift'])) {
+    const rm = R[key];
+    for (let n = ri(0, 2); n > 0; n--) {
+      const c = ri(rm.x + 2, rm.x + rm.w - 3), r = ri(rm.y + 2, rm.y + rm.h - 3);
+      g[r][c] = true;
+    }
+  }
+
+  const hall = R[L.hub || 'camp'];
+  const bc = { c: hall.x + (hall.w >> 1), r: hall.y + (hall.h >> 1) };
+  // 会議ルーム中央のクリアゾーン (ボタンとスポーンリング用)
+  for (let r = hall.y; r < hall.y + hall.h; r++) for (let c = hall.x; c < hall.x + hall.w; c++)
+    if (Math.hypot(c - bc.c, r - bc.r) <= 3.4) g[r][c] = false;
+
+  // 斜め接触(角だけで接する壁)の除去。※柱や1マス幅の仕切りを侵食しないよう、突起削りは行わない
+  for (let it = 0; it < 4; it++) {
+    let changed = false;
+    for (let r = 0; r < ROWS - 1; r++) for (let c = 0; c < COLS - 1; c++) {
+      const a = wall(c, r), b = wall(c + 1, r), d = wall(c, r + 1), e = wall(c + 1, r + 1);
+      let tr2 = -1, tc2 = -1;
+      if (a && e && !b && !d) { tr2 = r; tc2 = c; } else if (b && d && !a && !e) { tr2 = r; tc2 = c + 1; }
+      if (tr2 >= 1 && tc2 >= 1 && tr2 < ROWS - 1 && tc2 < COLS - 1) { g[tr2][tc2] = false; changed = true; }
+    }
+    if (!changed) break;
+  }
+
+  // 到達性チェック: 会議ルームから行けない空間は壁で埋める (スタック防止)
+  const flood = () => {
+    const reach = new Set([bc.r * COLS + bc.c]);
+    const q = [[bc.c, bc.r]];
+    for (let i = 0; i < q.length; i++) {
+      const [c, r] = q[i];
+      for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nc = c + dc, nr = r + dr;
+        if (wall(nc, nr) || reach.has(nr * COLS + nc)) continue;
+        reach.add(nr * COLS + nc); q.push([nc, nr]);
+      }
+    }
+    return reach;
+  };
+  let reach = flood();
+  // 万一ある部屋が孤立したら、その部屋からホールへ直線通路を掘って救済
+  for (const key in R) {
+    const rm = R[key], cc = rm.x + (rm.w >> 1), cr = rm.y + (rm.h >> 1);
+    let ok = false;
+    for (let r = rm.y; r < rm.y + rm.h && !ok; r++) for (let c = rm.x; c < rm.x + rm.w; c++) if (reach.has(r * COLS + c)) { ok = true; break; }
+    if (!ok) { carve(cc - 1, cr - 1, bc.c + 1, cr + 1); carve(bc.c - 1, cr - 1, bc.c + 1, bc.r + 1); reach = flood(); }
+  }
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) if (!g[r][c] && !reach.has(r * COLS + c)) g[r][c] = true;
+
+  // 設備配置: 指定部屋の中で 3x3 が空いている到達可能セル。設備同士は離す
+  const open3 = (c, r) => { for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) if (wall(c + dc, r + dr)) return false; return true; };
+  const used = [];
+  const okCell = (c, r, minD) => reach.has(r * COLS + c) && open3(c, r) && Math.hypot(c - bc.c, r - bc.r) >= 5 && !used.some(u => Math.hypot(u.c - c, u.r - r) < minD);
+  const roomList = Object.values(R).filter(r => r !== hall);
+  function spot(prefKey) {
+    const tryRoom = (rm, minD, tries) => {
+      for (let t = 0; t < tries; t++) {
+        const c = ri(rm.x + 1, rm.x + rm.w - 2), r = ri(rm.y + 1, rm.y + rm.h - 2);
+        if (okCell(c, r, minD)) { used.push({ c, r }); return cp(c, r); }
+      }
+      return null;
+    };
+    const pref = R[prefKey];
+    for (const minD of [4, 3, 2.5]) { const p = pref && tryRoom(pref, minD, 200); if (p) return p; }
+    for (const minD of [5, 3]) for (const rm of roomList.slice().sort(() => rng() - 0.5)) { const p = tryRoom(rm, minD, 60); if (p) return p; }
+    for (const idx of reach) {
+      const c = idx % COLS, r = (idx / COLS) | 0;
+      if (okCell(c, r, 1)) { used.push({ c, r }); return cp(c, r); }
+    }
+    return cp(bc.c + 4, bc.r);
+  }
+  const stations = {};
+  const TR = L.taskRooms || TASK_ROOMS, theme = L.theme || 'island';
+  for (const it in TR.stations) stations[it] = spot(TR.stations[it]);
+  const tasks = {};
+  for (const d of tasksOf(theme)) tasks[d.id] = spot(TR[d.id]);
+  // インポスター専用のワープ地点 (6か所。クルーには見えない)
+  const WR = L.warpRooms || (theme === 'space' ? ['upperEngine', 'lowerEngine', 'reactor', 'nav', 'security', 'comms'] : ['wreck', 'forest', 'light', 'bamboo', 'rocks', 'drift']);
+  const warps = WR.filter(k => R[k]).map(k => ({ ...spot(k), th: R[k].th }));
+  // 宇宙船: 電気のショートで火花が散る配線 (5か所)
+  const shorts = theme === 'space' ? ['electrical', 'upperEngine', 'nav', 'comms', 'storage'].map(k => ({ ...spot(k), th: R[k].th })) : [];
+  // 孤島: 水が氾濫しうる通路 (通路の途中の 3x3 マス)
+  const floods = [];
+  const inAnyRoom = (c, r) => Object.values(R).some(rm => c >= rm.x && c < rm.x + rm.w && r >= rm.y && r < rm.y + rm.h);
+  // 孤島=水の氾濫 / 空島=雲海の侵入 で塞がる通路
+  if (theme !== 'space') for (const pts of [...L.corridors, ...opt]) for (let i = 0; i < pts.length - 1; i++) {
+    const a = pts[i], b = pts[i + 1]; if (Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) < 4) continue;
+    const mc = Math.round((a[0] + b[0]) / 2), mr = Math.round((a[1] + b[1]) / 2), z = { c0: mc - 1, r0: mr - 1, c1: mc + 1, r1: mr + 1 };
+    let ok = true; for (let r = z.r0; r <= z.r1; r++) for (let c = z.c0; c <= z.c1; c++) if (wall(c, r) || !reach.has(r * COLS + c) || inAnyRoom(c, r)) ok = false;
+    if (ok && !floods.some(f => Math.abs(f.c0 - z.c0) < 3 && Math.abs(f.r0 - z.r0) < 3)) floods.push(z);
+  }
+
+  return {
+    seed, layout: layoutIdx, name: L.name, theme, grid: g, rows: g.map(row => row.map(v => (v ? '1' : '0')).join('')),
+    rooms: Object.values(R).map(r => [r.x, r.y, r.w, r.h, r.th]),
+    button: cp(bc.c, bc.r), stations, tasks, warps, shorts, floods,
+  };
+}
+// GENMAP>>
+
+// ロビーのプレビュー用 (固定シードで1回だけ生成)
+let MAP_PREVIEWS = null;
+const mapPayload = (m) => ({ seed: m.seed, layout: m.layout, name: m.name, theme: m.theme, rows: m.rows, rooms: m.rooms, WARPS: (m.warps || []).map(w => ({ x: w.x, y: w.y, th: w.th })), BUTTON: m.button, STATIONS: m.stations, TPOS: m.tasks });
+
+function resolveWalls(grid, p, extra) {
+  const isWall = (c, r) => (c < 0 || r < 0 || c >= COLS || r >= ROWS) ? true : (grid[r][c] || (extra ? extra(c, r) : false));
+  for (let it = 0; it < 16; it++) {
+    let moved = false;
+    const c0 = Math.floor((p.x - PR) / CELL), c1 = Math.floor((p.x + PR) / CELL);
+    const r0 = Math.floor((p.y - PR) / CELL), r1 = Math.floor((p.y + PR) / CELL);
+    for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) {
+      if (!isWall(c, r)) continue;
+      const rx = c * CELL, ry = r * CELL;
+      const cx = Math.max(rx, Math.min(rx + CELL, p.x)), cy = Math.max(ry, Math.min(ry + CELL, p.y));
+      const dx = p.x - cx, dy = p.y - cy, d2 = dx * dx + dy * dy;
+      if (d2 >= PR * PR) continue;
+      if (d2 > 1e-6) { const d = Math.sqrt(d2); p.x += dx / d * (PR - d); p.y += dy / d * (PR - d); }
+      else {
+        const l = p.x - rx, rt = rx + CELL - p.x, t = p.y - ry, b = ry + CELL - p.y, m = Math.min(l, rt, t, b);
+        if (m === l) p.x = rx - PR; else if (m === rt) p.x = rx + CELL + PR; else if (m === t) p.y = ry - PR; else p.y = ry + CELL + PR;
+      }
+      moved = true;
+    }
+    if (!moved) break;
+  }
+}
+
+// ---------- ルーム管理 (5桁コード) ----------
 const rooms = new Map();
+const sockRoom = new Map();
 
-function lobbyPayload(room) {
-  return {
-    code: room.code, phase: room.phase, hostId: room.hostId,
-    players: [...room.players.values()].map(p => ({ id: p.id, name: p.name, color: p.color, host: p.id === room.hostId }))
+function newRoom() {
+  let code;
+  do { code = String(Math.floor(Math.random() * 90000) + 10000); } while (rooms.has(code));
+  const R = {
+    code, players: new Map(), joinCounter: 0, impCount: 1, impN: 1, detCount: 1, mapIdx: 0, lchat: [],
+    phase: 'lobby', endsAt: 0, remainAtEnd: GAME_MS, endedAt: 0, progress: 0, crewTotal: 1,
+    result: null, bodies: [], nextBody: 1, meeting: null, noMeetingUntil: 0, freezeUntil: 0, map: null, mapMsg: null,
   };
-}
-function broadcastLobby(room) { io.to(room.code).emit('lobby', lobbyPayload(room)); }
-function ctxOf(socket) {
-  const room = rooms.get(socket.data.room);
-  if (!room) return {};
-  return { room, p: room.players.get(socket.id) };
-}
-function toastTo(id, text, cls = '') { io.to(id).emit('toast', { text, cls }); }
-function sendInv(p) { io.to(p.id).emit('inv', { balls: p.inv.balls, items: p.inv.items, party: p.party }); }
-function fx(room, list) { io.to(room.code).emit('fx', list); }
-
-function newPlayer(socket, name, room) {
-  const used = new Set([...room.players.values()].map(p => p.color));
-  const color = PLAYER_COLORS.find(c => !used.has(c)) || pick(PLAYER_COLORS);
-  return {
-    id: socket.id, name, color, x: WORLD.w / 2, y: WORLD.h / 2, dx: 0, dy: 1, sw: 0, stun: false,
-    lastSword: 0, lastThrow: 0,
-    inv: { balls: 6, items: { power: 1, guard: 1, heal: 1 } },
-    party: [], team: null, selected: false, rescued: 0, ready: false,
-    stats: { caught: 0, defeated: 0, chests: 0 }, battle: null
-  };
+  rooms.set(code, R);
+  return R;
 }
 
-function cleanupRoom(room) {
-  clearInterval(room.tick);
-  clearTimeout(room.exploreTimer);
-  clearTimeout(room.selectTimer);
-  clearTimeout(room.selectStartTimer);
-  for (const B of room.battles || []) clearTimeout(B.timer);
+const rEmit = (R, ev, d) => io.to('r' + R.code).emit(ev, d);
+const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+const near = (p, pos, r) => dist(p, pos) <= r;
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const toast = (p, text, kind) => io.to(p.id).emit('toast', { text, kind: kind || 'info' });
+const participants = (R) => [...R.players.values()].filter(p => !p.late);
+const hostId = (R) => { let h = null; for (const p of R.players.values()) if (!h || p.joinOrder < h.joinOrder) h = p; return h ? h.id : null; };
+const maxImp = (n) => Math.min(MAX_IMP, Math.max(1, Math.floor((n - 1) / 2)));
+const hasItem = (p, t) => p.item === t;
+const removeItem = (p, t) => { if (!hasItem(p, t)) return false; p.item = null; return true; };
+function cancelMini(p) { if (p.mini) { p.mini = null; io.to(p.id).emit('miniCancel'); } }
+const tpos = (R, id) => R.map.tasks[id];
+
+function ringPos(R, i, n, rad) {
+  const a = (i / Math.max(1, n)) * Math.PI * 2;
+  return { x: R.map.button.x + Math.cos(a) * rad, y: R.map.button.y + Math.sin(a) * rad };
 }
 
-function leaveRoom(socket) {
-  const code = socket.data.room;
-  if (!code) return;
-  socket.data.room = null;
-  socket.leave(code);
-  const room = rooms.get(code);
-  if (!room) return;
-  const p = room.players.get(socket.id);
-  room.players.delete(socket.id);
-  if (room.players.size === 0) { cleanupRoom(room); rooms.delete(code); return; }
-  if (room.hostId === socket.id) room.hostId = room.players.keys().next().value;
-  if (p) {
-    io.to(code).emit('toast', { text: `${p.name} が退出しました`, cls: 'warn' });
-    if (p.battle && !p.battle.over) battleForfeit(p.battle, p.id);
-  }
-  if (room.phase === 'select' && [...room.players.values()].every(q => q.selected)) finishSelect(room);
-  if (room.phase === 'explore') { io.to(code).emit('readyStatus', readyPayload(room)); checkAllReady(room); }
-  if (room.phase === 'battle') checkAllBattles(room);
-  broadcastLobby(room);
+// ---------- タスク ----------
+function newTask(p) {
+  const all = tasksOf(p.theme || 'island'); // 試合のマップのテーマのタスクだけ
+  let pool = all.filter(t => !p.tasks.includes(t.id) && !p.doneTasks.has(t.id));
+  if (!pool.length) { p.doneTasks.clear(); pool = all.filter(t => !p.tasks.includes(t.id)); }
+  return pool[Math.floor(Math.random() * pool.length)].id;
+}
+function fillTasks(p) { while (p.tasks.length < ACTIVE_TASKS) p.tasks.push(newTask(p)); }
+
+function completeTask(R, p, id) {
+  const d = defOf(id), idx = p.tasks.indexOf(id);
+  if (!d || idx < 0) return;
+  p.tasks.splice(idx, 1); p.doneTasks.add(id); fillTasks(p);
+  io.to(p.id).emit('sfx', 'done');
+  // インポスターがタスクを完了しても全体進捗が進む
+  const k = clamp(4 / Math.max(1, R.crewTotal), 0.5, 1.5);
+  const add = d.pct * k;
+  R.progress = Math.min(100, R.progress + add);
+  toast(p, `${d.name} 完了! 進捗 +${add.toFixed(1)}%`, 'good');
+  checkWin(R);
 }
 
-/* =========================================================
-   ワールド生成
-========================================================= */
-function genWorld(room) {
-  const obs = [], chests = [];
-  const cx = WORLD.w / 2, cy = WORLD.h / 2;
-  const nearCenter = (x, y) => Math.hypot(x - cx, y - cy) < 260;
-  for (let k = 0; k < 12; k++) {
-    const fx0 = rnd(200, WORLD.w - 200), fy0 = rnd(200, WORLD.h - 200);
-    if (nearCenter(fx0, fy0)) continue;
-    const n = 5 + Math.floor(Math.random() * 6);
-    for (let i = 0; i < n; i++) {
-      const x = clamp(fx0 + rnd(-140, 140), 40, WORLD.w - 40), y = clamp(fy0 + rnd(-110, 110), 40, WORLD.h - 40);
-      obs.push({ x: Math.round(x), y: Math.round(y), r: 22, s: +rnd(.9, 1.3).toFixed(2), type: 'tree' });
-    }
-  }
-  for (let i = 0; i < 70; i++) {
-    const x = rnd(40, WORLD.w - 40), y = rnd(40, WORLD.h - 40);
-    if (nearCenter(x, y)) continue;
-    const tree = Math.random() < .6;
-    obs.push({ x: Math.round(x), y: Math.round(y), r: tree ? 22 : 18, s: +rnd(.8, 1.25).toFixed(2), type: tree ? 'tree' : 'rock' });
-  }
-  room.obs = obs;
-  room.chests = chests;
-  let guard = 0;
-  const goldIdx = Math.floor(Math.random() * CHEST_COUNT);
-  while (chests.length < CHEST_COUNT && guard++ < 5000) {
-    const x = rnd(120, WORLD.w - 120), y = rnd(120, WORLD.h - 120);
-    if (nearCenter(x, y)) continue;
-    if (obs.some(o => Math.hypot(x - o.x, y - o.y) < o.r * o.s + 50)) continue;
-    if (chests.some(c => Math.hypot(x - c.x, y - c.y) < (guard < 3000 ? 600 : 200))) continue;
-    chests.push({ id: chests.length, x: Math.round(x), y: Math.round(y), open: false, gold: chests.length === goldIdx });
-  }
-  while (chests.length < CHEST_COUNT) {
-    chests.push({ id: chests.length, x: Math.round(rnd(200, WORLD.w - 200)), y: Math.round(rnd(200, WORLD.h - 200)), open: false, gold: false });
-  }
-  room.mons = [];
-  room.balls = [];
-  room.monSeq = 1;
-  room.spawnT = 0;
+// ---------- 開始・終了 ----------
+function resetPlayer(R, p, i, n) {
+  const pos = ringPos(R, i, n, 100);
+  p.x = pos.x; p.y = pos.y;
+  p.alive = true; p.item = null; p.mini = null; p.input = { x: 0, y: 0 };
+  p.tasks = []; p.doneTasks = new Set(); p.moving = false; p.emUsed = false;
 }
 
-function freeSpot(room, minPlayerDist) {
-  const ps = [...room.players.values()];
-  for (let i = 0; i < 80; i++) {
-    const x = rnd(80, WORLD.w - 80), y = rnd(80, WORLD.h - 80);
-    if (ps.some(p => Math.hypot(x - p.x, y - p.y) < minPlayerDist)) continue;
-    if (room.obs.some(o => Math.hypot(x - o.x, y - o.y) < o.r * o.s + 40)) continue;
-    if (room.chests.some(c => Math.hypot(x - c.x, y - c.y) < 60)) continue;
-    return { x, y };
-  }
-  return { x: rnd(80, WORLD.w - 80), y: rnd(80, WORLD.h - 80) };
-}
-
-function spawnMon(room, minDist) {
-  const c = drawOne([], 4);
-  const pos = freeSpot(room, minDist);
-  const mh = Math.round(c.hp * .6);
-  room.mons.push({
-    i: room.monSeq++, c, x: pos.x, y: pos.y, hp: mh, mh, state: 'w', t: rnd(0, 2), wx: 0, wy: 0, kx: 0, ky: 0,
-    anger: 0, spd: 50 + c.spd * 2.6, faintT: 0, capT: 0, capChance: 0, capOwner: null, hitCd: 0
+function startGame(R) {
+  const part = participants(R);
+  if (part.length < MIN_PLAYERS) return;
+  const now = Date.now();
+  R.map = genMap(R.mapIdx);
+  R.mapMsg = mapPayload(R.map);
+  rEmit(R, 'map', R.mapMsg);
+  R.phase = 'playing'; R.progress = 0; R.result = null; R.bodies = []; R.meeting = null; resetSab(R);
+  R.endsAt = now + GAME_MS; R.noMeetingUntil = now + BTN_LOCK; R.freezeUntil = now + FREEZE_MS;
+  const n = part.length;
+  R.impN = Math.min(R.impCount, maxImp(n));
+  R.crewTotal = n;
+  const imps = new Set(part.slice().sort(() => Math.random() - 0.5).slice(0, R.impN));
+  // クルーの中からランダムに探偵を選ぶ (役職はクルー陣営のまま)
+  const dets = new Set(part.filter(p => !imps.has(p)).sort(() => Math.random() - 0.5).slice(0, R.detCount));
+  part.forEach((p, i) => {
+    resetPlayer(R, p, i, n); p.theme = R.map.theme;
+    p.role = imps.has(p) ? 'imposter' : 'crew';
+    p.sub = dets.has(p) ? 'detective' : null; p.trail = []; p.lastTrail = 0;
+    p.killReady = now + FIRST_KILL_CD; p.sabReady = now + SAB_CD; p.progReady = now + PROG_CD; p.warpReady = 0;
+    fillTasks(p);
   });
-}
-const monCap = room => Math.min(30, 14 + room.players.size * 3);
-
-function collide(room, e, r) {
-  for (const o of room.obs) {
-    const rr = o.r * o.s * .8 + r;
-    const dx = e.x - o.x, dy = e.y - o.y, d2 = dx * dx + dy * dy;
-    if (d2 < rr * rr) { const d = Math.sqrt(d2) || 1; e.x = o.x + dx / d * rr; e.y = o.y + dy / d * rr; }
-  }
-  for (const c of room.chests) {
-    const rr = 16 + r, cy = c.y - 10;
-    const dx = e.x - c.x, dy = e.y - cy, d2 = dx * dx + dy * dy;
-    if (d2 < rr * rr) { const d = Math.sqrt(d2) || 1; e.x = c.x + dx / d * rr; e.y = cy + dy / d * rr; }
-  }
-  e.x = clamp(e.x, r, WORLD.w - r);
-  e.y = clamp(e.y, r, WORLD.h - r);
+  rEmit(R, 'sfx', 'start');
 }
 
-/* =========================================================
-   探索フェーズ：開始・進行
-========================================================= */
-function startGame(room) {
-  cleanupRoom(room);
-  room.phase = 'explore';
-  room.battles = [];
-  genWorld(room);
-  const ps = [...room.players.values()];
-  ps.forEach((p, i) => {
-    const a = (i / Math.max(1, ps.length)) * Math.PI * 2;
-    p.x = WORLD.w / 2 + Math.cos(a) * (ps.length > 1 ? 70 : 0);
-    p.y = WORLD.h / 2 + Math.sin(a) * (ps.length > 1 ? 70 : 0);
-    p.dx = 0; p.dy = 1; p.sw = 0; p.stun = false;
-    p.inv = { balls: 6, items: { power: 1, guard: 1, heal: 1 } };
-    p.party = []; p.team = null; p.selected = false; p.rescued = 0; p.battle = null; p.ready = false;
-    p.stats = { caught: 0, defeated: 0, chests: 0 };
-  });
-  const n = monCap(room);
-  for (let i = 0; i < n; i++) spawnMon(room, 380);
-  room.endAt = Date.now() + EXPLORE_MS;
-  const players = ps.map(p => ({ id: p.id, name: p.name, color: p.color }));
-  io.to(room.code).emit('readyStatus', readyPayload(room));
-  for (const p of ps) {
-    io.to(p.id).emit('gameStart', {
-      world: WORLD, obs: room.obs, chests: room.chests, you: { x: p.x, y: p.y },
-      left: EXPLORE_MS, players
-    });
-    sendInv(p);
-  }
-  broadcastLobby(room);
-  room.tick = setInterval(() => tickRoom(room), TICK_MS);
-  room.exploreTimer = setTimeout(() => endExplore(room), EXPLORE_MS);
-}
-
-function hitMon(room, m, p, nx, ny) {
-  const crit = Math.random() < .15;
-  const dmg = Math.round(rnd(17, 25) * (crit ? 1.6 : 1));
-  m.hp = Math.max(0, m.hp - dmg);
-  m.kx = nx * 420; m.ky = ny * 420;
-  if (m.c.beh === 'calm') m.anger = 6;
-  fx(room, [
-    { k: 'pop', x: m.x, y: m.y - 30, s: (crit ? '会心！' : '') + dmg, col: crit ? '#ffd166' : '#ffffff', z: crit ? 22 : 18 },
-    { k: 'burst', x: m.x, y: m.y, col: '#ffffff', n: 8, sp: 140 },
-    { k: 'flash', i: m.i }
-  ]);
-  if (m.hp <= 0) defeatMon(room, m, p);
-}
-
-function defeatMon(room, m, p) {
-  p.stats.defeated++;
-  fx(room, [{ k: 'burst', x: m.x, y: m.y, col: m.c.col[0], n: 22, sp: 220 }]);
-  if (Math.random() < .25) {
-    room.mons.splice(room.mons.indexOf(m), 1);
-    giveMon(room, p, m.c, `${m.c.em} ${m.c.name} は仲間になりたそうにこちらを見ている… 仲間に加わった！`);
-  } else {
-    m.state = 'f'; m.faintT = 8; m.kx *= .3; m.ky *= .3;
-    fx(room, [{ k: 'pop', x: m.x, y: m.y - 46, s: '気絶！ボールで確定GET', col: '#ffd166', z: 14 }]);
-  }
-  if (Math.random() < BALL_DROP_RATE) {
-    p.inv.balls++;
-    sendInv(p);
-    fx(room, [{ k: 'pop', x: m.x, y: m.y - 62, s: 'パチボール +1', col: '#ff8fab', z: 15 }]);
-    toastTo(p.id, '✨ パチボールを拾った！（+1）', 'item');
-  }
-}
-
-function giveMon(room, p, c, msg) {
-  const inst = rollInstance(c);
-  p.party.push(inst);
-  p.stats.caught++;
-  sendInv(p);
-  toastTo(p.id, (msg || `🎉 ${c.name}（${c.rar}）をゲットした！`) + `　個体値 ${starStr(inst.stars)}`, c.rar === 'SSR' ? 'get ssr' : 'get');
-  if (RAR_RANK[c.rar] >= 2) {
-    for (const q of room.players.values()) if (q.id !== p.id) toastTo(q.id, `📣 ${p.name} が ${c.rar} ${c.em}${c.name} をゲット！`, 'item');
-  }
-}
-
-function giveChest(room, p, c) {
-  const n = c.gold ? 4 : 2;
-  const got = { power: 0, guard: 0, heal: 0 };
-  for (let i = 0; i < n; i++) {
-    const r = Math.random();
-    const k = r < .4 ? 'heal' : r < .7 ? 'power' : 'guard';
-    got[k]++; p.inv.items[k]++;
-  }
-  sendInv(p);
-  const text = Object.keys(got).filter(k => got[k]).map(k => `${ITEMS[k].ic}${ITEMS[k].n}×${got[k]}`).join(' ');
-  fx(room, [{ k: 'pop', x: c.x, y: c.y - 46, s: c.gold ? '金の宝箱！' : 'アイテムGET', col: '#7cf7ff', z: 15 }]);
-  toastTo(p.id, `📦 ${c.gold ? '金の宝箱' : '宝箱'}から ${text} を手に入れた！`, 'item');
-  for (const q of room.players.values()) if (q.id !== p.id) toastTo(q.id, `📦 ${p.name} が宝箱を開けた（残り ${room.chests.filter(x => !x.open).length}個）`, '');
-}
-
-function startCapture(m, ownerId) {
-  const base = { N: .65, R: .45, SR: .3, SSR: .18 }[m.c.rar];
-  m.capChance = m.state === 'f' ? 1 : Math.min(.95, base * (1 + (1 - m.hp / m.mh) * 1.6));
-  m.state = 'c'; m.capT = 1.5; m.kx = m.ky = 0; m.capOwner = ownerId;
-}
-
-function resolveCapture(room, m) {
-  const owner = room.players.get(m.capOwner);
-  if (owner && Math.random() < m.capChance) {
-    room.mons.splice(room.mons.indexOf(m), 1);
-    fx(room, [
-      { k: 'burst', x: m.x, y: m.y, col: '#ffd166', n: 26, sp: 240 },
-      { k: 'pop', x: m.x, y: m.y - 34, s: 'GET!!', col: '#ffd166', z: 24 }
-    ]);
-    giveMon(room, owner, m.c);
-  } else {
-    m.state = 'w';
-    if (m.hp <= 0) m.hp = Math.ceil(m.mh * .3);
-    m.anger = m.c.beh === 'timid' ? 0 : 5;
-    fx(room, [
-      { k: 'burst', x: m.x, y: m.y, col: '#ffffff', n: 18, sp: 220 },
-      { k: 'pop', x: m.x, y: m.y - 34, s: '逃げられた！', col: '#ff9aa8', z: 16 }
-    ]);
-    if (owner) toastTo(owner.id, `${m.c.em} ${m.c.name} はボールから飛び出した！`, 'warn');
-  }
-  m.capOwner = null;
-}
-
-function tickRoom(room) {
-  if (room.phase !== 'explore') return;
-  const dt = TICK_MS / 1000;
-  const ps = [...room.players.values()];
-
-  // 野生パチモン
-  for (let i = room.mons.length - 1; i >= 0; i--) {
-    const m = room.mons[i];
-    m.hitCd = Math.max(0, m.hitCd - dt);
-    if (m.state === 'c') {
-      m.capT -= dt;
-      if (m.capT <= 0) resolveCapture(room, m);
-      continue;
-    }
-    if (m.state === 'f') {
-      m.faintT -= dt;
-      m.x += m.kx * dt; m.y += m.ky * dt;
-      m.kx *= Math.pow(.02, dt); m.ky *= Math.pow(.02, dt);
-      collide(room, m, 18);
-      if (m.faintT <= 0) {
-        m.state = 'w'; m.hp = Math.ceil(m.mh * .4);
-        fx(room, [{ k: 'pop', x: m.x, y: m.y - 30, s: '目を覚ました', col: '#ffffff', z: 13 }]);
-      }
-      continue;
-    }
-    m.anger = Math.max(0, m.anger - dt);
-    let target = null, td = 1e9;
-    for (const p of ps) {
-      if (p.stun) continue;
-      const d = Math.hypot(p.x - m.x, p.y - m.y);
-      if (d < td) { td = d; target = p; }
-    }
-    const aggressive = (m.c.beh === 'aggr' || m.anger > 0) && target;
-    let tx = 0, ty = 0, sp = m.spd;
-    if (aggressive && td < 290) {
-      tx = (target.x - m.x) / (td || 1); ty = (target.y - m.y) / (td || 1);
-      sp *= m.c.beh === 'aggr' ? .78 : .9;
-    } else if (m.c.beh === 'timid' && target && td < 220) {
-      tx = -(target.x - m.x) / (td || 1); ty = -(target.y - m.y) / (td || 1); sp *= .95;
-    } else {
-      m.t -= dt;
-      if (m.t <= 0) {
-        m.t = rnd(1.2, 3);
-        if (Math.random() < .35) { m.wx = 0; m.wy = 0; }
-        else { const a = Math.random() * Math.PI * 2; m.wx = Math.cos(a); m.wy = Math.sin(a); }
-      }
-      tx = m.wx; ty = m.wy; sp *= .4;
-    }
-    m.x += (tx * sp + m.kx) * dt; m.y += (ty * sp + m.ky) * dt;
-    m.kx *= Math.pow(.02, dt); m.ky *= Math.pow(.02, dt);
-    const bx = m.x, by = m.y;
-    collide(room, m, 18);
-    if ((bx !== m.x || by !== m.y) && !aggressive) m.t = 0;
-    if (aggressive && td < 38 && m.hitCd <= 0) {
-      io.to(target.id).emit('hurt', { d: 8 + RAR_RANK[m.c.rar] * 3, x: m.x, y: m.y });
-      m.hitCd = 1;
-    }
-  }
-
-  // パチボール（サブステップで当たり判定）
-  for (let i = room.balls.length - 1; i >= 0; i--) {
-    const b = room.balls[i];
-    let done = false;
-    for (let s = 0; s < 3 && !done; s++) {
-      const sx = b.vx * dt / 3, sy = b.vy * dt / 3;
-      b.x += sx; b.y += sy; b.dist += Math.hypot(sx, sy);
-      for (const m of room.mons) {
-        if (m.state === 'c') continue;
-        if (Math.hypot(m.x - b.x, m.y - b.y) < 26) { startCapture(m, b.owner); done = true; break; }
-      }
-      if (!done && room.obs.some(o => Math.hypot(o.x - b.x, o.y - b.y) < o.r * o.s * .8 + 6)) {
-        fx(room, [{ k: 'pop', x: b.x, y: b.y - 10, s: 'ミス', col: '#cfd5f2', z: 13 }, { k: 'burst', x: b.x, y: b.y, col: '#ff3d6e', n: 6, sp: 90 }]);
-        done = true;
-      }
-      if (!done && (b.dist > 380 || b.x < 0 || b.y < 0 || b.x > WORLD.w || b.y > WORLD.h)) {
-        fx(room, [{ k: 'pop', x: b.x, y: b.y - 10, s: 'ハズレ', col: '#cfd5f2', z: 13 }]);
-        done = true;
-      }
-    }
-    if (done) room.balls.splice(i, 1);
-  }
-
-  // スポーン
-  room.spawnT -= dt;
-  if (room.mons.length < monCap(room) && room.spawnT <= 0) { spawnMon(room, 480); room.spawnT = 1.6; }
-
-  // スナップショット送信
-  io.to(room.code).emit('snap', {
-    left: Math.max(0, room.endAt - Date.now()),
-    pl: ps.map(p => [p.id, Math.round(p.x), Math.round(p.y), Math.round(p.dx * 100), Math.round(p.dy * 100), p.sw, p.stun ? 1 : 0]),
-    m: room.mons.map(m => [m.i, m.c.id, Math.round(m.x), Math.round(m.y), m.hp, m.mh,
-      m.state === 'f' ? 1 : m.state === 'c' ? 2 : 0, (m.c.beh === 'aggr' || m.anger > 0) ? 1 : 0, Math.round(m.capT * 10)]),
-    b: room.balls.map(b => [Math.round(b.x), Math.round(b.y)])
-  });
-}
-
-function readyPayload(room) {
-  const ps = [...room.players.values()];
-  return { ids: ps.filter(p => p.ready).map(p => p.id), total: ps.length };
-}
-function checkAllReady(room) {
-  if (room.phase !== 'explore' || room.players.size === 0) return;
-  if ([...room.players.values()].every(p => p.ready)) {
-    io.to(room.code).emit('toast', { text: '✅ 全員の準備OK！ 選択フェーズへ進みます', cls: 'get' });
-    endExplore(room);
-  }
-}
-
-function endExplore(room) {
-  if (room.phase !== 'explore') return;
-  clearTimeout(room.exploreTimer);
-  clearInterval(room.tick);
-  room.phase = 'select';
-  io.to(room.code).emit('exploreEnd');
-  room.selectStartTimer = setTimeout(() => startSelect(room), 1800);
-}
-
-/* =========================================================
-   選択フェーズ
-========================================================= */
-function startSelect(room) {
-  if (room.phase !== 'select') return;
-  for (const p of room.players.values()) {
-    p.rescued = 0;
-    while (p.party.length < 3) {
-      p.party.push(rollInstance(drawOne([], 3)));
-      p.rescued++;
-    }
-    p.selected = false; p.team = null;
-    io.to(p.id).emit('selectStart', { party: p.party, left: SELECT_MS, rescued: p.rescued, stats: p.stats, items: p.inv.items });
-  }
-  room.selectEnd = Date.now() + SELECT_MS;
-  room.selectTimer = setTimeout(() => finishSelect(room), SELECT_MS + 800);
-}
-
-function autoTeam(p) {
-  return p.party.slice().sort((a, b) => instPower(b) - instPower(a)).slice(0, 3);
-}
-
-function finishSelect(room) {
-  if (room.phase !== 'select') return;
-  clearTimeout(room.selectTimer);
-  const ps = [...room.players.values()];
-  for (const p of ps) if (!p.team) { p.team = autoTeam(p); p.selected = true; }
-  room.phase = 'battle';
-  room.battles = [];
-  broadcastLobby(room);
-  const order = shuffle(ps);
-  for (let i = 0; i < order.length; i += 2) createBattle(room, order[i], order[i + 1] || null);
-}
-
-/* =========================================================
-   バトルエンジン（サーバー権威）
-========================================================= */
-const stageMul = s => (s >= 0 ? 1 + .25 * s : 1 / (1 - .25 * s));
-const act = side => side.units[side.idx];
-const avail = u => [0, 1, 2].filter(i => i !== u.lastSlot);
-
-function makeUnit(inst, sk) {
-  const c = CHAR_MAP[inst.id];
-  return {
-    id: c.id, inst, name: c.name, rar: c.rar, hp: inst.hp, maxHp: inst.hp, atk: inst.atk, def: inst.def, spd: inst.spd,
-    passive: c.passive, moves: c.moves.map((m, i) => ({ ...m, hand: inst.hands[i] })),
-    status: null, atkSt: 0, defSt: 0, lastSlot: null, flags: {}, fainted: false, sk
-  };
-}
-/* 相手側の技ロック・アイテム数は見せない */
-function maskSnap(snap, sk) {
-  const o = sk === 'a' ? 'b' : 'a';
-  return { [sk]: snap[sk], [o]: { idx: snap[o].idx, items: null, u: snap[o].u.map(u => ({ ...u, ls: null })) } };
-}
-function maskEvents(events, sk) { return events.map(e => (e.snap ? { ...e, snap: maskSnap(e.snap, sk) } : e)); }
-function snapB(B) {
-  const f = s => ({
-    idx: s.idx, items: { ...s.items },
-    u: s.units.map(u => ({ hp: u.hp, st: u.status ? [u.status.type, u.status.turns] : null, a: u.atkSt, d: u.defSt, fl: { ...u.flags }, ls: u.lastSlot, fa: u.fainted }))
-  });
-  return { a: f(B.sides.a), b: f(B.sides.b) };
-}
-function ev(B, o) { o.snap = snapB(B); B.ev.push(o); }
-function say(B, s, c = '', ms, extra = {}) { ev(B, { t: 'log', s, c, ms, ...extra }); }
-function bfx(B, side, f, pop, cls) { ev(B, { t: 'fx', side, f, pop, cls }); }
-
-function effAtk(u) {
-  let a = u.atk * stageMul(u.atkSt);
-  if (u.passive.key === 'haisui' && u.hp <= u.maxHp / 3) a *= 1.5;
-  if (u.status && u.status.type === 'burn') a *= .75;
-  return a;
-}
-function calcDamage(att, def, mv, mult) {
-  const df = def.def * stageMul(def.defSt);
-  let dmg = mv.power * effAtk(att) / df * .8 * rnd(.9, 1.1) * mult;
-  if (att.flags.power) dmg *= 1.5;
-  if (att.passive.key === 'dokutai' && def.status && def.status.type === 'poison') dmg *= 1.3;
-  const critRate = .06 + (mv.crit || 0) + (att.passive.key === 'shofuku' ? .2 : 0);
-  const crit = Math.random() < critRate;
-  if (crit) dmg *= 1.5;
-  if (def.passive.key === 'teppeki') dmg *= .85;
-  if (def.flags.guard) dmg *= .5;
-  return { dmg: Math.max(1, Math.round(dmg)), crit };
-}
-function healU(u, n) { const b = u.hp; u.hp = Math.min(u.maxHp, u.hp + n); return u.hp - b; }
-
-function inflict(B, t, type) {
-  if (t.hp <= 0 || t.status) return;
-  if (t.passive.key === 'furinkazan') { say(B, `${t.name}は【風林火山】で${STATUS[type].n}を受けつけない！`, 'sys'); return; }
-  if (t.flags.guard) { say(B, `${t.name}は護符の結界で${STATUS[type].n}を防いだ！`, 'sys'); return; }
-  let turns = STATUS[type].turns;
-  if (t.passive.key === 'seiryu') turns = Math.ceil(turns / 2);
-  t.status = { type, turns };
-  say(B, `${t.name}は${STATUS[type].ic}${STATUS[type].n}になった！`, 'st');
-}
-function stage(B, u, key, delta) {
-  const k = key === 'atk' ? 'atkSt' : 'defSt', label = key === 'atk' ? '攻撃' : '防御';
-  const before = u[k];
-  u[k] = clamp(u[k] + delta, -2, 2);
-  if (u[k] === before) { say(B, `${u.name}の${label}はこれ以上変わらない！`, 'sys', 400); return; }
-  say(B, `${u.name}の${label}が${delta > 0 ? '上がった！' : '下がった！'}`, delta > 0 ? 'up' : 'down', 450);
-}
-function canAct(B, u) {
-  if (u.status && u.status.type === 'paralyze' && Math.random() < .3) {
-    say(B, `${u.name}は体がしびれて動けない！`, 'st', 560, { side: u.sk, pre: true });
-    return false;
-  }
+function endGame(R, winner, reason) {
+  if (R.phase === 'end' || R.phase === 'lobby') return true;
+  const now = Date.now();
+  R.remainAtEnd = Math.max(0, R.endsAt - (R.meeting ? R.meeting.startAt : now));
+  R.phase = 'end'; R.meeting = null; R.endedAt = now; R.result = { winner, reason };
+  for (const p of R.players.values()) { cancelMini(p); p.input = { x: 0, y: 0 }; p.moving = false; }
+  rEmit(R, 'sfx', winner === 'crew' ? 'win' : 'lose');
   return true;
 }
 
-function doAttack(B, att, def, mv, mult, defMv, defLost) {
-  if (att.hp <= 0 || def.hp <= 0) return;
-  bfx(B, att.sk, 'lunge');
-  say(B, `${att.name}の【${mv.name}】！`, 'act', 420, { side: att.sk, pre: true });
-  let total = 0, dodged = false;
-  if (def.passive.key === 'mikiri' && Math.random() < .25) {
-    dodged = true;
-    bfx(B, def.sk, 'none', 'MISS', 'miss');
-    say(B, `${def.name}は【見切り】で攻撃をかわした！`, 'sys');
-  }
-  if (!dodged) {
-    const hits = mv.hits || 1;
-    for (let h = 0; h < hits && def.hp > 0; h++) {
-      let { dmg, crit } = calcDamage(att, def, mv, mult);
-      if (defMv && defMv.guard) dmg = Math.max(1, Math.round(dmg * (1 - defMv.guard)));
-      def.hp = Math.max(0, def.hp - dmg);
-      total += dmg;
-      bfx(B, def.sk, 'shake', '-' + dmg, crit ? 'crit' : '');
-      say(B, `${crit ? '急所に当たった！ ' : ''}${def.name}に ${dmg} のダメージ！`, 'dmg', hits > 1 ? 420 : 560);
-    }
-    if (hits > 1) say(B, `${hits}回ヒット！`, 'sys', 320);
-    if (defMv && defMv.guard && total > 0) say(B, `（${defMv.name}でダメージを軽減した）`, 'sys', 320);
-  }
-  if (mv.drain && total > 0 && att.hp > 0) {
-    const h = healU(att, Math.round(total * mv.drain));
-    if (h) { bfx(B, att.sk, 'heal', '+' + h, 'healp'); say(B, `${att.name}はHPを ${h} 吸収した！`, 'heal'); }
-  }
-  if (mv.heal && att.hp > 0) {
-    const h = healU(att, Math.round(att.maxHp * mv.heal));
-    if (h) { bfx(B, att.sk, 'heal', '+' + h, 'healp'); say(B, `${att.name}はHPが ${h} 回復した！`, 'heal'); }
-  }
-  if (mv.recoil && total > 0 && att.hp > 0) {
-    const r = Math.max(1, Math.round(total * mv.recoil));
-    att.hp = Math.max(0, att.hp - r);
-    bfx(B, att.sk, 'shake', '-' + r, '');
-    say(B, `${att.name}は反動で ${r} のダメージ！`, 'dmg');
-  }
-  if (mv.selfBuff && att.hp > 0) for (const k in mv.selfBuff) stage(B, att, k, mv.selfBuff[k]);
-  if (!dodged && def.hp > 0) {
-    if (mv.foeDebuff) for (const k in mv.foeDebuff) stage(B, def, k, mv.foeDebuff[k]);
-    if (mv.status && Math.random() < mv.status.chance) inflict(B, def, mv.status.type);
-    if (att.passive.key === 'taiden' && total > 0 && !def.status && Math.random() < .2) {
-      say(B, `${att.name}の【帯電】が発動！`, 'sys', 380);
-      inflict(B, def, 'paralyze');
-    }
-  }
-  if (defLost && defMv && defMv.counter && def.hp > 0 && att.hp > 0 && total > 0) {
-    const r = Math.max(1, Math.round(total * defMv.counter));
-    att.hp = Math.max(0, att.hp - r);
-    bfx(B, att.sk, 'shake', '-' + r, '');
-    say(B, `${def.name}の【${defMv.name}】！ ${r} のダメージを跳ね返した！`, 'dmg');
-  }
-}
-
-function useItem(B, side, u, k) {
-  side.items[k]--;
-  ev(B, { t: 'item', side: u.sk, k });
-  if (k === 'power') { u.flags.power = true; say(B, `${u.name}の攻撃に闘魂が宿った！`, 'up'); }
-  else if (k === 'guard') { u.flags.guard = true; say(B, `${u.name}は護符の結界に包まれた！`, 'up'); }
-  else {
-    const h = healU(u, Math.round(u.maxHp * .4));
-    bfx(B, u.sk, 'heal', h ? '+' + h : '', 'healp');
-    say(B, `${u.name}のHPが ${h} 回復した！`, 'heal');
-    if (u.status) { const n = STATUS[u.status.type].n; u.status = null; say(B, `${u.name}の${n}が治った！`, 'heal'); }
-  }
-}
-
-function resolveClash(B, ma, mb) {
-  const A = act(B.sides.a), Bu = act(B.sides.b);
-  const am = A.moves[ma], bm = Bu.moves[mb];
-  let aH = am.hand, bH = bm.hand;
-  const aCan = canAct(B, A), bCan = canAct(B, Bu);
-  const others = h => ['g', 'c', 'p'].filter(x => x !== h);
-  if (aCan && A.status && A.status.type === 'confuse' && Math.random() < .4) {
-    aH = pick(others(am.hand));
-    say(B, `${A.name}は混乱して手が ${HAND_E[am.hand]}→${HAND_E[aH]} に変わった！`, 'st', 560, { side: 'a', pre: true });
-  }
-  if (bCan && Bu.status && Bu.status.type === 'confuse' && Math.random() < .4) {
-    bH = pick(others(bm.hand));
-    say(B, `${Bu.name}は混乱して手が ${HAND_E[bm.hand]}→${HAND_E[bH]} に変わった！`, 'st', 560, { side: 'b', pre: true });
-  }
-  let res;
-  if (!aCan && !bCan) res = null;
-  else if (!aCan) res = -1;
-  else if (!bCan) res = 1;
-  else res = judge(aH, bH);
-  ev(B, { t: 'clash', h: { a: aCan ? aH : null, b: bCan ? bH : null }, res });
-
-  if (res === 1) doAttack(B, A, Bu, am, 1, bCan ? bm : null, true);
-  else if (res === -1) doAttack(B, Bu, A, bm, 1, aCan ? am : null, true);
-  else if (res === 0) {
-    const aFirst = A.spd > Bu.spd || (A.spd === Bu.spd && Math.random() < .5);
-    const order = aFirst ? [[A, Bu, am, bm], [Bu, A, bm, am]] : [[Bu, A, bm, am], [A, Bu, am, bm]];
-    for (const [x, y, xm, ym] of order) {
-      if (x.hp <= 0 || y.hp <= 0) continue;
-      doAttack(B, x, y, xm, x.passive.key === 'shippu' ? 1 : .5, ym, false);
-    }
-  }
-}
-
-function endOfTurn(B) {
-  if (B.turn >= STORM_TURN) {
-    say(B, `⚡ 決戦の嵐が吹き荒れる！（${STORM_TURN}ターン目以降）`, 'down', 420);
-    for (const u of [act(B.sides.a), act(B.sides.b)]) {
-      if (u.hp <= 0) continue;
-      const d = Math.max(1, Math.round(u.maxHp * .1));
-      u.hp = Math.max(0, u.hp - d);
-      bfx(B, u.sk, 'shake', '-' + d, 'stdmg');
-      say(B, `${u.name}は嵐で ${d} のダメージ！`, 'dmg', 420);
-    }
-  }
-  for (const u of [act(B.sides.a), act(B.sides.b)]) {
-    if (u.hp <= 0) continue;
-    if (u.status) {
-      const st = u.status, info = STATUS[st.type];
-      if (st.type === 'poison' || st.type === 'burn') {
-        const d = Math.max(1, Math.round(u.maxHp * (st.type === 'poison' ? .08 : .06)));
-        u.hp = Math.max(0, u.hp - d);
-        bfx(B, u.sk, 'shake', '-' + d, 'stdmg');
-        say(B, `${u.name}は${info.n}で ${d} のダメージ！`, 'st');
-      }
-      if (u.hp > 0) {
-        st.turns--;
-        if (st.turns <= 0) { u.status = null; say(B, `${u.name}の${info.n}が治った！`, 'heal'); }
-      }
-    }
-    if (u.hp > 0 && u.passive.key === 'regen' && u.hp < u.maxHp) {
-      const h = healU(u, Math.round(u.maxHp * .06));
-      if (h) { bfx(B, u.sk, 'heal', '+' + h, 'healp'); say(B, `${u.name}は【森の恵み】でHPが ${h} 回復！`, 'heal', 460); }
-    }
-  }
-}
-
-function checkFaints(B) {
-  for (const sk of ['b', 'a']) {
-    const u = act(B.sides[sk]);
-    if (u.hp <= 0 && !u.fainted) {
-      u.fainted = true;
-      ev(B, { t: 'faint', side: sk });
-      say(B, `${u.name}は倒れた！`, 'ko', 800, { side: sk, pre: true });
-    }
-  }
-  const aA = B.sides.a.units.some(u => u.hp > 0), bA = B.sides.b.units.some(u => u.hp > 0);
-  if (!aA || !bA) {
-    B.over = true;
-    ev(B, { t: 'end', winner: aA ? 'a' : bA ? 'b' : 'draw', turn: B.turn });
-    return;
-  }
-  for (const sk of ['b', 'a']) {
-    const side = B.sides[sk];
-    if (!act(side).fainted) continue;
-    const alive = side.units.map((u, i) => [u, i]).filter(([u]) => u.hp > 0);
-    if (side.cpu || alive.length === 1) {
-      side.idx = alive[0][1];
-      ev(B, { t: 'enter', side: sk });
-    } else {
-      B.pending[sk] = true;
-    }
-  }
-}
-
-/* ----- CPU ----- */
-function estDmg(a, d, m) {
-  let v = m.power * effAtk(a) / (d.def * stageMul(d.defSt)) * .8 * (m.hits || 1);
-  if (d.passive.key === 'teppeki') v *= .85;
-  if (a.passive.key === 'dokutai' && d.status && d.status.type === 'poison') v *= 1.3;
-  return v;
-}
-function cpuChoose(E, P) {
-  const ea = avail(E), pa = avail(P);
-  let best = ea[0], bs = -1e9;
-  for (const i of ea) {
-    const em = E.moves[i];
-    let evv = 0;
-    for (const j of pa) {
-      const pm = P.moves[j];
-      const r = judge(em.hand, pm.hand);
-      const de = estDmg(E, P, em) * (pm.guard ? 1 - pm.guard : 1);
-      const dp = estDmg(P, E, pm) * (em.guard ? 1 - em.guard : 1);
-      let v;
-      if (r === 1) v = de;
-      else if (r === -1) v = -dp + (em.counter ? dp * em.counter * .8 : 0);
-      else v = de * (E.passive.key === 'shippu' ? 1 : .5) - dp * (P.passive.key === 'shippu' ? 1 : .5);
-      if (r >= 0) {
-        if (em.status && !P.status && P.passive.key !== 'furinkazan') v += 9 * em.status.chance;
-        if (em.heal) v += Math.min(E.maxHp - E.hp, E.maxHp * em.heal) * .6;
-        if (em.selfBuff) v += 5;
-        if (em.foeDebuff) v += 4;
-        if (em.recoil) v -= de * em.recoil * .6;
-      }
-      if (r === 1 && de >= P.hp) v += 40;
-      if (r === -1 && dp >= E.hp) v -= 30;
-      evv += v;
-    }
-    evv = evv / pa.length + rnd(-9, 9);
-    if (evv > bs) { bs = evv; best = i; }
-  }
-  return best;
-}
-function cpuItem(side, u) {
-  const it = side.items;
-  if (it.heal > 0 && (u.hp < u.maxHp * .35 || (u.status && u.hp < u.maxHp * .6)) && Math.random() < .75) return 'heal';
-  if (it.guard > 0 && u.hp < u.maxHp * .55 && Math.random() < .3) return 'guard';
-  if (it.power > 0 && Math.random() < .18) return 'power';
-  return null;
-}
-
-/* ----- バトル進行 ----- */
-let battleSeq = 1;
-function createBattle(room, p1, p2) {
-  const mkSide = (p, sk) => ({
-    pid: p.id, name: p.name, cpu: false, idx: 0,
-    units: p.team.map(e => makeUnit(e, sk)), items: { ...p.inv.items }
+function toLobby(R) {
+  R.phase = 'lobby'; R.meeting = null; R.bodies = []; R.result = null; R.remainAtEnd = GAME_MS; R.progress = 0; resetSab(R);
+  R.map = null; R.mapMsg = null;
+  const all = [...R.players.values()];
+  all.forEach((p, i) => {
+    p.late = false; p.ready = false; p.role = null; p.sub = null; p.trail = []; p.alive = true;
+    p.item = null; p.tasks = []; p.mini = null; p.input = { x: 0, y: 0 }; p.moving = false;
+    const s = lobbySpawn(i, all.length); p.x = s.x; p.y = s.y;
   });
-  const cpuSide = sk => {
-    const ids = [];
-    for (let i = 0; i < 3; i++) ids.push(drawOne(ids, 6).id);
-    return { pid: null, name: 'CPU 野良の将', cpu: true, idx: 0, units: shuffle(ids).map(id => makeUnit(rollInstance(CHAR_MAP[id]), sk)), items: { power: 1, guard: 1, heal: 2 } };
-  };
-  const B = {
-    id: battleSeq++, room, turn: 1, phase: 'choose', over: false, ev: [], timer: null,
-    sides: { a: mkSide(p1, 'a'), b: p2 ? mkSide(p2, 'b') : cpuSide('b') },
-    choices: { a: null, b: null }, pending: { a: false, b: false }, swq: []
-  };
-  room.battles.push(B);
-  p1.battle = B;
-  if (p2) p2.battle = B;
-  const names = { a: B.sides.a.name, b: B.sides.b.name };
-  const colors = { a: p1.color, b: p2 ? p2.color : '#8b5cf6' };
-  for (const sk of ['a', 'b']) {
-    const s = B.sides[sk];
-    if (s.cpu) continue;
-    const ok = sk === 'a' ? 'b' : 'a';
-    const teams = {
-      [sk]: s.units.map(u => u.inst),
-      [ok]: B.sides[ok].units.map(u => ({ id: u.id, hp: u.maxHp }))
-    };
-    io.to(s.pid).emit('battleStart', { me: sk, names, colors, teams, snap: maskSnap(snapB(B), sk), left: TURN_MS, cpu: !p2 });
-  }
-  startTurnTimer(B, TURN_MS + 6000);
 }
 
-function startTurnTimer(B, ms) {
-  clearTimeout(B.timer);
-  B.phase = 'choose';
-  B.timer = setTimeout(() => turnTimeout(B), ms);
-}
-function turnTimeout(B) {
-  if (B.over || B.phase !== 'choose') return;
-  for (const sk of ['a', 'b']) {
-    if (B.sides[sk].cpu || B.choices[sk]) continue;
-    B.choices[sk] = { move: pick(avail(act(B.sides[sk]))), item: null, auto: true };
-  }
-  resolveTurnB(B);
-}
-function humanSides(B) { return ['a', 'b'].filter(sk => !B.sides[sk].cpu); }
-
-function resolveTurnB(B) {
-  clearTimeout(B.timer);
-  B.phase = 'resolving';
-  const A = B.sides.a, Bs = B.sides.b;
-  for (const sk of ['a', 'b']) {
-    const s = B.sides[sk], o = B.sides[sk === 'a' ? 'b' : 'a'];
-    if (s.cpu) B.choices[sk] = { move: cpuChoose(act(s), act(o)), item: cpuItem(s, act(s)) };
-  }
-  const ca = B.choices.a, cb = B.choices.b;
-  const ua = act(A), ub = act(Bs);
-  B.ev = [];
-  ev(B, { t: 'turn', n: B.turn });
-  for (const [sk, c] of [['a', ca], ['b', cb]]) {
-    if (c.auto) say(B, `${B.sides[sk].name} は時間切れ！ 技が自動で選ばれた`, 'sys', 400);
-  }
-  if (ca.item) useItem(B, A, ua, ca.item);
-  if (cb.item) useItem(B, Bs, ub, cb.item);
-  resolveClash(B, ca.move, cb.move);
-  ua.lastSlot = ca.move; ub.lastSlot = cb.move;
-  endOfTurn(B);
-  ua.flags = {}; ub.flags = {};
-  checkFaints(B);
-  B.choices = { a: null, b: null };
-  ev(B, { t: 'sync' });
-  const events = B.ev;
-  const needAny = !B.over && humanSides(B).some(sk => B.pending[sk]);
-  if (!B.over && !needAny) B.turn++;
-  for (const sk of humanSides(B)) {
-    io.to(B.sides[sk].pid).emit('turnResult', { events: maskEvents(events, sk), needSwitch: !!B.pending[sk], left: needAny ? SWITCH_MS : TURN_MS });
-  }
-  if (B.over) { finishBattle(B); return; }
-  if (needAny) {
-    B.phase = 'switch';
-    B.timer = setTimeout(() => switchTimeout(B), SWITCH_MS + 15000);
-  } else {
-    startTurnTimer(B, TURN_MS + 15000);
-  }
+function checkWin(R) {
+  if (R.phase !== 'playing') return false;
+  const part = participants(R);
+  const imps = part.filter(p => p.role === 'imposter' && p.alive).length;
+  const crews = part.filter(p => p.role === 'crew' && p.alive).length;
+  if (R.progress >= 100) return endGame(R, 'crew', '全タスクが完了した! 進捗100%');
+  if (imps === 0) return endGame(R, 'crew', 'インポスターを全員排除した!');
+  if (crews <= imps) return endGame(R, 'imposter', 'クルーが全滅した…');
+  return false;
 }
 
-function applySwitch(B, sk, idx) {
-  const side = B.sides[sk];
-  const u = side.units[idx];
-  if (!u || u.hp <= 0) idx = side.units.findIndex(x => x.hp > 0);
-  side.idx = idx;
-  B.pending[sk] = false;
-  B.swq.push(sk);
-  if (humanSides(B).every(s => !B.pending[s])) {
-    clearTimeout(B.timer);
-    B.ev = [];
-    for (const s of B.swq) ev(B, { t: 'enter', side: s });
-    B.swq = [];
-    ev(B, { t: 'sync' });
-    B.turn++;
-    for (const s of humanSides(B)) io.to(B.sides[s].pid).emit('switchResult', { events: maskEvents(B.ev, s), left: TURN_MS });
-    startTurnTimer(B, TURN_MS + 4000);
+// ---------- 会議 ----------
+function startMeeting(R, caller, reason) {
+  const now = Date.now();
+  R.phase = 'meeting';
+  // 死体報告の場合は直近の死体を犠牲者として記録
+  const victim = reason === 'body' && R.bodies.length > 0 ? R.bodies[R.bodies.length - 1] : null;
+  R.meeting = { mode: 'discuss', startAt: now, modeEnds: now + DISCUSS_MS, votes: new Map(), reason, callerName: caller.name, result: null, victim };
+  if (reason === 'button') caller.emUsed = true;
+  const part = participants(R);
+  part.forEach((p, i) => {
+    cancelMini(p); p.input = { x: 0, y: 0 }; p.moving = false;
+    const pos = ringPos(R, i, part.length, 100); p.x = pos.x; p.y = pos.y;
+  });
+  rEmit(R, 'sfx', 'meeting');
+}
+
+function resolveVotes(R, now) {
+  const m = R.meeting, counts = {};
+  let skip = 0;
+  for (const [vid, t] of m.votes) {
+    if (!R.players.has(vid)) continue;
+    if (t === 'skip') skip++; else counts[t] = (counts[t] || 0) + 1;
   }
-}
-function switchTimeout(B) {
-  if (B.over || B.phase !== 'switch') return;
-  for (const sk of humanSides(B)) {
-    if (B.pending[sk]) applySwitch(B, sk, B.sides[sk].units.findIndex(u => u.hp > 0));
+  let max = 0, top = [];
+  for (const id in counts) {
+    if (counts[id] > max) { max = counts[id]; top = [id]; } else if (counts[id] === max) top.push(id);
   }
-}
-
-function battleForfeit(B, leaverId) {
-  if (B.over) return;
-  const lk = B.sides.a.pid === leaverId ? 'a' : 'b';
-  const wk = lk === 'a' ? 'b' : 'a';
-  B.over = true;
-  clearTimeout(B.timer);
-  B.ev = [];
-  say(B, `${B.sides[lk].name} が退出したため、バトル終了！`, 'sys', 600);
-  ev(B, { t: 'end', winner: wk, turn: B.turn, reason: 'left' });
-  if (!B.sides[wk].cpu) io.to(B.sides[wk].pid).emit('turnResult', { events: maskEvents(B.ev, wk), needSwitch: false, left: 0 });
-  finishBattle(B);
-}
-
-function finishBattle(B) {
-  B.over = true;
-  clearTimeout(B.timer);
-  checkAllBattles(B.room);
-}
-function checkAllBattles(room) {
-  if (room.phase !== 'battle') return;
-  if (room.battles.every(b => b.over)) {
-    room.phase = 'lobby';
-    for (const p of room.players.values()) p.battle = null;
-    broadcastLobby(room);
+  let ej = null;
+  if (top.length === 1 && max > skip) {
+    const t = R.players.get(top[0]);
+    if (t) { t.alive = false; cancelMini(t); ej = { id: t.id, name: t.name, c: t.color, acc: t.acc, imp: t.role === 'imposter' }; }
   }
+  const left = participants(R).filter(p => p.role === 'imposter' && p.alive).length;
+  const votes = [...m.votes].filter(([vid]) => R.players.has(vid)); // 結果発表で全員の指さしを公開する
+  m.result = { ej, tally: Object.entries(counts), skip, left, votes };
+  m.mode = 'result'; m.modeEnds = now + RESULT_MS;
 }
 
-/* =========================================================
-   Socket.io
-========================================================= */
-io.on('connection', socket => {
-  socket.data.room = null;
-  socket.emit('hello', { chars: CHARS, items: ITEMS, status: STATUS, world: WORLD });
+function endMeeting(R, now) {
+  const m = R.meeting;
+  const paused = now - m.startAt;
+  R.endsAt += paused;
+  if (R.sab.dark > m.startAt) R.sab.dark += paused;      // 会議中は妨害のタイマーも止まる
+  if (R.sab.short) R.sab.short.endsAt += paused;
+  if (R.sab.flood) R.sab.flood.endsAt += paused;
+  R.phase = 'playing'; R.meeting = null; R.bodies = [];
+  for (const q of R.players.values()) q.trail = []; // 会議で円形に並べ直したぶんの移動は記録しない
+  R.noMeetingUntil = now + BTN_LOCK;
+  for (const p of participants(R)) if (p.role === 'imposter') p.killReady = Math.max(p.killReady, now + 10000);
+  checkWin(R);
+}
 
-  socket.on('join', (d, cb) => {
-    const reply = typeof cb === 'function' ? cb : () => {};
-    const code = String((d && d.code) || '').trim();
-    const name = String((d && d.name) || '').replace(/[<>&"'`]/g, '').trim().slice(0, 10) || 'ななし';
-    if (!/^\d{5}$/.test(code)) return reply({ ok: false, msg: 'パスワードは5桁の数字で入力してください' });
-    if (socket.data.room) leaveRoom(socket);
-    let room = rooms.get(code);
-    if (!room) {
-      room = { code, players: new Map(), hostId: socket.id, phase: 'lobby', battles: [], obs: [], chests: [], mons: [], balls: [] };
-      rooms.set(code, room);
-    }
-    if (room.phase !== 'lobby') return reply({ ok: false, msg: 'このルームはゲーム進行中です。終了後にもう一度入室してください' });
-    if (room.players.size >= MAX_PLAYERS) return reply({ ok: false, msg: `ルームが満員です（最大${MAX_PLAYERS}人）` });
-    room.players.set(socket.id, newPlayer(socket, name, room));
-    socket.data.room = code;
-    socket.join(code);
-    reply({ ok: true, you: socket.id });
-    broadcastLobby(room);
-    socket.to(code).emit('toast', { text: `${name} が入室しました`, cls: 'item' });
-  });
+function tickMeeting(R, now) {
+  const m = R.meeting;
+  if (!m) { R.phase = 'playing'; return; }
+  if (m.mode === 'discuss') { if (now >= m.modeEnds) { m.mode = 'vote'; m.modeEnds = now + VOTE_MS; } }
+  else if (m.mode === 'vote') {
+    const voters = participants(R).filter(p => p.alive);
+    if (now >= m.modeEnds || voters.every(p => m.votes.has(p.id))) resolveVotes(R, now);
+  } else if (m.mode === 'result') { if (now >= m.modeEnds) endMeeting(R, now); }
+}
 
-  socket.on('leave', () => leaveRoom(socket));
-
-  socket.on('lobbyState', () => {
-    const { room } = ctxOf(socket);
-    if (room) socket.emit('lobby', lobbyPayload(room));
-  });
-
-  socket.on('startGame', () => {
-    const { room } = ctxOf(socket);
-    if (!room || room.hostId !== socket.id || room.phase !== 'lobby') return;
-    startGame(room);
-  });
-
-  socket.on('ready', d => {
-    const { room, p } = ctxOf(socket);
-    if (!room || !p || room.phase !== 'explore') return;
-    p.ready = !!(d && d.on);
-    io.to(room.code).emit('readyStatus', readyPayload(room));
-    if (p.ready) socket.to(room.code).emit('toast', { text: `✅ ${p.name} が準備OK（${readyPayload(room).ids.length}/${room.players.size}）`, cls: '' });
-    checkAllReady(room);
-  });
-
-  socket.on('hostEndExplore', () => {
-    const { room } = ctxOf(socket);
-    if (!room || room.hostId !== socket.id || room.phase !== 'explore') return;
-    io.to(room.code).emit('toast', { text: 'ホストが探索を終了しました', cls: 'warn' });
-    endExplore(room);
-  });
-
-  socket.on('pos', d => {
-    const { room, p } = ctxOf(socket);
-    if (!room || !p || room.phase !== 'explore' || !d) return;
-    p.x = clamp(num(d.x, p.x), 0, WORLD.w);
-    p.y = clamp(num(d.y, p.y), 0, WORLD.h);
-    const dx = num(d.dx, p.dx), dy = num(d.dy, p.dy), l = Math.hypot(dx, dy);
-    if (l > 0.01) { p.dx = dx / l; p.dy = dy / l; }
-    p.stun = !!d.s;
-  });
-
-  socket.on('sword', d => {
-    const { room, p } = ctxOf(socket);
-    if (!room || !p || room.phase !== 'explore' || p.stun || !d) return;
-    const now = Date.now();
-    if (now - p.lastSword < 300) return;
-    p.lastSword = now;
-    p.sw++;
-    p.x = clamp(num(d.x, p.x), 0, WORLD.w);
-    p.y = clamp(num(d.y, p.y), 0, WORLD.h);
-    let dx = num(d.dx, p.dx), dy = num(d.dy, p.dy);
-    const l = Math.hypot(dx, dy) || 1; dx /= l; dy /= l;
-    p.dx = dx; p.dy = dy;
-    for (const m of room.mons.slice()) {
-      if (m.state !== 'w') continue;
-      const vx = m.x - p.x, vy = m.y - p.y, dist = Math.hypot(vx, vy) || 1;
-      const dot = (vx * dx + vy * dy) / dist;
-      if (dist < 84 && (dot > .15 || dist < 34)) hitMon(room, m, p, vx / dist, vy / dist);
-    }
-  });
-
-  socket.on('throw', d => {
-    const { room, p } = ctxOf(socket);
-    if (!room || !p || room.phase !== 'explore' || p.stun || !d) return;
-    const now = Date.now();
-    if (now - p.lastThrow < 380) return;
-    if (p.inv.balls <= 0) { toastTo(p.id, 'パチボールがない！ 宝箱を探そう', 'warn'); return; }
-    p.lastThrow = now;
-    let dx = num(d.dx, p.dx), dy = num(d.dy, p.dy);
-    const l = Math.hypot(dx, dy) || 1; dx /= l; dy /= l;
-    p.inv.balls--;
-    sendInv(p);
-    room.balls.push({ x: p.x, y: p.y - 6, vx: dx * 580, vy: dy * 580, dist: 0, owner: p.id });
-  });
-
-  socket.on('chest', d => {
-    const { room, p } = ctxOf(socket);
-    if (!room || !p || room.phase !== 'explore' || !d) return;
-    const c = room.chests[num(d.id, -1)];
-    if (!c || c.open) return;
-    if (Math.hypot(p.x - c.x, p.y - (c.y - 10)) > 120) return;
-    c.open = true;
-    p.stats.chests++;
-    io.to(room.code).emit('chest', { id: c.id });
-    fx(room, [{ k: 'burst', x: c.x, y: c.y - 12, col: '#ffd166', n: 20, sp: 180 }]);
-    giveChest(room, p, c);
-  });
-
-  socket.on('selectTeam', d => {
-    const { room, p } = ctxOf(socket);
-    if (!room || !p || room.phase !== 'select' || p.selected || !d || !Array.isArray(d.uids)) return;
-    const uids = d.uids.slice(0, 3).map(String);
-    if (uids.length !== 3 || new Set(uids).size !== 3) return;
-    const team = uids.map(u => p.party.find(e => e.uid === u));
-    if (team.some(e => !e)) return;
-    p.team = team;
-    p.selected = true;
-    const ps = [...room.players.values()];
-    const done = ps.filter(q => q.selected).length;
-    io.to(room.code).emit('selectStatus', { done, total: ps.length });
-    if (done === ps.length) finishSelect(room);
-  });
-
-  socket.on('battleAction', d => {
-    const { p } = ctxOf(socket);
-    const B = p && p.battle;
-    if (!B || B.over || B.phase !== 'choose' || !d) return;
-    const sk = B.sides.a.pid === p.id ? 'a' : 'b';
-    if (B.choices[sk]) return;
-    const u = act(B.sides[sk]);
-    const move = Math.floor(num(d.move, -1));
-    if (!avail(u).includes(move)) {
-      socket.emit('actionRejected', { msg: 'その技は今は使えません（連続使用不可）', snap: maskSnap(snapB(B), sk) });
+// ---------- アクション ----------
+function doAction(R, p) {
+  if (R.phase !== 'playing' || p.late || p.mini) return;
+  const now = Date.now();
+  if (now - p.lastAct < ACTION_MIN) return;
+  p.lastAct = now;
+  const sb = R.sab;
+  // 水の氾濫: 水たまりの前で SPACE を連打して掻き出す (30回で1か所解消。複数人で協力可)
+  if (sb.flood && p.alive) {
+    const z = sb.flood.zones.find(z => !z.done && nearRect(p, z, REACH));
+    if (z) {
+      z.bail++;
+      if (z.bail >= BAIL_NEED) {
+        z.done = true; rebuildFlood(R);
+        rEmit(R, 'toast', { text: R.map.theme === 'sky' ? `☁ ${p.name}が雲を吹き払った! 橋が通れるようになった` : `🌊 ${p.name}が水を掻き出した! 通路が通れるようになった`, kind: 'good' }); rEmit(R, 'sfx', 'done');
+        if (sb.flood.zones.every(q => q.done)) { sb.flood = null; rebuildFlood(R); rEmit(R, 'toast', { text: R.map.theme === 'sky' ? '☁ 雲海がすべて晴れた!' : '🌊 氾濫がすべておさまった!', kind: 'good' }); }
+      } else if (z.bail % 5 === 0) io.to(p.id).emit('sfx', 'click');
       return;
     }
-    let item = typeof d.item === 'string' && ITEMS[d.item] ? d.item : null;
-    if (item && B.sides[sk].items[item] <= 0) item = null;
-    B.choices[sk] = { move, item };
-    const ok = sk === 'a' ? 'b' : 'a';
-    if (!B.sides[ok].cpu) io.to(B.sides[ok].pid).emit('oppReady');
-    if (B.sides[ok].cpu || B.choices[ok]) resolveTurnB(B);
+  }
+  // 電気のショート中: 通常タスク・会議ボタンは使えず、配線の修理だけができる
+  if (sb.short) {
+    const i = sb.short.spots.findIndex(q => !q.done && near(p, q, REACH));
+    if (i >= 0) {
+      if (!p.alive) { toast(p, '幽霊は修理できない', 'error'); return; }
+      p.mini = { wire: i, kind: 'wire', start: now }; p.input = { x: 0, y: 0 }; p.moving = false;
+      io.to(p.id).emit('miniStart', { wire: i }); return;
+    }
+    if (p.tasks.some(id => near(p, tpos(R, id), REACH)) || near(p, R.map.button, BTN_RANGE) || Object.values(R.map.stations).some(st => near(p, st, REACH)))
+      toast(p, '⚡ 電気がショート中! 先にショートした配線を直そう', 'error');
+    return;
+  }
+  // 運搬中: 届け先に着いたら設置。それ以外のミニゲーム系タスクは手がふさがっていて行えない
+  if (p.item) {
+    const dest = p.tasks.find(id => defOf(id).item === p.item && near(p, tpos(R, id), REACH));
+    if (dest) { removeItem(p, p.item); completeTask(R, p, dest); return; }
+    const other = p.tasks.find(id => defOf(id).kind !== 'carry' && near(p, tpos(R, id), REACH));
+    if (other) { toast(p, `${ITEM_NAME[p.item]}を運搬中は他の作業ができない (Q長押しで運搬をやめる)`, 'error'); return; }
+  }
+  for (const id of p.tasks) {
+    const d = defOf(id);
+    if (!near(p, tpos(R, id), REACH)) continue;
+    if (d.kind === 'carry') {
+      if (!hasItem(p, d.item)) { toast(p, `${ITEM_NAME[d.item]}が必要! (運搬してこよう)`, 'error'); return; }
+      removeItem(p, d.item); completeTask(R, p, id); return;
+    }
+    p.mini = { taskId: id, kind: d.kind, start: now };
+    p.input = { x: 0, y: 0 }; p.moving = false;
+    io.to(p.id).emit('miniStart', { taskId: id });
+    return;
+  }
+  for (const id of p.tasks) {
+    const d = defOf(id);
+    if (d.kind !== 'carry' || !near(p, R.map.stations[d.item], REACH)) continue;
+    if (hasItem(p, d.item)) { toast(p, 'すでに持っている', 'error'); return; }
+    if (p.item) { toast(p, '手がふさがっている! 先に設置しよう', 'error'); return; }
+    p.item = d.item;
+    toast(p, `${ITEM_NAME[d.item]}を取得`, 'info'); io.to(p.id).emit('sfx', 'click');
+    return;
+  }
+  if (near(p, R.map.button, BTN_RANGE)) {
+    if (!p.alive) return;
+    if (p.emUsed) { toast(p, '緊急会議は1人1回まで', 'error'); return; }
+    if (now < R.noMeetingUntil) { toast(p, `まだ使えない (あと${Math.ceil((R.noMeetingUntil - now) / 1000)}秒)`, 'error'); return; }
+    startMeeting(R, p, 'button');
+  }
+}
+
+function doReport(R, p) {
+  if (R.phase !== 'playing' || p.late || !p.alive) return;
+  if (!R.bodies.find(b => dist(p, b) <= REPORT_RANGE)) { toast(p, '近くに死体がない', 'error'); return; }
+  startMeeting(R, p, 'body');
+}
+
+function doKill(R, p) {
+  if (R.phase !== 'playing' || p.late || !p.alive || p.role !== 'imposter') return;
+  const now = Date.now();
+  if (now < p.killReady || now < R.freezeUntil) return;
+  let best = null, bd = KILL_RANGE;
+  for (const v of participants(R)) {
+    if (v === p || !v.alive || v.role === 'imposter') continue;
+    const d = dist(p, v);
+    if (d <= bd) { bd = d; best = v; }
+  }
+  if (!best) { toast(p, '範囲内にターゲットがいない', 'error'); return; }
+  best.alive = false; cancelMini(best);
+  R.bodies.push({ id: R.nextBody++, x: Math.round(best.x), y: Math.round(best.y), c: best.color, name: best.name });
+  sendDetTrace(R, best, now);
+  p.x = best.x; p.y = best.y; p.killReady = now + KILL_CD;
+  // 被害者にだけキルカットシーン。実行者は演出なしで即操作可能
+  io.to(best.id).emit('killCut', { kc: p.color, ka: p.acc, kn: p.name, vc: best.color, va: best.acc, vn: best.name });
+  io.to(best.id).emit('sfx', 'kill');
+  io.to(p.id).emit('sfx', 'click');
+  checkWin(R);
+}
+
+// ---------- 探偵 ----------
+function sendDetTrace(R, victim, now) {
+  const path = (victim.trail || []).filter(q => now - q.t <= TRAIL_MS).map(q => [q.x, q.y, now - q.t]); // [x, y, 死亡の何ms前か]
+  path.push([Math.round(victim.x), Math.round(victim.y), 0]);
+  const msg = { path, ttl: DET_TRACE_MS }; // 誰が殺されたかは伏せる (名前・色・IDを送らない)。死亡の事実と最期5秒の足跡だけ
+  for (const d of participants(R)) if (d.sub === 'detective' && d.alive && d !== victim) io.to(d.id).emit('detTrace', msg);
+}
+// ---------- 妨害 (サボタージュ) ----------
+function resetSab(R) { R.sab = { dark: 0, short: null, flood: null, cells: new Set(), on: null }; }
+// 妨害 (暗闇・ショート・氾濫) が完全に終わった瞬間から、インポスター共通のクールタイムを開始する
+function sabEnded(R, now) {
+  const kind = R.sab.on; R.sab.on = null;
+  for (const q of participants(R)) if (q.role === 'imposter') q.sabReady = now + SAB_CD;
+  for (const q of participants(R)) if (q.role === 'imposter' && !q.late) toast(q, `妨害が終了 — 次の妨害まで${SAB_CD / 1000}秒`, 'info');
+  return kind;
+}
+const sabActive = (R, now) => R.sab.dark > now || !!R.sab.short || !!R.sab.flood;
+function nearRect(p, z, rng) { // 点と矩形(マス単位)の距離
+  const x0 = z.c0 * CELL, y0 = z.r0 * CELL, x1 = (z.c1 + 1) * CELL, y1 = (z.r1 + 1) * CELL;
+  return Math.hypot(Math.max(x0 - p.x, 0, p.x - x1), Math.max(y0 - p.y, 0, p.y - y1)) <= rng;
+}
+function rebuildFlood(R) {
+  R.sab.cells = new Set();
+  if (R.sab.flood) for (const z of R.sab.flood.zones) if (!z.done) for (let r = z.r0; r <= z.r1; r++) for (let c = z.c0; c <= z.c1; c++) R.sab.cells.add(r * COLS + c);
+}
+function doSabotage(R, p, kind) {
+  if (R.phase !== 'playing' || p.late || !p.alive || p.role !== 'imposter') return;
+  const now = Date.now(), def = SABS[kind];
+  if (!def) return;
+  if (def.themes && !def.themes.includes(R.map.theme)) { toast(p, `「${def.name}」はこのマップでは使えない`, 'error'); return; }
+  if (kind === 'prog') { // 独立した進捗妨害: ほかの妨害が進行中でも使える
+    if (now < (p.progReady || 0)) { toast(p, `進捗妨害はあと${Math.ceil((p.progReady - now) / 1000)}秒で使える`, 'error'); return; }
+    for (const q of participants(R)) if (q.role === 'imposter') q.progReady = now + PROG_CD;
+    R.progress = Math.max(0, R.progress - SAB_PCT);
+    rEmit(R, 'sfx', 'alarm'); rEmit(R, 'toast', { text: `📉 妨害工作! タスク進捗が${SAB_PCT}%低下`, kind: 'error' });
+    return;
+  }
+  if (sabActive(R, now) || R.sab.on) { toast(p, 'ほかの妨害が進行中 (終わってからクールタイムが始まる)', 'error'); return; }
+  if (now < p.sabReady) { toast(p, `妨害はあと${Math.ceil((p.sabReady - now) / 1000)}秒で使える`, 'error'); return; }
+  let zones = null;
+  if (kind === 'flood') { // 誰も立っていない通路を選んで水没させる
+    const empty = R.map.floods.filter(z => !participants(R).some(q => nearRect(q, z, PR + 4)));
+    zones = empty.sort(() => Math.random() - .5).slice(0, FLOOD_N).map(z => ({ ...z, bail: 0, done: false }));
+    if (!zones.length) { toast(p, '今は水を氾濫させられる通路がない', 'error'); return; }
+  }
+  R.sab.on = kind; for (const q of participants(R)) if (q.role === 'imposter') q.sabReady = Infinity; // 発動中はクールタイム停止 → 終了時に sabEnded() で開始
+  if (kind === 'dark') R.sab.dark = now + DARK_MS;
+  else if (kind === 'short') {
+    R.sab.short = { endsAt: now + SHORT_MS, need: SHORT_NEED, fixed: 0, spots: R.map.shorts.slice(0, SHORT_NEED).map(q => ({ x: q.x, y: q.y, th: q.th, done: false })) };
+    for (const q of participants(R)) if (q.mini) cancelMini(q); // 作業中のタスクは中断
+  } else if (kind === 'flood') { R.sab.flood = { endsAt: now + FLOOD_MAX_MS, zones }; rebuildFlood(R); }
+  rEmit(R, 'sfx', 'alarm');
+  const sky = R.map.theme === 'sky';
+  const msg = { dark: '🌑 暗闇! 視界がほとんど効かない', short: `⚡ 電気がショート! 2分以内に配線を${SHORT_NEED}か所直さないと酸素が尽きる`, flood: sky ? '☁ 雲海が吊り橋を覆った! 雲の前で SPACE を連打して吹き払おう' : '🌊 水が氾濫! 水たまりの前で SPACE を連打して掻き出そう' }[kind];
+  rEmit(R, 'toast', { text: msg, kind: 'error' });
+}
+function tickSab(R, now) {
+  const sb = R.sab;
+  if (sb.dark && now >= sb.dark) { sb.dark = 0; rEmit(R, 'toast', { text: '🌑 暗闇が晴れた! 視界が元に戻った', kind: 'good' }); }
+  if (sb.short && now >= sb.short.endsAt) { // 時間切れ: 酸素が尽きてクルー全滅
+    sb.short = null;
+    for (const q of participants(R)) if (q.role === 'crew' && q.alive) { q.alive = false; cancelMini(q); }
+    endGame(R, 'imposter', '⚡ ショートを直しきれず酸素が尽きた… クルー全滅');
+  }
+  if (sb.flood && now >= sb.flood.endsAt) { sb.flood = null; rebuildFlood(R); rEmit(R, 'toast', { text: R.map.theme === 'sky' ? '☁ 雲海が自然に晴れた' : '🌊 水が自然に引いた', kind: 'info' }); }
+  if (sb.on && R.phase === 'playing' && !sabActive(R, now)) sabEnded(R, now); // 解除・時間切れ どの終わり方でもここで検知
+}
+function doWarp(R, p, idx) {
+  if (R.phase !== 'playing' || p.late || !p.alive || p.role !== 'imposter' || p.mini) return;
+  const now = Date.now(), ws = R.map.warps, to = ws[idx | 0];
+  if (!to) return;
+  if (!ws.some(w => near(p, w, WARP_RANGE))) { toast(p, 'ワープ地点の上で使おう', 'error'); return; }
+  if (now < (p.warpReady || 0)) { toast(p, `ワープはあと${Math.ceil((p.warpReady - now) / 1000)}秒`, 'error'); return; }
+  const from = { x: p.x, y: p.y };
+  p.x = to.x; p.y = to.y + 20; p.warpReady = now + WARP_CD;
+  io.to(p.id).emit('warped', { from, to: { x: p.x, y: p.y }, idx: idx | 0 }); // 本人の画面だけでワープ演出 (カメラが滑らかに移動)
+}
+function sabView(R, now) {
+  const sb = R.sab; if (!sb) return null;
+  return {
+    dark: Math.max(0, sb.dark - now),
+    short: sb.short ? { left: Math.max(0, sb.short.endsAt - now), need: sb.short.need, fixed: sb.short.fixed, spots: sb.short.spots } : null,
+    flood: sb.flood ? { zones: sb.flood.zones.filter(z => !z.done).map(({ c0, r0, c1, r1, bail }) => ({ c0, r0, c1, r1, bail })), need: BAIL_NEED } : null,
+  };
+}
+
+// ---------- ループ ----------
+function tickLobby(R, dt) {
+  for (const p of R.players.values()) {
+    const len = Math.hypot(p.input.x, p.input.y);
+    p.moving = len > 0;
+    if (!len) continue;
+    const dx = p.input.x / len, dy = p.input.y / len;
+    p.x = clamp(p.x + dx * SPEED * dt, LOBBY.x0 + PR, LOBBY.x1 - PR);
+    p.y = clamp(p.y + dy * SPEED * dt, LOBBY.y0 + PR, LOBBY.y1 - PR);
+    if (dx !== 0) p.face = dx > 0 ? 1 : -1;
+  }
+}
+function tickRoom(R, now, dt) {
+  if (R.phase === 'lobby') tickLobby(R, dt);
+  else if (R.phase === 'playing') {
+    for (const p of R.players.values()) {
+      if (p.late) continue;
+      if (p.alive && now - (p.lastTrail || 0) >= TRAIL_STEP) { // 探偵用: 直近5秒の座標ログ (サーバーだけが保持)
+        p.lastTrail = now - (p.lastTrail || 0) > TRAIL_STEP * 2 ? now : p.lastTrail + TRAIL_STEP; // 平均してちょうど100msごと (サーバーは30回/秒)
+        (p.trail = p.trail || []).push({ x: Math.round(p.x), y: Math.round(p.y), t: now });
+        while (p.trail.length && now - p.trail[0].t > TRAIL_MS) p.trail.shift();
+      }
+      if (p.mini && now - p.mini.start > MINI_TIMEOUT) cancelMini(p);
+      if (p.mini || now < R.freezeUntil) { p.moving = false; continue; }
+      const len = Math.hypot(p.input.x, p.input.y);
+      p.moving = len > 0;
+      if (len > 0) {
+        const dx = p.input.x / len, dy = p.input.y / len;
+        const ghost = !p.alive;
+        const sp = SPEED * (ghost ? GHOST_MULT : 1);
+        p.x += dx * sp * dt; p.y += dy * sp * dt;
+        if (!ghost) resolveWalls(R.map.grid, p, R.sab.flood ? (c, r) => R.sab.cells.has(r * COLS + c) : null); // 幽霊は壁も水も通り抜け
+        p.x = clamp(p.x, PR, W - PR); p.y = clamp(p.y, PR, H - PR);
+        if (dx !== 0) p.face = dx > 0 ? 1 : -1;
+      }
+    }
+    tickSab(R, now);
+    if (now >= R.endsAt) endGame(R, 'imposter', '時間切れ… クルーは間に合わなかった');
+  } else if (R.phase === 'meeting') tickMeeting(R, now);
+  else if (R.phase === 'end') { if (now - R.endedAt > END_AUTO_MS) toLobby(R); }
+  broadcast(R, now);
+}
+
+function broadcast(R, now) {
+  let remain = GAME_MS;
+  if (R.phase === 'playing') remain = Math.max(0, R.endsAt - now);
+  else if (R.phase === 'meeting') remain = Math.max(0, R.endsAt - R.meeting.startAt);
+  else if (R.phase === 'end') remain = R.remainAtEnd;
+  const part = participants(R), host = hostId(R);
+  const base = { ph: R.phase, remain, prog: Math.round(R.progress * 10) / 10, result: R.result, ic: R.impN, code: R.code, sab: R.phase === 'lobby' ? null : sabView(R, now) };
+  let lobby = null;
+  if (R.phase === 'lobby') {
+    lobby = {
+      list: [...R.players.values()].sort((a, b) => a.joinOrder - b.joinOrder).map(p => ({ id: p.id, name: p.name, c: p.color, acc: p.acc, ready: p.ready, host: p.id === host,
+        x: Math.round(p.x), y: Math.round(p.y), mv: p.moving, f: p.face, a: true, pid: p.pid })),
+      imp: R.impCount, max: maxImp(R.players.size), map: R.mapIdx, det: R.detCount,
+    };
+  }
+  const pv = R.phase === 'lobby' ? null : part.map(p => ({ id: p.id, name: p.name, c: p.color, acc: p.acc, x: Math.round(p.x), y: Math.round(p.y), a: p.alive, mv: p.moving, f: p.face, item: p.item || null, pid: p.pid }));
+  for (const v of R.players.values()) {
+    const ghost = !v.alive || v.late || R.phase === 'end';
+    const msg = {
+      ...base,
+      me: {
+        role: v.role, det: v.sub === 'detective', alive: v.alive, late: v.late, ready: v.ready, host: v.id === host,
+        tasks: v.tasks, item: v.item || null,
+        kcd: Math.max(0, (v.killReady || 0) - now), scd: v.sabReady === Infinity ? 0 : Math.max(0, (v.sabReady || 0) - now), sabOn: !!(R.sab && R.sab.on), pcd: Math.max(0, (v.progReady || 0) - now),
+        em: v.emUsed, emLock: Math.max(0, R.noMeetingUntil - now),
+        mates: v.role === 'imposter' ? part.filter(x => x.role === 'imposter' && x !== v).map(x => x.id) : [],
+        warps: v.role === 'imposter' && R.map ? R.map.warps : null, wcd: Math.max(0, (v.warpReady || 0) - now), // ワープ地点はインポスターだけに送る
+      },
+    };
+    if (lobby) msg.lobby = lobby;
+    else {
+      msg.players = ghost ? pv : pv.filter(p => p.a);
+      msg.bodies = R.bodies;
+      if (R.phase === 'meeting') {
+        const m = R.meeting;
+        msg.meet = {
+          mode: m.mode, t: Math.max(0, m.modeEnds - now), reason: m.reason, caller: m.callerName, victim: m.victim || null,
+          roster: part.map(p => ({ id: p.id, name: p.name, c: p.color, acc: p.acc, a: p.alive, voted: m.votes.has(p.id) })), theme: R.map.theme,
+          my: m.votes.get(v.id) || null, res: m.result,
+        };
+      }
+      if (R.phase === 'end') msg.roster = part.map(p => ({ id: p.id, name: p.name, c: p.color, role: p.role, det: p.sub === 'detective', a: p.alive }));
+    }
+    io.to(v.id).volatile.emit('state', msg);
+  }
+}
+
+MAP_PREVIEWS = LAYOUTS.map((L, i) => ({ name: L.name, desc: L.desc, ...mapPayload(genMap(i, 12345 + i)) })); // theme も含む
+
+let lastTick = Date.now();
+setInterval(() => {
+  const now = Date.now(), dt = Math.min(0.1, (now - lastTick) / 1000);
+  lastTick = now;
+  for (const R of rooms.values()) tickRoom(R, now, dt);
+}, 1000 / TICK_RATE);
+
+// ---------- ロビーチャット / エモート ----------
+const EMOTES = ['wave', 'heart', 'angry', 'wow', 'good', 'lol', 'sad', 'q'];
+function lobbySys(R, t) { const m = { sys: true, t }; R.lchat.push(m); R.lchat = R.lchat.slice(-40); rEmit(R, 'lchat', m); }
+// ---------- Socket.io ----------
+function sendReqs(pid) { // 届いているフレンド申請を本人に送る
+  const u = userOf(pid), e = presence.get(pid); if (!u || !e) return;
+  io.to(e.sid).emit('friendReqs', (u.reqs || []).map(x => ({ pid: x, name: nameOf(x) })).filter(r => r.name));
+}
+function sendAcks(pid) { // 承認された通知を本人に送って消す
+  const u = userOf(pid), e = presence.get(pid); if (!u || !e || !(u.acks || []).length) return;
+  io.to(e.sid).emit('friendAcks', u.acks); u.acks = []; saveUsers();
+}
+const presence = new Map(); // pid -> { sid, name, known:Set<pid> }
+
+// ---------- ユーザーネーム登録 (全体で重複禁止。サーバーのファイルに保存) ----------
+// 比較は NFKC 正規化 + 小文字化 + 空白除去 (例: 「Ｋｅｉｔａ」「keita」「KEITA」は同じ名前とみなす)
+const DATA_DIR = process.env.DOA_DATA_DIR || path.join(__dirname, 'data');
+const USERS_FILE = path.join(DATA_DIR, 'users.json');
+let users = { byName: {}, byPid: {} }; // byName[norm] = { pid, name, reqs:[pid], acks:[{pid,name}] } / byPid[pid] = norm
+try { const j = JSON.parse(fs.readFileSync(USERS_FILE, 'utf8')); if (j && j.byName && j.byPid) users = j; } catch (e) {}
+let saveT = 0;
+function saveUsers() {
+  clearTimeout(saveT);
+  saveT = setTimeout(() => {
+    try { fs.mkdirSync(DATA_DIR, { recursive: true }); const tmp = USERS_FILE + '.tmp'; fs.writeFileSync(tmp, JSON.stringify(users)); fs.renameSync(tmp, USERS_FILE); }
+    catch (e) { console.error('users.json save failed', e.message); }
+  }, 500);
+}
+const normName = (n) => String(n || '').normalize('NFKC').toLowerCase().replace(/\s+/g, '');
+const NAME_RE = /^[\p{L}\p{N}_ー・]{2,10}$/u;
+const userOf = (pid) => { const k = users.byPid[pid]; return k ? users.byName[k] : null; };
+const nameOf = (pid) => { const u = userOf(pid); return u ? u.name : null; };
+const validPid = (v) => typeof v === 'string' && /^[a-z0-9]{8,40}$/i.test(v);
+const cleanName = (v) => String(v || '').replace(/[<>]/g, '').trim().slice(0, 10);
+function addPlayer(socket, R, d) {
+  R.joinCounter += 1;
+  const used = new Set([...R.players.values()].map(p => p.color));
+  const color = (d && COLORS.includes(d.color) && !used.has(d.color)) ? d.color : (COLORS.find(c => !used.has(c)) || COLORS[0]);
+  const name = String((d && d.name) || '').replace(/[<>]/g, '').trim().slice(0, 10) || ('P' + R.joinCounter);
+  const late = R.phase !== 'lobby';
+  const p = {
+    id: socket.id, pid: socket.data.pid || null, joinOrder: R.joinCounter, name, color, acc: ACCS.includes(d && d.acc) ? d.acc : '',
+    x: 0, y: 0, face: 1, moving: false, ready: false, late, role: null, alive: !late,
+    tasks: [], doneTasks: new Set(), item: null, mini: null,
+    input: { x: 0, y: 0 }, lastAct: 0, lastDisc: 0, lastChat: 0, killReady: 0, sabReady: 0, emUsed: false,
+  };
+  if (!late) { const s = lobbySpawn(R.players.size, R.players.size + 1); p.x = s.x; p.y = s.y; }
+  R.players.set(socket.id, p);
+  sockRoom.set(socket.id, R);
+  socket.join('r' + R.code);
+  socket.emit('joined', { code: R.code });
+  socket.emit('lchatHist', R.lchat);
+  lobbySys(R, `${p.name} が参加しました`);
+  if (late && R.mapMsg) socket.emit('map', R.mapMsg);
+}
+
+io.on('connection', (socket) => {
+  socket.emit('init', {
+    you: socket.id, W, H, CELL, COLS, ROWS, REACH, GAME_MS, ITEM_NAME, ACCS, COLORS, LOBBY, CLOSET, MAPS: MAP_PREVIEWS,
+    TASKS: TASK_DEFS.map(d => ({ id: d.id, name: d.name, pct: d.pct, kind: d.kind, item: d.item || null, n: d.n || 0, icon: d.icon, theme: d.theme })),
   });
 
-  socket.on('battleSwitch', d => {
-    const { p } = ctxOf(socket);
-    const B = p && p.battle;
-    if (!B || B.over || B.phase !== 'switch' || !d) return;
-    const sk = B.sides.a.pid === p.id ? 'a' : 'b';
-    if (!B.pending[sk]) return;
-    applySwitch(B, sk, Math.floor(num(d.idx, -1)));
+  // ルームに入るときは登録済みのユーザーネームを使う
+  const withName = (d) => { const nm = nameOf(socket.data.pid); if (!nm) { socket.emit('joinError', '先にユーザーネームを登録してください'); socket.emit('needName'); return null; } return { ...(d || {}), name: nm }; };
+  socket.on('createRoom', (d) => {
+    if (sockRoom.has(socket.id)) return;
+    d = withName(d); if (!d) return;
+    addPlayer(socket, newRoom(), d || {});
+  });
+  socket.on('joinRoom', (d) => {
+    if (sockRoom.has(socket.id)) return;
+    const code = String((d && d.code) || '').replace(/\D/g, '').slice(0, 5);
+    d = withName(d); if (!d) return;
+    const R = rooms.get(code);
+    if (!R) { socket.emit('joinError', 'そのコードのロビーは見つかりません'); return; }
+    if (R.players.size >= MAX_PLAYERS) { socket.emit('joinError', 'ロビーが満員です'); return; }
+    addPlayer(socket, R, d);
   });
 
-  socket.on('disconnect', () => leaveRoom(socket));
+  const C = () => { const R = sockRoom.get(socket.id); return R ? { R, p: R.players.get(socket.id) } : {}; };
+
+  // ---------- フレンド (端末ごとの永続ID = pid。コード入力なしで参加・招待) ----------
+  socket.on('hello', (d) => {
+    if (!d || !validPid(d.pid)) return;
+    const old = presence.get(d.pid);
+    socket.data.pid = d.pid;
+    presence.set(d.pid, { sid: socket.id, name: cleanName(d.name), known: new Set((Array.isArray(d.known) ? d.known : []).filter(validPid).slice(0, 300)) });
+    const { p } = C(); if (p) p.pid = d.pid;
+    const reg = nameOf(d.pid);
+    if (reg) presence.get(d.pid).name = reg;
+    socket.emit('me', { name: reg });
+    sendReqs(d.pid); sendAcks(d.pid);
+    if (old && old.sid !== socket.id) { /* 別タブ/再接続: 新しい接続を優先 */ }
+  });
+  // ユーザーネームを登録/変更 (重複は拒否)
+  socket.on('claimName', (d, ack) => {
+    if (typeof ack !== 'function') return;
+    const pid = socket.data.pid;
+    if (!pid) return ack({ ok: false, msg: '接続を確認中です。もう一度押してください' });
+    const name = String((d && d.name) || '').normalize('NFKC').replace(/[<>]/g, '').trim();
+    if (!NAME_RE.test(name)) return ack({ ok: false, msg: '名前は2〜10文字 (文字・数字・_ のみ、空白や記号は不可)' });
+    const key = normName(name), owner = users.byName[key], cur = users.byPid[pid];
+    if (owner && owner.pid !== pid) return ack({ ok: false, msg: `「${name}」はすでに使われています。別の名前にしてください` });
+    if (cur !== key && sockRoom.has(socket.id)) return ack({ ok: false, msg: 'ロビーやゲームの途中では名前を変えられません' });
+    if (cur && cur !== key) { const old = users.byName[cur]; delete users.byName[cur]; users.byName[key] = { ...old, pid, name }; }
+    else users.byName[key] = { reqs: [], acks: [], ...(owner || {}), pid, name };
+    users.byPid[pid] = key; saveUsers();
+    const e = presence.get(pid); if (e) e.name = name;
+    ack({ ok: true, name });
+  });
+  // 名前でユーザーを探す (フレンド追加用)
+  socket.on('findUser', (name, ack) => {
+    if (typeof ack !== 'function') return;
+    const u = users.byName[normName(name)];
+    if (!u) return ack({ ok: false, msg: 'そのユーザーネームは見つかりません' });
+    if (u.pid === socket.data.pid) return ack({ ok: false, msg: 'それはあなた自身の名前です' });
+    ack({ ok: true, pid: u.pid, name: u.name });
+  });
+  // フレンド申請 → 相手が承認すると、お互いの一覧に登録される
+  socket.on('friendReq', (pid, ack) => {
+    const me = socket.data.pid, myName = nameOf(me), u = userOf(pid);
+    const done = (r) => typeof ack === 'function' && ack(r);
+    if (!myName) return done({ ok: false, msg: '先にユーザーネームを登録してください' });
+    if (!u || pid === me) return done({ ok: false, msg: '相手が見つかりません' });
+    u.reqs = (u.reqs || []).filter(x => x !== me); u.reqs.push(me); u.reqs = u.reqs.slice(-50); saveUsers();
+    sendReqs(pid); done({ ok: true, name: u.name });
+  });
+  socket.on('friendAnswer', (d) => {
+    const me = socket.data.pid, mine = userOf(me); if (!mine || !d || !validPid(d.pid)) return;
+    mine.reqs = (mine.reqs || []).filter(x => x !== d.pid);
+    if (d.ok) { const u = userOf(d.pid); if (u) { u.acks = (u.acks || []).filter(a => a.pid !== me); u.acks.push({ pid: me, name: mine.name }); sendAcks(d.pid); } }
+    saveUsers();
+  });
+  socket.on('known', (arr) => { const e = presence.get(socket.data.pid); if (e && e.sid === socket.id && Array.isArray(arr)) e.known = new Set(arr.filter(validPid).slice(0, 300)); });
+  socket.on('friendStatus', (pids, ack) => {
+    if (typeof ack !== 'function' || !Array.isArray(pids)) return;
+    const myR = sockRoom.get(socket.id);
+    ack(pids.filter(validPid).slice(0, 80).map(pid => {
+      const e = presence.get(pid), s = e && io.sockets.sockets.get(e.sid);
+      if (!s) return { pid, st: 'off' };
+      const R = sockRoom.get(e.sid);
+      return { pid, name: e.name, st: !R ? 'title' : R.phase === 'lobby' ? 'lobby' : 'playing', same: !!R && R === myR, full: !!R && R.players.size >= MAX_PLAYERS, mutual: e.known.has(socket.data.pid) };
+    }));
+  });
+  socket.on('joinFriend', (d) => {
+    if (sockRoom.has(socket.id) || !d || !validPid(d.pid)) return;
+    const fp = d.pid; d = withName(d); if (!d) return; d.pid = fp;
+    const e = presence.get(d.pid), R = e && sockRoom.get(e.sid);
+    if (!e || !io.sockets.sockets.get(e.sid)) { socket.emit('joinError', 'そのフレンドはオフラインです'); return; }
+    if (!e.known.has(socket.data.pid)) { socket.emit('joinError', '相手のフレンドリストにまだ登録されていません (一度コードで一緒に遊ぶか、招待してもらおう)'); return; }
+    if (!R) { socket.emit('joinError', `${e.name || 'フレンド'}さんはまだロビーにいません`); return; }
+    if (R.players.size >= MAX_PLAYERS) { socket.emit('joinError', 'ロビーが満員です'); return; }
+    addPlayer(socket, R, d);
+  });
+  socket.on('invite', (pid) => {
+    const { R, p } = C(); if (!p || !validPid(pid)) return;
+    const e = presence.get(pid), s = e && io.sockets.sockets.get(e.sid);
+    if (!s) { toast(p, 'そのフレンドはオフラインです', 'error'); return; }
+    if (sockRoom.has(e.sid)) { toast(p, `${e.name}さんは別のロビーにいます`, 'error'); return; }
+    if (!e.known.has(p.pid)) { toast(p, `${e.name}さんのフレンドリストにあなたがいません`, 'error'); return; }
+    io.to(e.sid).emit('invited', { from: p.name, fromPid: p.pid, code: R.code, map: (LAYOUTS[R.mapIdx] || {}).name });
+    toast(p, `${e.name}さんを招待しました`, 'good');
+  });
+  // 前回いたロビーがまだあるか (リロード後の復帰用)
+  socket.on('roomInfo', (code, ack) => {
+    if (typeof ack !== 'function') return;
+    const R = rooms.get(String(code || '').replace(/\D/g, '').slice(0, 5));
+    ack(R ? { ok: true, phase: R.phase, n: R.players.size, full: R.players.size >= MAX_PLAYERS } : { ok: false });
+  });
+  // 運搬のキャンセル (Q長押し): アイテムだけ手放し、ミッションはそのまま残す
+  socket.on('dropItem', () => {
+    const { R, p } = C(); if (!p || R.phase !== 'playing' || !p.item) return;
+    const name = ITEM_NAME[p.item]; p.item = null;
+    toast(p, `${name}の運搬をやめた (ミッションはそのまま。置き場からもう一度取れる)`, 'info');
+    io.to(p.id).emit('sfx', 'click');
+  });
+
+  socket.on('input', (d) => {
+    const { R, p } = C(); if (!p) return;
+    if (!d || typeof d !== 'object' || p.mini || (R.phase !== 'playing' && R.phase !== 'lobby')) { p.input = { x: 0, y: 0 }; return; }
+    p.input = { x: (d.right ? 1 : 0) - (d.left ? 1 : 0), y: (d.down ? 1 : 0) - (d.up ? 1 : 0) };
+  });
+  socket.on('action', () => { const { R, p } = C(); if (p) doAction(R, p); });
+  socket.on('report', () => { const { R, p } = C(); if (p) doReport(R, p); });
+  socket.on('kill', () => { const { R, p } = C(); if (p) doKill(R, p); });
+  socket.on('sabotage', (kind) => { const { R, p } = C(); if (p) doSabotage(R, p, kind); });
+  socket.on('warp', (idx) => { const { R, p } = C(); if (p) doWarp(R, p, idx); });
+  // discard廃止（スロットシステム廃止）
+
+  // 自動テスト専用 (DOA_TEST=1 のときだけ有効): 指定タスク/置き場へワープ
+  if (process.env.DOA_TEST === '1') socket.on('__tp', (d) => {
+    const { R, p } = C(); if (!p || R.phase !== 'playing' || !d) return;
+    if (d.button) R.noMeetingUntil = 0;
+    if (d.role) p.role = d.role;
+    if (d.resetCd) { p.sabReady = 0; p.progReady = 0; p.warpReady = 0; }
+    if (d.resetProg) p.progReady = 0;
+    if (d.die) { p.alive = false; cancelMini(p); }
+    if (d.det != null) p.sub = d.det ? 'detective' : null;
+    if (d.killNow) p.killReady = 0;
+    if (d.shortLeft != null && R.sab.short) R.sab.short.endsAt = Date.now() + d.shortLeft;
+    if (d.clearDark) R.sab.dark = 0;
+    const fz = d.flood != null && R.sab.flood ? R.sab.flood.zones[d.flood] : null;
+    const pos = d.button ? { x: R.map.button.x + 40, y: R.map.button.y } : d.short != null ? R.map.shorts[d.short] : d.warp != null ? R.map.warps[d.warp] : fz ? floodSide(R, fz) : d.pos ? d.pos : d.station ? R.map.stations[d.station] : R.map.tasks[d.task];
+    const slot = () => { const i = p.tasks.findIndex(t => defOf(t).kind !== 'carry'); return i >= 0 ? i : p.tasks.length - 1; };
+    if (d.task && !p.tasks.includes(d.task)) p.tasks[slot()] = d.task;
+    if (d.station) { const t = TASK_DEFS.find(x => x.item === d.station); if (t && !p.tasks.includes(t.id)) p.tasks[slot()] = t.id; }
+    if (pos) { p.x = pos.x; p.y = pos.y; }
+  });
+  // テスト用: 水たまりのすぐ外側 (通れる側) の位置
+  const floodSide = (R, z) => { const mc = (z.c0 + z.c1) / 2, mr = (z.r0 + z.r1) / 2;
+    for (const [c, r] of [[z.c0 - 1, mr], [z.c1 + 1, mr], [mc, z.r0 - 1], [mc, z.r1 + 1]]) { const cc = Math.round(c), rr = Math.round(r); if (!R.map.grid[rr][cc] && !R.sab.cells.has(rr * COLS + cc)) return cp(cc, rr); }
+    return cp(z.c0 - 1, z.r0); };
+  socket.on('miniEnd', (d) => {
+    const { R, p } = C(); if (!p || !p.mini) return;
+    const m = p.mini; p.mini = null;
+    if (R.phase !== 'playing' || !d || d.cancel) return;
+    if (!d.ok) { toast(p, '失敗… もう一度挑戦しよう', 'error'); return; }
+    if (m.wire != null) { // ショートした配線の修理
+      const sh = R.sab.short; if (!sh || sh.spots[m.wire].done) return;
+      if (Date.now() - m.start < MIN_MINI.wire) { toast(p, '操作が速すぎる?', 'error'); return; }
+      sh.spots[m.wire].done = true; sh.fixed++;
+      rEmit(R, 'toast', { text: `⚡ ${p.name}が配線を修理 (${sh.fixed}/${sh.need})`, kind: 'good' });
+      if (sh.fixed >= sh.need) { R.sab.short = null; rEmit(R, 'toast', { text: '⚡ ショートをすべて修理! 電気が復旧した', kind: 'good' }); rEmit(R, 'sfx', 'done'); }
+      return;
+    }
+    if (!p.tasks.includes(m.taskId)) return;
+    if (Date.now() - m.start < MIN_MINI[m.kind]) { toast(p, '操作が速すぎる?', 'error'); return; }
+    completeTask(R, p, m.taskId);
+  });
+
+  // クローゼットでの着替え (ロビー内・クローゼット付近のみ)
+  socket.on('setLook', (d) => {
+    const { R, p } = C();
+    if (!p || R.phase !== 'lobby' || !d) return;
+    if (dist(p, CLOSET) > CLOSET.range + 30) { toast(p, 'クローゼットに近づこう', 'error'); return; }
+    if (typeof d.acc === 'string' && ACCS.includes(d.acc)) p.acc = d.acc;
+    if (typeof d.color === 'string' && COLORS.includes(d.color) && d.color !== p.color) {
+      const taken = [...R.players.values()].some(x => x !== p && x.color === d.color);
+      if (taken) toast(p, 'その色は他の人が使っています', 'error'); else p.color = d.color;
+    }
+  });
+  socket.on('ready', () => { const { R, p } = C(); if (p && R.phase === 'lobby' && p.id !== hostId(R)) p.ready = !p.ready; });
+  socket.on('setMap', (i) => { // ホストだけがマップを切り替えられる (全員に同期)
+    const { R, p } = C();
+    if (!p || R.phase !== 'lobby' || p.id !== hostId(R)) return;
+    const n = LAYOUTS.length; R.mapIdx = (((parseInt(i, 10) || 0) % n) + n) % n;
+    rEmit(R, 'sfx', 'click');
+  });
+  socket.on('setDet', (n) => { // ホストが探偵の人数 (0〜2) を設定
+    const { R, p } = C();
+    if (!p || R.phase !== 'lobby' || p.id !== hostId(R)) return;
+    R.detCount = clamp(parseInt(n, 10) || 0, 0, MAX_DET);
+  });
+  socket.on('setImp', (n) => {
+    const { R, p } = C();
+    if (!p || R.phase !== 'lobby' || p.id !== hostId(R)) return;
+    R.impCount = clamp(parseInt(n, 10) || 1, 1, MAX_IMP);
+  });
+  socket.on('start', () => {
+    const { R, p } = C();
+    if (!p || R.phase !== 'lobby' || p.id !== hostId(R)) return;
+    const part = participants(R);
+    if (part.length < MIN_PLAYERS) { toast(p, `最低${MIN_PLAYERS}人必要`, 'error'); return; }
+    if (!part.every(x => x.id === p.id || x.ready)) { toast(p, '全員の準備が完了していない', 'error'); return; }
+    startGame(R);
+  });
+  socket.on('toLobby', () => { const { R, p } = C(); if (p && R.phase === 'end') toLobby(R); });
+
+  // ロビーのテキストチャット (全員に同期・直近40件を新しく入った人にも送る)
+  socket.on('lobbyChat', (t) => {
+    const { R, p } = C(); if (!p || R.phase !== 'lobby') return;
+    const now = Date.now(); if (now - (p.lastLChat || 0) < 400) return; p.lastLChat = now;
+    const text = String(t || '').replace(/[<>]/g, '').trim().slice(0, 80); if (!text) return;
+    const m = { id: p.id, n: p.name, c: p.color, t: text }; R.lchat.push(m); R.lchat = R.lchat.slice(-40); rEmit(R, 'lchat', m);
+  });
+  // エモート: 頭上に感情アイコンを出す (幽霊のエモートは幽霊・観戦者にだけ届く)
+  socket.on('emote', (e) => {
+    const { R, p } = C(); if (!p || !EMOTES.includes(e)) return;
+    const now = Date.now(); if (now - (p.lastEmote || 0) < 900) return; p.lastEmote = now;
+    const ghostOnly = (R.phase === 'playing' || R.phase === 'meeting') && (!p.alive || p.late);
+    for (const v of R.players.values()) if (!ghostOnly || !v.alive || v.late) io.to(v.id).emit('emote', { id: p.id, e });
+  });
+  socket.on('chat', (t) => {
+    const { R, p } = C(); const m = R && R.meeting;
+    if (!p || R.phase !== 'meeting' || !m || m.mode === 'result' || !p.alive || p.late) return;
+    const now = Date.now();
+    if (now - p.lastChat < 300) return;
+    p.lastChat = now;
+    const text = String(t || '').replace(/[<>]/g, '').trim().slice(0, 60);
+    if (text) rEmit(R, 'chat', { n: p.name, c: p.color, t: text });
+  });
+  socket.on('vote', (target) => {
+    const { R, p } = C(); const m = R && R.meeting;
+    if (!p || R.phase !== 'meeting' || !m || m.mode !== 'vote' || !p.alive || p.late || m.votes.has(p.id)) return;
+    if (target !== 'skip') { const t = R.players.get(target); if (!t || t.late || !t.alive) return; }
+    m.votes.set(p.id, target);
+    io.to(p.id).emit('sfx', 'click');
+  });
+
+  socket.on('disconnect', () => {
+    const pe = presence.get(socket.data.pid); if (pe && pe.sid === socket.id) presence.delete(socket.data.pid);
+    const { R, p } = C();
+    sockRoom.delete(socket.id);
+    if (!p) return;
+    R.players.delete(socket.id);
+    if (R.meeting) R.meeting.votes.delete(socket.id);
+    lobbySys(R, `${p.name} が退出しました`);
+    if (R.players.size === 0) { rooms.delete(R.code); return; }
+    if (R.phase === 'playing' || R.phase === 'meeting') {
+      if (participants(R).length === 0) { toLobby(R); return; }
+      if (R.phase === 'playing') checkWin(R);
+    }
+  });
 });
 
-server.listen(PORT, () => {
-  console.log(`パチットモンスター server running on port ${PORT}`);
-});
+if (require.main === module) server.listen(PORT, () => console.log(`Destroy or Avoid v7.1 running on :${PORT}`));
+module.exports = { genMap, LAYOUTS, TASK_ROOMS, TASK_DEFS, tasksOf, COLS, ROWS, CELL };
