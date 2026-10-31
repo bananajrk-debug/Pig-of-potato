@@ -1,7 +1,7 @@
 {
-  "name": "pig-of-potato",
-  "version": "7.0.0",
-  "description": "Pig of potato：ブタ海賊のオープンワールド航海＆栽培・砲撃ゲーム（ジャガイモ砲弾・風と帆・嵐・クラーケン・敵海賊船・チーム協力）(Node.js + Three.js + Socket.io)",
+  "name": "pachit-monster",
+  "version": "1.0.0",
+  "description": "パチットモンスター 〜風林火山〜 ガチャで編成する3対3じゃんけんバトル",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
@@ -10,7 +10,7 @@
     "node": ">=18"
   },
   "dependencies": {
-    "express": "^4.19.2",
-    "socket.io": "^4.7.5"
-  }
+    "express": "^4.21.2"
+  },
+  "license": "MIT"
 }
